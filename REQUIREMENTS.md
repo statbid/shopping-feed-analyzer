@@ -11,98 +11,192 @@ We are currently using DTS to move a daily snapshot of our client’s GMC shoppi
 
 ### Development Requirements:
 - **Programming Language**: The program should be written in TypeScript.
-- **Error Checks**: Implement the following checks as part of the QA process:
+# Error Checks: Implement the following checks as part of the QA process
 
-  - **Title doesn't contain size when size is set**: 
-    If the size attribute is non-blank, is a “size word” present in the title?
-    - Examples: `XS`, `S`, `M`, `L`, `XL`, `small`, `medium`, `large`
-  
-  - **Description contains missing spaces like `word,word`**: 
-    Look for strings that have a comma followed by any non-space character.
-  
-  - **Title doesn't contain color when color is set**: 
-    If the color attribute is non-blank, is a “color word” present in the title? Just check for the same word in the attribute.
+- **Title doesn't contain size when size is set**  
+  If the size attribute is non-blank, is a “size word” present in the title?  
+  XS, S, M, L, XL, small, medium, large
 
-  - **Title contains duplicate words**: 
-    Example: "Nike Air Jordan Jordan Shoes" - Check for any repeated word/token.
+- **Description contains missing spaces like `word,word`**  
+  Look for strings that have a comma followed by any non-space character.
 
-  - **Google Product Category isn't specific enough**: 
-    Check for the presence of at least two `>` symbols in the Google Product Category (GPC) value.
+- **Title doesn't contain color when color is set**  
+  If the color attribute is non-blank, is a “color word” present in the title?  
+  Just check for the same word in the attribute.
 
-  - **Product Type isn't set**: 
-    Check for blanks in this field.
+- **Title contains duplicate words like Nike Air Jordan Jordan Shoes**  
+  Check for any repeated word/token.
 
-  - **Google Product Category isn't set**: 
-    Check for blanks in this field.
+- **Google Product Category isn't specific enough**  
+  There are a few ways to do this - I’d probably check for the presence of at least two `>` symbols in the GPC value.
 
-  - **Google Product Category contains “Apparel”, but color, size, gender, or age_group are missing**: 
-    Look for non-empty values of color, size, gender, and age_group when the GPC is any apparel-related value.
+- **Product Type isn't set**  
+  Just checking for blanks in this field.
 
-  - **Description contains repeated dashes**: 
-    Check for “--” or “- -”.
+- **Google Product Category isn't set**  
+  Just checking for blanks in this field.
 
-  - **Spelling mistake in title**: 
-    Flag if a word has a valid spelling correction.
+- **Google Product Category contains “Apparel”, but color, size, gender, or age_group are missing**  
+  Looking for non-empty values of color, size, gender, and age_group when the GPC is any Apparel-related value.
 
-  - **Product Title contains abbreviations like `pck` instead of `pack`**: 
-    Bad abbreviations to check for: `pck`, `pkg`, `qty`, `qt`, `pc`, `pcs`, `ea`, `in.`, `ft`.
+- **Description contains repeated dashes**  
+  Check for “--” or “- -”.
 
-  - **Google Product Category isn't valid**: 
-    The GPC value isn’t found in the [Google product taxonomy](https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt). We only use the “X > Y > Z” styled values.
+- **Spelling mistake in title**  
+  Only flag if a word has a valid spelling correction.
 
-  - **Product Title contains bad characters**: 
-    Look for characters like `^`, `$`, `@`, `!`, `"", ''`.
+- **Spelling mistake in description**  
+  Only flag if a word has a valid spelling correction.
 
-  - **Product Title doesn't contain brand**: 
-    Check for the value of the “brand” attribute and whether it's present in the title.
+- **Product Title contains abbreviations like `pck` instead of `pack`**  
+  Bad abbreviations to check for: `pck`, `pkg`, `qty`, `qt`, `pc`, `pcs`, `ea`, `in.`, `ft`
 
-  - **Product Title contains whitespace at start or end**: 
-    Look for whitespace characters at the start or end of the title.
+- **Google Product Category isn't valid**  
+  GPC value isn’t found in [Google's product taxonomy](https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt).  
+  We don’t want the numbered version - just the “X > Y > Z” styled values.
 
-  - **Product Description too long**: 
-    Check if the description exceeds 5000 characters.
+- **Product Title contains bad characters like: ^, $, @, !, "", ''**  
+  Check for any special characters.
 
-  - **Duplicate IDs across feed**: 
-    Check for multiple entries of the same `item_id` in the feed.
+- **Product Title doesn't contain brand**  
+  Look for the value of the “brand” attribute, and check for that word in the title.
 
-  - **Id isn't set**: 
-    Check if the `id` field is blank/empty.
+- **Product Title doesn't contain material when material is set**  
+  Look for the value of the “material” attribute, and check for that word in the title.
 
-  - **Image_link isn't set**: 
-    Check if the `image_link` field is blank/empty.
+- **Product Title contains whitespace at start or end**  
+  Look for any whitespace character at the start and end of the title value.
 
-  - **Price isn't set**: 
-    Check if the `price` field is blank/empty.
+- **Product Title contains repeated whitespace**  
+  Look for any repeated whitespace character in the title value.
 
-  - **GTIN length is incorrect**: 
-    GTIN must have 8, 12, 13, or 14 characters. For bonus points, check for valid check digits.
+- **Product Title contains repeated dashes**  
+  Look for any repeated dash in the title value.
 
-  - **Gender mismatch**: 
-    Check for any mismatch between gender in the title and gender attribute value.
+- **Product Title contains repeated commas**  
+  Look for any repeated comma in the title value.
 
-  - **Age_group mismatch**: 
-    Check for age group mismatches in the title and age_group attribute values.
+- **Product Title contains punctuation at start or end**  
+  Look for any punctuation marks (!,.?:;) at the start or end of the title value.
 
-  - **Monitored Pharmacy Word**: 
-    Check for any unapproved pharmaceutical or supplement terms in title or description.
+- **Product Title contains HTML**  
+  Look for any angle brackets `<>` in the title value.
 
-  - **Product Title contains HTML**: 
-    Look for any HTML tags or entities in the title.
+- **Product Title contains HTML entities (&reg, &copy, &trade)**  
+  Look for any HTML entities in the title value.  
+  Complete list of HTML entities - [FreeFormatter.com](https://www.freeformatter.com/html-entities.html)
 
-  - **Product Title contains promotional words**: 
-    Look for promotional terms like "save," "off," "free shipping," etc.
+- **Product Title contains promotional words (save, off, free shipping, best seller, 30% off, buy one get one, open box)**  
+  Look for any of the listed phrases in the title value:  
+  Save, Off, Free shipping, Best seller, % off, Buy, Open box, clearance
 
-  - **Product Title contains nonbreaking spaces**: 
-    Use regex to find nonbreaking spaces.
+- **Product Title contains missing spaces like `word,word`**  
+  Might be difficult, if there isn’t a library function you can use.  
+  Perhaps run a “decompounding” function, where you check a string that fails to match a dictionary value to see if any different two-part splits of the string match two dictionary values?
 
-  - **Product type contains whitespace at start or end**: 
-    Check for leading or trailing whitespace.
+- **Product Title contains non breaking spaces**  
+  Use regex to find non breaking spaces in the title value.  
+  [Find non-breaking space with regular expression](https://community.adobe.com/t5/framemaker-discussions/find-non-breaking-space-with-regular-expression/td-p/12361052)
 
-  - **GTIN isn't valid**: 
-    GTIN isn’t found in the provided [Google product taxonomy](https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt).
+- **Product Description contains whitespace at start or end**  
+  Look for any whitespace character at the start and end of the description value.
 
-  - **Other checks**: 
-    Various other error checks related to product type, price, brand, etc.
+- **Product Description contains repeated whitespace**  
+  Look for any repeated whitespace character in the description value.
+
+- **Product Description contains repeated commas**  
+  Look for any repeated comma in the description value.
+
+- **Product Description contains HTML**  
+  Look for any angle brackets `<>` in the description value.
+
+- **Product Description contains HTML entities (&reg, &copy, &trade)**  
+  Look for any HTML entities in the description value.  
+  Complete list of HTML entities - [FreeFormatter.com](https://www.freeformatter.com/html-entities.html)
+
+- **Product Description too long**  
+  Check to see if the description value is over 5000 characters.
+
+- **Product Description contains nonbreaking spaces**  
+  Use regex to find nonbreaking spaces in the description value.  
+  [Find non-breaking space with regular expression](https://community.adobe.com/t5/framemaker-discussions/find-non-breaking-space-with-regular-expression/td-p/12361052)
+
+- **Duplicate Ids across Feed**  
+  Does the `item_id` (also referred to as `id` or `product_id`) have multiple entries in the feed?
+
+- **Id too long**  
+  Check to see if `id` is over 50 characters.
+
+- **Id isn't set**  
+  Check to see if `id` is blank/empty.
+
+- **Link isn't set**  
+  Check to see if `link` is blank/empty.
+
+- **Image_link isn't set**  
+  Check to see if `image_link` is blank/empty.
+
+- **Availability isn't set**  
+  Check to see if Availability is blank/empty.
+
+- **Price isn't set**  
+  Check to see if Price is blank/empty.
+
+- **Brand isn't set**  
+  Check to see if Brand is blank/empty.
+
+- **Condition isn't set**  
+  Check to see if Condition is blank/empty.
+
+- **Image Link contains commas**  
+  Check to see if any comma characters are present in `image_link` value.
+
+- **Product types contain words like "clearance" and "sale"**  
+  Check to see if `product_type` values contain promotional words:  
+  Clearance, Sale, Save, Open box
+
+- **Product type contains commas**  
+  Check to see if `product_type` contains commas.
+
+- **Product type contains repeated tiers**  
+  Check to see if `product_type` repeats any strings between angle brackets.  
+  Good product type: X > Y > Z  
+  Bad product type: X > X > Z
+
+- **Product type contains whitespace at start or end**  
+  Check for whitespace characters at start or end of `product_type` value.
+
+- **Product type contains repeated whitespace**  
+  Check for repeated whitespace characters in `product_type` value.
+
+- **Product type contains > at start or end**  
+  Check for presence of angle brackets at start or end of `product_type` value.
+
+- **GTIN length is incorrect**  
+  Do not return this error if value is null, that’s fine.  
+  Correct values have 8, 12, 13, or 14 characters.  
+  For bonus points, check them for valid check digits (UPC, EAN, JAN, and ISBN formats).
+
+- **Gender mismatch - women's or girl's is in the title and gender is male**  
+  Check for any of these combinations:  
+  “Female”, “Women”, “woman”, or “girl” in title value and “male” in gender attribute value.  
+  “Male”, “men”, “man”, “boy” in title value and “female” in gender attribute value.
+
+- **Age_group mismatch - kids or toddler is the title and age_group is equal to adult**  
+  Check for any of these combinations:  
+  “Kid”, “toddler”, “infant”, “baby”, or “newborn” in title value and age_group value is “adult”  
+  “Adult”, “men”, or “Women” in title value and age_group value is any of “newborn”, “infant”, “toddler”, or “kids”
+
+- **Monitored Pharmacy Word**  
+  Check for any of the following phrases in title or description values:  
+  Everything in these lists: [Unapproved pharmaceuticals and supplements - Advertising Policies Help](https://support.google.com/adspolicy/answer/176031)
+
+- **Disapproved Pharmacy Word**  
+  Remove this item from the report, redundant with Monitored Pharmacy Word.
+
+- **Disapproved Pharmacy Word Category**  
+  Remove this item from the report, redundant with Monitored Pharmacy Word.
+
 
 ## Inputs
 - A simple web interface should be created to upload a CSV shopping feed (see example).
