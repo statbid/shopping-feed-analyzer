@@ -3,10 +3,7 @@
 ## What is the problem or task and why is this important?
 
 ### Problem Statement:
-
-
-### Importance:
-
+Maintaining high-quality product data in shopping feeds is crucial for maximizing visibility, reducing disapproved products, and enhancing overall ad performance. Many businesses rely on external systems to monitor and improve feed quality, but these solutions can be inflexible, costly, or not fully integrated into existing workflows. This project aims to provide an open-source solution that enables users to perform comprehensive quality checks on their shopping feeds, ensuring data accuracy, consistency, and compliance with best practices, without relying on third-party tools.
 
 ## Detailed Requirements
 
@@ -117,24 +114,21 @@ We are currently using DTS to move a daily snapshot of our client’s GMC shoppi
 
 ## Stakeholder Acceptance Criteria
 - The system accurately replicates all error checks currently performed by the Feedonomics FeedQA report.
-- Error reports are seamlessly integrated into the STAR Open Issues Report.
 - Users can easily download/export detailed error cases with relevant product information.
-- The solution must handle a client’s product catalog without significant performance issues.
+- The solution must handle large product catalogs without significant performance issues (several hundred thousand rows).
 
 ## Task Completion Criteria
 - All listed error checks are implemented, tested, and verified.
-- Integration with the STAR Open Issues Report is functional, and data flows correctly.
 - Stakeholders can access, download, and review error reports with no critical bugs.
 - User acceptance testing is complete, with stakeholders signing off on functionality.
 - The code is documented, and a README file is developed according to our standards for maintainability.
 
 ## Dependencies
-- **Data Dependencies**: Access to “All Products” GMC data, which should be post-transformation, rule, and supplemental feed.
-- **Tool/Platform Dependencies**: Integration with the existing STAR Open Issues Report framework.
+- 
+- 
 
 ## Testing Strategy
 - **Unit Testing**: Test each error check individually to ensure accuracy and consistency.
-- **Integration Testing**: Test data ingestion, error checking, and reporting functionalities end-to-end to confirm smooth integration with the STAR Open Issues Report.
 - **User Acceptance Testing (UAT)**: Create test cases that cover the most common and critical error scenarios, allowing stakeholders to review and approve.
 
 ## Resources Needed
