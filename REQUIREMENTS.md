@@ -7,7 +7,7 @@ Maintaining high-quality product data in shopping feeds is crucial for maximizin
 
 ## Detailed Requirements
 - **Programming Language**: The program should be written in TypeScript.
-# Error Checks: Implement the following checks as part of the QA process
+### Error Checks: Implement the following checks as part of the QA process
 
 - **Title doesn't contain size when size is set**  
   If the size attribute is non-blank, is a “size word” present in the title?  
