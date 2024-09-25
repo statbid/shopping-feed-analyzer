@@ -218,8 +218,7 @@ We are currently using DTS to move a daily snapshot of our client’s GMC shoppi
 - The code is documented, and a README file is developed according to our standards for maintainability.
 
 ## Dependencies
-- 
-- 
+- Dependent on correctly formed shopping feeds
 
 ## Testing Strategy
 - **Unit Testing**: Test each error check individually to ensure accuracy and consistency.
