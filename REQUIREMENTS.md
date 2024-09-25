@@ -6,10 +6,6 @@
 Maintaining high-quality product data in shopping feeds is crucial for maximizing visibility, reducing disapproved products, and enhancing overall ad performance. Many businesses rely on external systems to monitor and improve feed quality, but these solutions can be inflexible, costly, or not fully integrated into existing workflows. This project aims to provide an open-source solution that enables users to perform comprehensive quality checks on their shopping feeds, ensuring data accuracy, consistency, and compliance with best practices, without relying on third-party tools.
 
 ## Detailed Requirements
-
-We are currently using DTS to move a daily snapshot of our client’s GMC shopping feed into BigQuery. We need to run the following error checks on the post-transformation, post-rule, and post-supplemental-feed product data.
-
-### Development Requirements:
 - **Programming Language**: The program should be written in TypeScript.
 # Error Checks: Implement the following checks as part of the QA process
 
