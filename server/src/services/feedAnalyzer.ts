@@ -61,8 +61,7 @@ const errorCheckers = {
     return errors;
   },
 
-  
-  titleSizeColorCheck: (item: FeedItem): ErrorResult[] => {
+    titleSizeColorCheck: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
     const sizeWords = ['XS', 'S', 'M', 'L', 'XL', 'small', 'medium', 'large'];
     

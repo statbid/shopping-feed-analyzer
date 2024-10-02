@@ -1,5 +1,6 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent, DragEvent } from 'react';
 import { Upload, Eye, Download } from 'lucide-react';
+
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -21,29 +22,70 @@ interface AnalysisResults {
 }
 
 export default function FileUpload() {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
-  const [isLoading, setIsLoading] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
-  const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
+    const [file, setFile] = useState<File | null>(null);
+    const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
+    const [isLoading, setIsLoading] = useState(false);
+    const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+    const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+  
+    const handleFileChange = (selectedFile: File | null) => {
+      if (selectedFile && (
+        selectedFile.type === 'text/csv' || 
+        selectedFile.name.endsWith('.tsv') || 
+        selectedFile.type === 'text/tab-separated-values'
+      )) {
+        setFile(selectedFile);
+        setUploadStatus({ 
+          type: 'success', 
+          message: `${selectedFile.name.split('.').pop()?.toUpperCase()} file selected successfully!` 
+        });
+      } else {
+        setFile(null);
+        setUploadStatus({ type: 'error', message: 'Please select a valid CSV or TSV file.' });
+      }
+    };
+  
+    const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+      const selectedFile = event.target.files?.[0] || null;
+      handleFileChange(selectedFile);
+    };
+  
+    const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(true);
+    };
+  
+    const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
+    };
+  
+    const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+  
+    const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(false);
+      
+      const droppedFile = event.dataTransfer.files[0];
+      handleFileChange(droppedFile);
+    };
+  
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile && (
-      selectedFile.type === 'text/csv' || 
-      selectedFile.name.endsWith('.tsv') || 
-      selectedFile.type === 'text/tab-separated-values'
-    )) {
-      setFile(selectedFile);
-      setUploadStatus({ 
-        type: 'success', 
-        message: `${selectedFile.name.split('.').pop()?.toUpperCase()} file selected successfully!` 
-      });
-    } else {
-      setFile(null);
-      setUploadStatus({ type: 'error', message: 'Please select a valid CSV or TSV file.' });
-    }
-  };
+/************/
+
+
+
+
+
+
+
 
   const handleUpload = async () => {
     if (!file) return;
@@ -112,18 +154,34 @@ export default function FileUpload() {
     }
   };
 
+
+
+
+
+
+
   return (
     <div className="max-w-4xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Google Shopping Feed Analyzer</h1>
       
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2">Upload CSV/TSV Feed File</label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+        <div 
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            isDragging 
+              ? 'border-blue-500 bg-blue-50' 
+              : 'border-gray-300 hover:border-gray-400'
+          }`}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <Upload className={`mx-auto h-12 w-12 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
           <input
             type="file"
             accept=".csv,.tsv"
-            onChange={handleFileChange}
+            onChange={handleInputChange}
             className="hidden"
             id="file-upload"
           />
@@ -154,7 +212,7 @@ export default function FileUpload() {
         disabled={!file || isLoading}
         className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
       >
-        {isLoading ? 'Analyzing...' : 'Upload and Analyze'}
+        {isLoading ? 'Analyzing...' : 'Analyze'}
       </button>
 
       {analysisResults && (
