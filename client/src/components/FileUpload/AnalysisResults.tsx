@@ -76,56 +76,59 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          {/* Header */}
-          <div className="grid grid-cols-[3fr_1fr_3fr] bg-gray-100 font-semibold">
-            <div className="p-3 border-r border-gray-200">Best Practice</div>
-            <div className="p-3 border-r border-gray-200">Problem Count</div>
-            <div className="p-3">How to Fix</div>
-          </div>
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+          {/* Table Structure */}
+          <div className="grid grid-cols-[auto_1fr_1fr] text-sm">
+            {/* Header */}
+            <div className="contents font-semibold bg-gray-100">
+              <div className="p-3 border-r-2 border-b-2 border-gray-200 bg-gray-100">Best Practice</div>
+              <div className="p-3 border-r-2 border-b-2 border-gray-200 bg-gray-100 text-center">Problem Count</div>
+              <div className="p-3 border-b-2 border-gray-200 bg-gray-100">How to Fix</div>
+            </div>
 
-          {/* Rows */}
-          {Object.entries(results.errorCounts).map(([errorType, count]) => {
-            const firstError = getFirstErrorOfType(errorType);
-            return (
-              <div key={errorType} className="grid grid-cols-[3fr_1fr_3fr] border-t border-gray-200">
-                <div className="p-3 border-r border-gray-200">
-                  <p className="font-medium">{errorType}</p>
-                  {firstError && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      <p>id: {firstError.id}</p>
-                      <p>details: {firstError.details}</p>
-                      <p>affected field: {firstError.affectedField}</p>
-                      <p>value: {firstError.value}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-3 border-r border-gray-200 flex flex-col items-center justify-center">
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm mb-2">
-                    {count}
-                  </span>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleViewDetails(errorType)}
-                      className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center text-sm"
-                    >
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </button>
-                    <button
-                      onClick={() => onDownloadDetails(errorType)}
-                      className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center text-sm"
-                    >
-                      <Download className="w-4 h-4 mr-1" /> Download
-                    </button>
+            {/* Rows */}
+            {Object.entries(results.errorCounts).map(([errorType, count], index) => {
+              const firstError = getFirstErrorOfType(errorType);
+              return (
+                <React.Fragment key={errorType}>
+                  <div className="p-3 border-r-2 border-b-2 border-gray-200">
+                    <p className="font-medium">{errorType}</p>
+                    {firstError && (
+                      <div className="text-xs text-gray-600 mt-1">
+                        <p>id: {firstError.id}</p>
+                        <p>details: {firstError.details}</p>
+                        <p>affected field: {firstError.affectedField}</p>
+                        <p>value: {firstError.value}</p>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="p-3 text-blue-600">
-                  Suggestion to fix {errorType}
-                </div>
-              </div>
-            );
-          })}
+                  <div className="p-3 border-r-2 border-b-2 border-gray-200 flex flex-col items-center justify-center">
+                    <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs mb-2">
+                      {count}
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleViewDetails(errorType)}
+                        className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center text-xs"
+                      >
+                        <Eye className="w-3 h-3 mr-1" /> View
+                      </button>
+                      <button
+                        onClick={() => onDownloadDetails(errorType)}
+                        className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center text-xs"
+                      >
+                        <Download className="w-3 h-3 mr-1" /> Download
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-3 border-b-2 border-gray-200 text-blue-600 text-sm">
+                    Suggestion to fix {errorType}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       </div>
 
