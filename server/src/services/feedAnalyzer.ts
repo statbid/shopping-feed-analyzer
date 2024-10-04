@@ -28,15 +28,21 @@ const errorCheckers = {
   descriptionMissingSpaces: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
     if (item.description) {
-      const missingSpaceRegex = /,(?=\S)/g;
+      const missingSpaceRegex = /,\S/g;
       const matches = item.description.match(missingSpaceRegex);
       if (matches) {
-        errors.push({
-          id: item.id || 'UNKNOWN',
-          errorType: 'Missing Spaces After Commas',
-          details: `Description contains ${matches.length} instance(s) of missing spaces after commas`,
-          affectedField: 'description',
-          value: item.description
+        matches.forEach(match => {
+          const index = item.description!.indexOf(match);
+          const start = Math.max(0, index - 15);
+          const end = Math.min(item.description!.length, index + 15);
+          const context = item.description!.slice(start, end);
+          errors.push({
+            id: item.id || 'UNKNOWN',
+            errorType: 'Missing Space After Comma',
+            details: `...${context}...`,
+            affectedField: 'description',
+            value: match
+          });
         });
       }
     }
@@ -46,13 +52,14 @@ const errorCheckers = {
   titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
     if (item.title) {
-      const words = item.title.toLowerCase().split(/\s+/);
-      const duplicates = words.filter((word, index) => words.indexOf(word) !== index);
-      if (duplicates.length > 0) {
+      const words = item.title.split(/\s+/).filter(word => /^[a-zA-Z]+$/.test(word));
+      const uniqueWords = new Set(words);
+      if (words.length !== uniqueWords.size) {
+        const duplicates = words.filter((word, index) => words.indexOf(word) !== index);
         errors.push({
           id: item.id || 'UNKNOWN',
           errorType: 'Duplicate Words in Title',
-          details: `Title contains duplicate words: ${[...new Set(duplicates)].join(', ')}`,
+          details: `Duplicate words found: ${duplicates.join(', ')}`,
           affectedField: 'title',
           value: item.title
         });
@@ -61,7 +68,7 @@ const errorCheckers = {
     return errors;
   },
 
-    titleSizeColorCheck: (item: FeedItem): ErrorResult[] => {
+  titleSizeCheck: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
     const sizeWords = ['XS', 'S', 'M', 'L', 'XL', 'small', 'medium', 'large'];
     
@@ -73,31 +80,31 @@ const errorCheckers = {
       if (!hasSizeWord) {
         errors.push({
           id: item.id || 'UNKNOWN',
-          errorType: 'Size Mismatch',
-          details: 'Title doesn\'t contain size when size is set',
+          errorType: 'Size Missing in Title',
+          details: `Size '${item.size}' not found in title`,
           affectedField: 'title',
           value: item.title
         });
       }
     }
+    return errors;
+  },
 
+  titleColorCheck: (item: FeedItem): ErrorResult[] => {
+    const errors: ErrorResult[] = [];
     if (item.color && item.title) {
       if (!item.title.toLowerCase().includes(item.color.toLowerCase())) {
         errors.push({
           id: item.id || 'UNKNOWN',
-          errorType: 'Color Mismatch',
-          details: 'Title doesn\'t contain color when color is set',
+          errorType: 'Color Missing in Title',
+          details: `Color '${item.color}' not found in title`,
           affectedField: 'title',
           value: item.title
         });
       }
     }
-
     return errors;
   }
-
-
-
 };
 
 // Analyzer class

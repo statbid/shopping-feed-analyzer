@@ -41,7 +41,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_4fr] gap-6 p-6">
+    <div className="font-sans grid grid-cols-1 lg:grid-cols-[1fr_4fr] gap-6 p-6">
       {/* Left Panel (Results) - 20% width */}
       <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between">
         <div>
@@ -96,6 +96,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                     <p className="font-medium">{errorType}</p>
                     {firstError && (
                       <div className="text-xs text-gray-600 mt-1">
+                        <p>Example</p>
                         <p>id: {firstError.id}</p>
                         <p>details: {firstError.details}</p>
                         <p>affected field: {firstError.affectedField}</p>

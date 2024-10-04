@@ -136,19 +136,14 @@ export default function FileUpload() {
   };
 
   return (
-          <div className="w-full"> 
-        <AnalyzerHeader 
-          file={file}
-          onUploadClick={() => setIsModalOpen(true)}
-        />
-  
-        <button
-          onClick={handleUpload}
-          disabled={!file || isLoading}
-          className="w-full mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Analyzing...' : 'Analyze'}
-        </button>
+    <div className="w-full">
+      <AnalyzerHeader 
+        file={file}
+        onUploadClick={() => setIsModalOpen(true)}
+        onAnalyzeClick={handleUpload}  // Pass the handleUpload function
+        isAnalyzeDisabled={!file || isLoading}  // Pass the disabled state
+        isLoading={isLoading}
+      />
 
       {isLoading && (
         <div className="mt-4">
@@ -169,15 +164,11 @@ export default function FileUpload() {
 
       {analysisResults && (
         <div className="mt-6" ref={resultsRef}>
-
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}
-            
             onDownloadDetails={handleDownloadDetails}
-         
           />
-
         </div>
       )}
 
