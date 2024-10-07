@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { FeedAnalyzer } from './services/feedAnalyzer';
+import { FeedAnalyzer } from './services/FeedAnalyzer';
 import fs from 'fs';
 
 const app = express();
