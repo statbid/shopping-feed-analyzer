@@ -100,7 +100,7 @@ const errorCheckers = {
   },
 
 
-
+/**************************** */
 
   titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
@@ -123,24 +123,34 @@ const errorCheckers = {
 
   
 
+/********************** */
 
-
-
-  titleColorCheck: (item: FeedItem): ErrorResult[] => {
-    const errors: ErrorResult[] = [];
-    if (item.color && item.title) {
-      if (!item.title.toLowerCase().includes(item.color.toLowerCase())) {
-        errors.push({
-          id: item.id || 'UNKNOWN',
-          errorType: 'Color Mismatch',
-          details: 'Title does not contain color when color is set',
-          affectedField: 'title',
-          value: item.title
-        });
-      }
+titleColorCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.color && item.title) {
+    if (!item.title.toLowerCase().includes(item.color.toLowerCase())) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Color Mismatch',
+        details: `Title does not contain color "${item.color}" when color is set`,
+        affectedField: 'title',
+        value: item.title
+      });
     }
-    return errors;
   }
+  return errors;
+}
+
+
+
+
+
+
+
+
+
+
+
 };
 
 // Analyzer class

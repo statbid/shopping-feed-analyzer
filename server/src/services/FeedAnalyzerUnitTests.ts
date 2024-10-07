@@ -138,31 +138,34 @@ describe('descriptionMissingSpaces', () => {
 
 
 
+/************************ */
 
-
-    describe('titleColorCheck', () => {
-      it('should detect missing color in title when color is set', () => {
-        const item: FeedItem = {
-          id: '7',
-          title: 'Nike Running Shoes',
-          color: 'Red'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleColorCheck(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Color Mismatch');
-      });
-
-      it('should not report errors when color is in title', () => {
-        const item: FeedItem = {
-          id: '8',
-          title: 'Nike Red Running Shoes',
-          color: 'Red'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleColorCheck(item);
-        expect(errors).toHaveLength(0);
-      });
-    });
+describe('titleColorCheck', () => {
+  it('should detect missing color in title when color is set', () => {
+    const item: FeedItem = {
+      id: '7',
+      title: 'Nike Running Shoes',
+      color: 'Red'
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleColorCheck(item);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].errorType).toBe('Color Mismatch');
+    expect(errors[0].details).toBe('Title does not contain color "Red" when color is set');
   });
+
+  it('should not report errors when color is in title', () => {
+    const item: FeedItem = {
+      id: '8',
+      title: 'Nike Red Running Shoes',
+      color: 'Red'
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleColorCheck(item);
+    expect(errors).toHaveLength(0);
+  });
+});
+});
+
+
 
   // Add more tests for the FeedAnalyzer class if needed
 });
