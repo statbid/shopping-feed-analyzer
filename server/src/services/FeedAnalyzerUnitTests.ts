@@ -54,28 +54,7 @@ describe('descriptionMissingSpaces', () => {
 });
 
 
-/***************************************************************** */
-    describe('titleDuplicateWords', () => {
-      it('should detect duplicate words in title', () => {
-        const item: FeedItem = {
-          id: '3',
-          title: 'Nike Air Jordan Jordan Shoes'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Duplicate Words in Title');
-        expect(errors[0].details).toContain('jordan');
-      });
 
-      it('should not report errors when no duplicates exist', () => {
-        const item: FeedItem = {
-          id: '4',
-          title: 'Nike Air Jordan Shoes'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
-        expect(errors).toHaveLength(0);
-      });
-    });
 
 
 
@@ -136,6 +115,60 @@ describe('descriptionMissingSpaces', () => {
       });
     });
 
+
+
+/**********************Duplicate Words in title ******************************************* */
+
+
+describe('titleDuplicateWords', () => {
+  it('should detect duplicate words in title', () => {
+    const item: FeedItem = {
+      id: '1',
+      title: 'Nike Air Jordan Jordan Shoes'
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].errorType).toBe('Duplicate Words in Title');
+    expect(errors[0].details).toContain('jordan');
+  });
+
+  it('should not report errors when no duplicates exist', () => {
+    const item: FeedItem = {
+      id: '2',
+      title: 'Nike Air Jordan Shoes'
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
+    expect(errors).toHaveLength(0);
+  });
+
+  it('should ignore numbers and measurement units', () => {
+    const item: FeedItem = {
+      id: '3',
+      title: "17' X 29' Winter Cover For 12' X 24' Rectangle Pool"
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
+    expect(errors).toHaveLength(0);
+  });
+
+  it('should ignore short words', () => {
+    const item: FeedItem = {
+      id: '4',
+      title: 'The the quick brown fox jumps over the lazy dog'
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
+    expect(errors).toHaveLength(0);
+  });
+
+  it('should still detect actual duplicates in complex titles', () => {
+    const item: FeedItem = {
+      id: '5',
+      title: "17' X 29' Winter Cover Winter For 12' X 24' Rectangle Pool Cover"
+    };
+    const errors = FeedAnalyzer.errorCheckers.titleDuplicateWords(item);
+    expect(errors).toHaveLength(1);
+    expect(errors[0].details).toContain('winter, cover');
+  });
+});
 
 
 /************************ */

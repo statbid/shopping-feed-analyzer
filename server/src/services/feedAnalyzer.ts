@@ -66,7 +66,7 @@ const errorCheckers = {
 
 
  
-/********************************************* */
+/********************Missing Spaces after commas************************* */
 
   descriptionMissingSpaces: (item: FeedItem): ErrorResult[] => {
     const errors: ErrorResult[] = [];
@@ -100,30 +100,10 @@ const errorCheckers = {
   },
 
 
-/**************************** */
-
-  titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
-    const errors: ErrorResult[] = [];
-    if (item.title) {
-      const words = item.title.toLowerCase().split(/\s+/).filter(word => /^[a-zA-Z]+$/.test(word));
-      const duplicates = words.filter((word, index) => words.indexOf(word) !== index);
-      if (duplicates.length > 0) {
-        errors.push({
-          id: item.id || 'UNKNOWN',
-          errorType: 'Duplicate Words in Title',
-          details: `Title contains duplicate words: ${[...new Set(duplicates)].join(', ')}`,
-          affectedField: 'title',
-          value: item.title
-        });
-      }
-    }
-    return errors;
-  },
-
 
   
 
-/********************** */
+/**********Color check************ */
 
 titleColorCheck: (item: FeedItem): ErrorResult[] => {
   const errors: ErrorResult[] = [];
@@ -139,10 +119,44 @@ titleColorCheck: (item: FeedItem): ErrorResult[] => {
     }
   }
   return errors;
+},
+
+
+
+/*************Duplicate Words*************** */
+
+
+titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.title) {
+    // Split the title into words, converting to lowercase
+    const words = item.title.toLowerCase().split(/\s+/);
+    
+    // Create a set of words to ignore (numbers and common measurement units)
+    const ignoreWords = new Set(['x', 'by', 'in', 'inch', 'inches', 'ft', 'feet', 'cm', 'm', 'mm']);
+    
+    // Filter out numbers, common measurement units, and words shorter than 3 characters
+    const filteredWords = words.filter(word => 
+      !ignoreWords.has(word) && 
+      !/^\d+('|ft|in|cm|m|mm)?$/.test(word) &&
+      word.length > 2
+    );
+
+    // Find duplicates
+    const duplicates = filteredWords.filter((word, index) => filteredWords.indexOf(word) !== index);
+    
+    if (duplicates.length > 0) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Duplicate Words in Title',
+        details: `Title contains duplicate words: ${[...new Set(duplicates)].join(', ')}`,
+        affectedField: 'title',
+        value: item.title
+      });
+    }
+  }
+  return errors;
 }
-
-
-
 
 
 
