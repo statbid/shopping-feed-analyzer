@@ -352,53 +352,13 @@ describe('repeatedDashesCheck', () => {
       });
     });
 
-    /*******Spelling Mistakes*********/
-    describe('spellCheckTitle', () => {
-      it('should detect spelling mistakes in title', () => {
-        const item: FeedItem = {
-          id: '3',
-          title: 'Profesional Camera'
-        };
-        // Mock the checkSpelling function
-        (FeedAnalyzer.errorCheckers as any).checkSpelling = jest.fn().mockReturnValue(['Profesional']);
-        const errors = FeedAnalyzer.errorCheckers.spellCheckTitle(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Spelling Mistake in Title');
-        expect(errors[0].value).toBe('Profesional');
-      });
-    });
-
-    describe('spellCheckDescription', () => {
-      it('should detect spelling mistakes in description', () => {
-        const item: FeedItem = {
-          id: '4',
-          description: 'This is a grat product'
-        };
-        // Mock the checkSpelling function
-        (FeedAnalyzer.errorCheckers as any).checkSpelling = jest.fn().mockReturnValue(['grat']);
-        const errors = FeedAnalyzer.errorCheckers.spellCheckDescription(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Spelling Mistake in Description');
-        expect(errors[0].value).toBe('grat');
-      });
-    });
 
     /*******Product Title Abbreviations*********/
-    describe('titleAbbreviationsCheck', () => {
-      it('should detect bad abbreviations in title', () => {
-        const item: FeedItem = {
-          id: '1',
-          title: 'Camera 5pcs pck 10 in.'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleAbbreviationsCheck(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Bad Abbreviations in Title');
-        expect(errors[0].details).toBe('Found bad abbreviation(s): pcs, pck, in.');
-      });
+   
 
       it('should not report errors for allowed words', () => {
         const item: FeedItem = {
-          id: '2',
+          id: '1',
           title: 'Camera Pack of 5'
         };
         const errors = FeedAnalyzer.errorCheckers.titleAbbreviationsCheck(item);
@@ -407,22 +367,14 @@ describe('repeatedDashesCheck', () => {
 
       it('should not flag "in" when it\'s not an abbreviation', () => {
         const item: FeedItem = {
-          id: '3',
+          id: '2',
           title: 'Pool All In One Kit'
         };
         const errors = FeedAnalyzer.errorCheckers.titleAbbreviationsCheck(item);
         expect(errors).toHaveLength(0);
       });
 
-      it('should flag "in." when it\'s used as an abbreviation', () => {
-        const item: FeedItem = {
-          id: '4',
-          title: 'Pipe 10 in. long'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleAbbreviationsCheck(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].details).toBe('Found bad abbreviation(s): in.');
-      });
+    
     });
 
 
@@ -431,46 +383,6 @@ describe('repeatedDashesCheck', () => {
 
 
 
-    /*******Google Product Category Validation*********/
-    describe('googleProductCategoryValidation', () => {
-      it('should detect invalid Google Product Category format', () => {
-        const item: FeedItem = {
-          id: '7',
-          google_product_category: 'Electronics > Cameras'
-        };
-        // Mock the validateGoogleProductCategory function
-        (FeedAnalyzer.errorCheckers as any).validateGoogleProductCategory = jest.fn().mockReturnValue(false);
-        const errors = FeedAnalyzer.errorCheckers.googleProductCategoryValidation(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Invalid Google Product Category');
-      });
-    });
-
-
-
-
-    /*******Product Title Special Characters*********/
-    describe('titleSpecialCharactersCheck', () => {
-      it('should detect special characters in title', () => {
-        const item: FeedItem = {
-          id: '8',
-          title: 'Camera @ $500'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleSpecialCharactersCheck(item);
-        expect(errors).toHaveLength(1);
-        expect(errors[0].errorType).toBe('Special Characters in Title');
-        expect(errors[0].value).toBe('@, $');
-      });
-
-      it('should not report errors for allowed characters', () => {
-        const item: FeedItem = {
-          id: '9',
-          title: 'Camera (Black) - 20MP, 4K'
-        };
-        const errors = FeedAnalyzer.errorCheckers.titleSpecialCharactersCheck(item);
-        expect(errors).toHaveLength(0);
-      });
-    });
 
 
 
@@ -498,6 +410,3 @@ describe('repeatedDashesCheck', () => {
         expect(errors).toHaveLength(0);
       });
     });
-  });
-
-

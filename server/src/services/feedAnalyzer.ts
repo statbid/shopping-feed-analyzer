@@ -1,6 +1,10 @@
 import { parse } from 'csv-parse';
 import { Transform } from 'stream';
-import SpellChecker from 'spellchecker';
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
+import * as os from 'os';
+
+
+const SpellChecker = require('spellchecker') as any;
 
 // Types
 export interface FeedItem {
@@ -16,6 +20,11 @@ export interface FeedItem {
   [key: string]: string | undefined;
 }
 
+type MisspelledWord = {
+  word: string;
+  corrections: string[];
+};
+
 export interface ErrorResult {
   id: string;
   errorType: string;
@@ -29,6 +38,9 @@ export interface AnalysisResult {
   errorCounts: { [key: string]: number };
   errors: ErrorResult[];
 }
+
+
+
 // Error checking functions
 
 /******************************** */
@@ -264,40 +276,44 @@ apparelAttributesCheck: (item: FeedItem): ErrorResult[] => {
 
 
 
-/*******Spelling Mistakes*********/
-spellCheckTitle: (item: FeedItem): ErrorResult[] => {
+ /*******Product Title Spell Check*********/
+ titleSpellCheck: (item: FeedItem): ErrorResult[] => {
   const errors: ErrorResult[] = [];
   if (item.title) {
-    const misspelledWords = checkSpelling(item.title);
-    if (misspelledWords.length > 0) {
+    const words = item.title.split(/\s+/);
+    const misspelledWordsWithCorrections = words
+      .map(word => {
+        if (SpellChecker.isMisspelled(word)) {
+          const corrections = SpellChecker.getCorrectionsForMisspelling(word);
+          if (corrections.length > 0) {
+            return { word, corrections: corrections.slice(0, 3) }; // Limit to top 3 suggestions
+          }
+        }
+        return null;
+      })
+      .filter((entry): entry is MisspelledWord => entry !== null);
+    
+    if (misspelledWordsWithCorrections.length > 0) {
+      const details = misspelledWordsWithCorrections
+        .map(({ word, corrections }) => `"${word}" (suggestions: ${corrections.join(', ')})`)
+        .join('; ');
+
       errors.push({
         id: item.id || 'UNKNOWN',
-        errorType: 'Spelling Mistake in Title',
-        details: `Found ${misspelledWords.length} misspelled word(s)`,
+        errorType: 'Spelling Mistakes in Title',
+        details: `Found misspelled word(s) with suggestions: ${details}`,
         affectedField: 'title',
-        value: misspelledWords.join(', ')
+        value: item.title
       });
     }
   }
   return errors;
 },
 
-spellCheckDescription: (item: FeedItem): ErrorResult[] => {
-  const errors: ErrorResult[] = [];
-  if (item.description) {
-    const misspelledWords = checkSpelling(item.description);
-    if (misspelledWords.length > 0) {
-      errors.push({
-        id: item.id || 'UNKNOWN',
-        errorType: 'Spelling Mistake in Description',
-        details: `Found ${misspelledWords.length} misspelled word(s)`,
-        affectedField: 'description',
-        value: misspelledWords.join(', ')
-      });
-    }
-  }
-  return errors;
-},
+
+
+
+
 
 
 /*******Product Title Abbreviations*********/
@@ -328,23 +344,6 @@ spellCheckDescription: (item: FeedItem): ErrorResult[] => {
 
 
 
-/*******Google Product Category Validation*********/
-googleProductCategoryValidation: (item: FeedItem): ErrorResult[] => {
-  const errors: ErrorResult[] = [];
-  if (item.google_product_category) {
-    const isValid = validateGoogleProductCategory(item.google_product_category);
-    if (!isValid) {
-      errors.push({
-        id: item.id || 'UNKNOWN',
-        errorType: 'Invalid Google Product Category',
-        details: 'Google Product Category is not in the correct format',
-        affectedField: 'google_product_category',
-        value: item.google_product_category
-      });
-    }
-  }
-  return errors;
-},
 
  /*******Product Title Special Characters*********/
  titleSpecialCharactersCheck: (item: FeedItem): ErrorResult[] => {
@@ -387,46 +386,6 @@ googleProductCategoryValidation: (item: FeedItem): ErrorResult[] => {
 
 
 };
-
-function checkSpelling(text: string): string[] {
-  const misspelledWords: string[] = [];
-  const words = text.split(/\s+/);
-  words.forEach(word => {
-    if (spellchecker.isMisspelled(word)) {
-      const suggestions = spellchecker.getCorrectionsForMisspelling(word);
-      if (suggestions.length > 0) {
-        misspelledWords.push(word);
-      }
-    }
-  });
-  return misspelledWords;
-}
-
-function validateGoogleProductCategory(category: string): boolean {
-  // Implement Google Product Category validation logic here
-  return true;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
