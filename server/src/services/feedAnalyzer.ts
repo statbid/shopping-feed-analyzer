@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse';
 import { Transform } from 'stream';
+import SpellChecker from 'spellchecker';
 
 // Types
 export interface FeedItem {
@@ -8,6 +9,10 @@ export interface FeedItem {
   description?: string;
   size?: string;
   color?: string;
+  google_product_category?: string;
+  product_type?: string;
+  gender?: string;
+  age_group?: string;
   [key: string]: string | undefined;
 }
 
@@ -24,7 +29,6 @@ export interface AnalysisResult {
   errorCounts: { [key: string]: number };
   errors: ErrorResult[];
 }
-
 // Error checking functions
 
 /******************************** */
@@ -156,6 +160,251 @@ titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
     }
   }
   return errors;
+},
+
+
+
+googleProductCategorySpecificity: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.google_product_category) {
+    const categoryLevels = item.google_product_category.split('>').filter(Boolean).length;
+    if (categoryLevels < 3) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Unspecific Google Product Category',
+        details: `Google Product Category isn't specific enough (less than 3 levels)`,
+        affectedField: 'google_product_category',
+        value: item.google_product_category
+      });
+    }
+  }
+  return errors;
+},
+
+productTypeCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (!item.product_type || item.product_type.trim() === '') {
+    errors.push({
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing Product Type',
+      details: 'Product Type is not set',
+      affectedField: 'product_type',
+      value: item.product_type || ''
+    });
+  }
+  return errors;
+},
+
+googleProductCategoryCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (!item.google_product_category || item.google_product_category.trim() === '') {
+    errors.push({
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing Google Product Category',
+      details: 'Google Product Category is not set',
+      affectedField: 'google_product_category',
+      value: item.google_product_category || ''
+    });
+  }
+  return errors;
+},
+
+apparelAttributesCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.google_product_category && item.google_product_category.toLowerCase().includes('apparel')) {
+    const missingAttributes = [];
+    if (!item.color) missingAttributes.push('color');
+    if (!item.size) missingAttributes.push('size');
+    if (!item.gender) missingAttributes.push('gender');
+    if (!item.age_group) missingAttributes.push('age_group');
+
+    if (missingAttributes.length > 0) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Missing Apparel Attributes',
+        details: `Apparel item is missing: ${missingAttributes.join(', ')}`,
+        affectedField: 'google_product_category',
+        value: item.google_product_category
+      });
+    }
+  }
+  return errors;
+},
+
+ /*******Repeated Dashes in Description*********/
+ repeatedDashesCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.description) {
+    const repeatedDashesRegex = /--|- -/g;
+    const matches = [...item.description.matchAll(repeatedDashesRegex)];
+    if (matches.length > 0) {
+      const contextExtract = (index: number) => {
+        const words = item.description!.split(/\s+/);
+        const wordIndex = item.description!.slice(0, index).split(/\s+/).length - 1;
+        const start = Math.max(0, wordIndex - 3);
+        const end = Math.min(words.length, wordIndex + 4);
+        return words.slice(start, end).join(' ').replace(/\.$/, '');
+      };
+
+      const cases = matches.map((match, index) => 
+        matches.length > 1 ? `Case ${index + 1}: "${contextExtract(match.index!)}"` : `"${contextExtract(match.index!)}"`
+      );
+
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Repeated Dashes in Description',
+        details: `Found ${matches.length} instance(s) of repeated dashes`,
+        affectedField: 'description',
+        value: cases.join(' ')
+      });
+    }
+  }
+  return errors;
+},
+
+
+
+/*******Spelling Mistakes*********/
+spellCheckTitle: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.title) {
+    const misspelledWords = checkSpelling(item.title);
+    if (misspelledWords.length > 0) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Spelling Mistake in Title',
+        details: `Found ${misspelledWords.length} misspelled word(s)`,
+        affectedField: 'title',
+        value: misspelledWords.join(', ')
+      });
+    }
+  }
+  return errors;
+},
+
+spellCheckDescription: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.description) {
+    const misspelledWords = checkSpelling(item.description);
+    if (misspelledWords.length > 0) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Spelling Mistake in Description',
+        details: `Found ${misspelledWords.length} misspelled word(s)`,
+        affectedField: 'description',
+        value: misspelledWords.join(', ')
+      });
+    }
+  }
+  return errors;
+},
+
+
+/*******Product Title Abbreviations*********/
+  titleAbbreviationsCheck: (item: FeedItem): ErrorResult[] => {
+    const errors: ErrorResult[] = [];
+    if (item.title) {
+      const badAbbreviations = [
+        'pck', 'pkg', 'qty', 'qt', 'pc', 'pcs', 'ea', 
+        '(?<=\\s|^)in\\.(?=\\s|$)', // Updated regex for "in."
+        'ft'
+      ];
+      const regex = new RegExp(`\\b(${badAbbreviations.join('|')})\\b`, 'gi');
+      const matches = item.title.match(regex);
+      
+      if (matches) {
+        const uniqueMatches = [...new Set(matches.map(m => m.toLowerCase()))];
+        errors.push({
+          id: item.id || 'UNKNOWN',
+          errorType: 'Bad Abbreviations in Title',
+          details: `Found bad abbreviation(s): ${uniqueMatches.join(', ')}`,
+          affectedField: 'title',
+          value: item.title
+        });
+      }
+    }
+    return errors;
+  },
+
+
+
+/*******Google Product Category Validation*********/
+googleProductCategoryValidation: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.google_product_category) {
+    const isValid = validateGoogleProductCategory(item.google_product_category);
+    if (!isValid) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Invalid Google Product Category',
+        details: 'Google Product Category is not in the correct format',
+        affectedField: 'google_product_category',
+        value: item.google_product_category
+      });
+    }
+  }
+  return errors;
+},
+
+ /*******Product Title Special Characters*********/
+ titleSpecialCharactersCheck: (item: FeedItem): ErrorResult[] => {
+  const errors: ErrorResult[] = [];
+  if (item.title) {
+    const specialChars = /[^a-zA-Z0-9\s.,;:()\-]/g;
+    const matches = item.title.match(specialChars);
+    if (matches) {
+      errors.push({
+        id: item.id || 'UNKNOWN',
+        errorType: 'Special Characters in Title',
+        details: `Found special character(s): ${matches.join(', ')}`,
+        affectedField: 'title',
+        value: item.title
+      });
+    }
+  }
+  return errors;
+},
+
+
+
+  /*******Product Title Brand Check*********/
+  titleBrandCheck: (item: FeedItem): ErrorResult[] => {
+    const errors: ErrorResult[] = [];
+    if (item.title && item.brand) {
+      if (!item.title.toLowerCase().includes(item.brand.toLowerCase())) {
+        errors.push({
+          id: item.id || 'UNKNOWN',
+          errorType: 'Missing Brand in Title',
+          details: `Missing brand: ${item.brand}`,
+          affectedField: 'title',
+          value: item.title
+        });
+      }
+    }
+    return errors;
+  },
+
+
+
+};
+
+function checkSpelling(text: string): string[] {
+  const misspelledWords: string[] = [];
+  const words = text.split(/\s+/);
+  words.forEach(word => {
+    if (spellchecker.isMisspelled(word)) {
+      const suggestions = spellchecker.getCorrectionsForMisspelling(word);
+      if (suggestions.length > 0) {
+        misspelledWords.push(word);
+      }
+    }
+  });
+  return misspelledWords;
+}
+
+function validateGoogleProductCategory(category: string): boolean {
+  // Implement Google Product Category validation logic here
+  return true;
 }
 
 
@@ -165,8 +414,27 @@ titleDuplicateWords: (item: FeedItem): ErrorResult[] => {
 
 
 
-};
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/************************************************** */
 // Analyzer class
 export class FeedAnalyzer {
   private result: AnalysisResult = {
