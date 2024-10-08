@@ -1,8 +1,5 @@
 import { parse } from 'csv-parse';
 import { Transform } from 'stream';
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
-import * as os from 'os';
-
 
 const SpellChecker = require('spellchecker') as any;
 
