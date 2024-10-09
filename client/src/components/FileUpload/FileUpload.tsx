@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
@@ -28,10 +28,8 @@ export default function FileUpload() {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
-  const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -42,12 +40,6 @@ export default function FileUpload() {
     }
     return () => clearTimeout(timer);
   }, [uploadStatus]);
-
-  useEffect(() => {
-    if (analysisResults && resultsRef.current) {
-      resultsRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [analysisResults]);
 
   const handleFileSelect = (selectedFile: File) => {
     if (selectedFile && (
@@ -109,9 +101,7 @@ export default function FileUpload() {
     }
   };
 
-  const handleViewDetails = (errorType: string) => {
-    setSelectedErrorType(errorType);
-  };
+
 
   const handleDownloadDetails = (errorType: string) => {
     if (!analysisResults) return;
@@ -134,14 +124,13 @@ export default function FileUpload() {
       document.body.removeChild(link);
     }
   };
-
   return (
-    <div className="w-full">
+    <div className="w-full h-full flex flex-col">
       <AnalyzerHeader 
         file={file}
         onUploadClick={() => setIsModalOpen(true)}
-        onAnalyzeClick={handleUpload}  // Pass the handleUpload function
-        isAnalyzeDisabled={!file || isLoading}  // Pass the disabled state
+        onAnalyzeClick={handleUpload}
+        isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
       />
 
@@ -163,7 +152,7 @@ export default function FileUpload() {
       )}
 
       {analysisResults && (
-        <div className="mt-6" ref={resultsRef}>
+        <div className="mt-6 flex-grow overflow-hidden">
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}

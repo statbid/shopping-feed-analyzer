@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Eye, Download } from 'lucide-react';
 import ErrorDetailsModal from './ErrorDetailsModal';
 
@@ -27,6 +27,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const totalErrors = Object.values(results.errorCounts).reduce((a, b) => a + b, 0);
   const totalChecksFailed = Object.keys(results.errorCounts).length;
@@ -41,9 +42,9 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   };
 
   return (
-    <div className="font-sans grid grid-cols-1 lg:grid-cols-[1fr_4fr] gap-6 p-6">
-      {/* Left Panel (Results) - 20% width */}
-      <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between">
+    <div ref={containerRef} className="font-sans grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6 h-full">
+      {/* Left Panel (Results) - 25% width */}
+      <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between h-full overflow-auto">
         <div>
           <h2 className="text-2xl font-bold">Results</h2>
 
@@ -76,23 +77,23 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
-          {/* Table Structure */}
-          <div className="grid grid-cols-[auto_1fr_1fr] text-sm">
-            {/* Header */}
-            <div className="contents font-semibold bg-gray-100">
-              <div className="p-3 border-r-2 border-b-2 border-gray-200 bg-gray-100">Best Practice</div>
-              <div className="p-3 border-r-2 border-b-2 border-gray-200 bg-gray-100 text-center">Problem Count</div>
-              <div className="p-3 border-b-2 border-gray-200 bg-gray-100">How to Fix</div>
-            </div>
+      {/* Right Panel (Error Details) - 75% width */}
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
+        <div className="border-2 border-gray-200 rounded-lg overflow-hidden flex-grow flex flex-col h-full">
+          {/* Header */}
+          <div className="grid grid-cols-[2fr_1fr_2fr] text-sm font-semibold bg-gray-100 sticky top-0" style={{ zIndex: 10 }}>
+            <div className="p-3 border-r-2 border-b-2 border-gray-200">Best Practice</div>
+            <div className="p-3 border-r-2 border-b-2 border-gray-200 text-center">Problem Count</div>
+            <div className="p-3 border-b-2 border-gray-200">How to Fix</div>
+          </div>
 
-            {/* Rows */}
+          {/* Scrollable content */}
+          <div className="overflow-y-auto flex-grow">
             {Object.entries(results.errorCounts).map(([errorType, count], index) => {
               const firstError = getFirstErrorOfType(errorType);
               return (
-                <React.Fragment key={errorType}>
-                  <div className="p-3 border-r-2 border-b-2 border-gray-200">
+                <div key={errorType} className="grid grid-cols-[2fr_1fr_2fr] text-sm border-b border-gray-200">
+                  <div className="p-3 border-r border-gray-200">
                     <p className="font-medium">{errorType}</p>
                     {firstError && (
                       <div className="text-xs text-gray-600 mt-1">
@@ -104,7 +105,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       </div>
                     )}
                   </div>
-                  <div className="p-3 border-r-2 border-b-2 border-gray-200 flex flex-col items-center justify-center">
+                  <div className="p-3 border-r border-gray-200 flex flex-col items-center justify-center">
                     <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs mb-2">
                       {count}
                     </span>
@@ -123,10 +124,10 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                       </button>
                     </div>
                   </div>
-                  <div className="p-3 border-b-2 border-gray-200 text-blue-600 text-sm">
+                  <div className="p-3 text-blue-600 text-sm">
                     Suggestion to fix {errorType}
                   </div>
-                </React.Fragment>
+                </div>
               );
             })}
           </div>

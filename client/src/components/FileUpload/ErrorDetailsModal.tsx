@@ -26,7 +26,7 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4" onClick={handleBackdropClick}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={handleBackdropClick}>
       <div className="bg-white rounded-lg w-[80vw] h-[80vh] flex flex-col">
         {/* Fixed header */}
         <div className="flex justify-between items-center p-6 border-b">

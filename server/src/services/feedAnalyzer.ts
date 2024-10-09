@@ -7,6 +7,7 @@ const SpellChecker = require('spellchecker') as any;
 export interface FeedItem {
   id: string;
   title?: string;
+  brand?: string;
   description?: string;
   size?: string;
   color?: string;
@@ -276,11 +277,12 @@ apparelAttributesCheck: (item: FeedItem): ErrorResult[] => {
  /*******Product Title Spell Check*********/
  titleSpellCheck: (item: FeedItem): ErrorResult[] => {
   const errors: ErrorResult[] = [];
-  if (item.title) {
+  if (item.title && item.brand) {
     const words = item.title.split(/\s+/);
+    const brandWords = item.brand.split(/\s+/);
     const misspelledWordsWithCorrections = words
       .map(word => {
-        if (SpellChecker.isMisspelled(word)) {
+        if (SpellChecker.isMisspelled(word) && !brandWords.includes(word)) {
           const corrections = SpellChecker.getCorrectionsForMisspelling(word);
           if (corrections.length > 0) {
             return { word, corrections: corrections.slice(0, 3) }; // Limit to top 3 suggestions
@@ -298,7 +300,7 @@ apparelAttributesCheck: (item: FeedItem): ErrorResult[] => {
       errors.push({
         id: item.id || 'UNKNOWN',
         errorType: 'Spelling Mistakes in Title',
-        details: `Found misspelled word(s) with suggestions: ${details}`,
+        details: `Found misspelled word(s) with suggestions: ${details}. Note: Words matching the brand "${item.brand}" are not considered misspelled.`,
         affectedField: 'title',
         value: item.title
       });
@@ -306,8 +308,6 @@ apparelAttributesCheck: (item: FeedItem): ErrorResult[] => {
   }
   return errors;
 },
-
-
 
 
 
