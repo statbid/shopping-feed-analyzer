@@ -40,7 +40,7 @@ export class FeedAnalyzer {
     }
   }
 
-  analyzeStream(fileStream: NodeJS.ReadableStream): Promise<AnalysisResult> {
+  analyzeStream(fileStream: NodeJS.ReadableStream, progressCallback?: (progress: number) => void): Promise<AnalysisResult> {
     return new Promise((resolve, reject) => {
       const parser = parse({
         columns: true,
@@ -52,6 +52,7 @@ export class FeedAnalyzer {
 
       const batchSize = 1000;
       let batch: FeedItem[] = [];
+      let totalProcessed = 0;
 
       const transformer = new Transform({
         objectMode: true,
@@ -60,6 +61,10 @@ export class FeedAnalyzer {
           
           if (batch.length >= batchSize) {
             this.processBatchWithWorker(batch);
+            totalProcessed += batch.length;
+            if (progressCallback) {
+              progressCallback(totalProcessed);
+            }
             batch = [];
           }
           
@@ -68,6 +73,10 @@ export class FeedAnalyzer {
         flush: (callback) => {
           if (batch.length > 0) {
             this.processBatchWithWorker(batch);
+            totalProcessed += batch.length;
+            if (progressCallback) {
+              progressCallback(totalProcessed);
+            }
           }
           this.waitForWorkers().then(() => callback());
         }
@@ -83,7 +92,6 @@ export class FeedAnalyzer {
         });
     });
   }
-
   private processBatchWithWorker(batch: FeedItem[]) {
     const workerPath = path.join(__dirname, '..', 'dist', 'worker.js');
     console.log('Worker path:', workerPath);

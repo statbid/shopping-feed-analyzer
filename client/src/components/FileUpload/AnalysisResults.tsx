@@ -48,6 +48,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   // Simulating progress update during analysis
   useEffect(() => {
     if (isLoading) {
+      setProcessedProducts(0); // Reset progress when loading starts
       const interval = setInterval(() => {
         setProcessedProducts((prev) => {
           if (prev < results.totalProducts) {

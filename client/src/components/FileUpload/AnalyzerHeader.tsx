@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface AnalyzerHeaderProps {
@@ -7,18 +7,11 @@ interface AnalyzerHeaderProps {
   onAnalyzeClick: () => void;
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
-  file, onUploadClick, onAnalyzeClick, isAnalyzeDisabled, isLoading, setIsLoading
+  file, onUploadClick, onAnalyzeClick, isAnalyzeDisabled, isLoading
 }) => {
-  
-  const handleAnalyzeClick = () => {
-    setIsLoading(true);
-    onAnalyzeClick();
-  };
-
   return (
     <div className="flex items-center mb-6">
       <h2 className="text-2xl font-bold text-blue-900">Google Shopping Feed Analyzer</h2>
@@ -45,7 +38,7 @@ const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
         </button>
 
         <button
-          onClick={handleAnalyzeClick}
+          onClick={onAnalyzeClick}
           disabled={isAnalyzeDisabled}
           className={`ml-2 px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed`}
         >

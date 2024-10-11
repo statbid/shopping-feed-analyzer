@@ -28,9 +28,11 @@ export default function FileUpload() {
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
-  const [progress, setProgress] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [totalProducts, setTotalProducts] = useState<number>(0);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [processedProducts, setProcessedProducts] = useState(0);
+  const [totalProducts, setTotalProducts] = useState(0);
+
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -62,53 +64,78 @@ export default function FileUpload() {
 
   const handleUpload = async () => {
     if (!file) return;
-
-    // Reset progress and analysis state before starting a new analysis
+  
     setIsLoading(true);
-    setProgress(0);
-    setAnalysisResults(null);
+    setIsProgressModalOpen(true);
+    setProcessedProducts(0);
     setTotalProducts(0);
-
+  
+    const formData = new FormData();
+    formData.append('file', file);
+  
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
       const response = await fetch('http://localhost:3001/api/analyze', {
         method: 'POST',
         body: formData,
       });
-
+  
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      const data: AnalysisResults = await response.json();
-      setAnalysisResults(data);
-      setTotalProducts(data.totalProducts);
-      setUploadStatus({ 
-        type: 'success', 
-        message: 'File analyzed successfully!' 
-      });
-
-      // Set progress to complete when analysis finishes
-      setProgress(data.totalProducts);
+  
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+  
+      let buffer = '';
+  
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              console.log('Received data:', data);  // Add this line for debugging
+  
+              if (data.error) {
+                console.error('Server error:', data.error, data.details);
+                setUploadStatus({ type: 'error', message: `Error analyzing file: ${data.details || data.error}` });
+                return;
+              }
+  
+              if (data.progress) {
+                setProcessedProducts(data.progress);
+              }
+              if (data.completed) {
+                setAnalysisResults(data.results);
+                setUploadStatus({ type: 'success', message: 'File analyzed successfully!' });
+              }
+            } catch (jsonError) {
+              console.error('Error parsing JSON:', jsonError);
+              setUploadStatus({ type: 'error', message: 'Error parsing server response' });
+            }
+          }
+        }
+      }
     } catch (error: unknown) {
-      let errorMessage = 'Error analyzing file. Please try again.';
-      
+      console.error('Error:', error);
+      let errorMessage = 'An unknown error occurred';
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-    
-      setUploadStatus({ 
-        type: 'error', 
-        message: errorMessage 
-      });
+      setUploadStatus({ type: 'error', message: `Error analyzing file: ${errorMessage}` });
     } finally {
       setIsLoading(false);
+      setIsProgressModalOpen(false);
     }
   };
 
+  
   const handleDownloadDetails = (errorType: string) => {
     if (!analysisResults) return;
 
@@ -131,6 +158,22 @@ export default function FileUpload() {
     }
   };
 
+  useEffect(() => {
+    if (isLoading && analysisResults) {
+      const interval = setInterval(() => {
+        setProcessedProducts((prev) => {
+          if (prev < analysisResults.totalProducts) {
+            return prev + Math.ceil(analysisResults.totalProducts / 50);
+          }
+          clearInterval(interval);
+          return analysisResults.totalProducts;
+        });
+      }, 200);
+
+      return () => clearInterval(interval);
+    }
+  }, [isLoading, analysisResults]);
+
   return (
     <div className="w-full h-full flex flex-col">
       <AnalyzerHeader 
@@ -139,19 +182,12 @@ export default function FileUpload() {
         onAnalyzeClick={handleUpload}
         isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
-        setIsLoading={setIsLoading}
       />
 
-      {isLoading && (
-        <ProgressModal
-          isOpen={isLoading}
-          totalProducts={totalProducts}
-          processedProducts={progress}
-        />
-      )}
-
       {uploadStatus.message && (
-        <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg">
+        <div className={`p-4 mt-4 rounded ${
+          uploadStatus.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+        }`}>
           <p className="font-bold">
             {uploadStatus.type === 'error' ? 'Error' : 'Success'}
           </p>
@@ -174,6 +210,12 @@ export default function FileUpload() {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onFileSelect={handleFileSelect} 
+      />
+
+<ProgressModal 
+        isOpen={isProgressModalOpen}
+        totalProducts={totalProducts}
+        processedProducts={processedProducts}
       />
     </div>
   );
