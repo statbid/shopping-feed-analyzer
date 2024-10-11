@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';
-import { FeedAnalyzer } from './services/FeedAnalyzer';
+import './worker';
 import fs from 'fs';
-
+import { FeedAnalyzer } from './FeedAnalyzer';
 const app = express();
 const port = process.env.PORT || 3001;
 
