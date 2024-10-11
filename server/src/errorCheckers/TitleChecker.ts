@@ -266,3 +266,23 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
   }
 
 
+  export const TitleChecker = [
+    checkTitleSize,
+    checkTitleColor,
+    checkTitleDuplicateWords,
+    checkTitleSpecialCharacters,
+    checkTitleBadAbbreviations,
+    checkTitleBrand,
+    checkTitleMaterial,
+    checkTitleWhitespace,
+    checkTitleRepeatedWhitespace,
+    checkTitleRepeatedDashes,
+    checkTitleRepeatedCommas,
+    checkTitlePunctuation,
+    checkTitleHtml,
+    checkTitleHtmlEntities,
+    checkTitlePromotionalWords,
+    checkTitleMissingSpaces,
+    checkTitleNonBreakingSpaces
+  ];
+  

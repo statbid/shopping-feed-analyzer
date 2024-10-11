@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
-import CustomProgressBar from './CustomProgressBar';
+import ProgressModal from './ProgressModal';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -30,6 +30,7 @@ export default function FileUpload() {
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const [progress, setProgress] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [totalProducts, setTotalProducts] = useState<number>(0);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -62,8 +63,12 @@ export default function FileUpload() {
   const handleUpload = async () => {
     if (!file) return;
 
+    // Reset progress and analysis state before starting a new analysis
     setIsLoading(true);
     setProgress(0);
+    setAnalysisResults(null);
+    setTotalProducts(0);
+
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -80,10 +85,14 @@ export default function FileUpload() {
 
       const data: AnalysisResults = await response.json();
       setAnalysisResults(data);
+      setTotalProducts(data.totalProducts);
       setUploadStatus({ 
         type: 'success', 
         message: 'File analyzed successfully!' 
       });
+
+      // Set progress to complete when analysis finishes
+      setProgress(data.totalProducts);
     } catch (error: unknown) {
       let errorMessage = 'Error analyzing file. Please try again.';
       
@@ -97,11 +106,8 @@ export default function FileUpload() {
       });
     } finally {
       setIsLoading(false);
-      setProgress(100);
     }
   };
-
-
 
   const handleDownloadDetails = (errorType: string) => {
     if (!analysisResults) return;
@@ -124,6 +130,7 @@ export default function FileUpload() {
       document.body.removeChild(link);
     }
   };
+
   return (
     <div className="w-full h-full flex flex-col">
       <AnalyzerHeader 
@@ -132,18 +139,19 @@ export default function FileUpload() {
         onAnalyzeClick={handleUpload}
         isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
+        setIsLoading={setIsLoading}
       />
 
       {isLoading && (
-        <div className="mt-4">
-          <CustomProgressBar progress={progress} />
-        </div>
+        <ProgressModal
+          isOpen={isLoading}
+          totalProducts={totalProducts}
+          processedProducts={progress}
+        />
       )}
 
       {uploadStatus.message && (
-        <div className={`p-4 mt-4 rounded ${
-          uploadStatus.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-        }`}>
+        <div className="fixed bottom-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg">
           <p className="font-bold">
             {uploadStatus.type === 'error' ? 'Error' : 'Success'}
           </p>
@@ -157,6 +165,7 @@ export default function FileUpload() {
             results={analysisResults}
             fileName={file?.name || ''}
             onDownloadDetails={handleDownloadDetails}
+            isLoading={isLoading}
           />
         </div>
       )}

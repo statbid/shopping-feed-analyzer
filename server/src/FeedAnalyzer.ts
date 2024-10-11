@@ -11,9 +11,34 @@ export class FeedAnalyzer {
     errorCounts: {},
     errors: []
   };
+  private idSet: Set<string> = new Set();
 
   private numWorkers = Math.max(1, cpus().length - 1);
   private activeWorkers = 0;
+
+  private processBatch(batch: FeedItem[]) {
+    for (const item of batch) {
+      this.result.totalProducts++;
+      this.checkDuplicateId(item);
+    }
+  }
+
+  private checkDuplicateId(item: FeedItem) {
+    if (item.id) {
+      if (this.idSet.has(item.id)) {
+        const error: ErrorResult = {
+          id: item.id,
+          errorType: 'Duplicate Id',
+          details: 'This id appears multiple times in the feed',
+          affectedField: 'id',
+          value: item.id
+        };
+        this.addErrors([error]);
+      } else {
+        this.idSet.add(item.id);
+      }
+    }
+  }
 
   analyzeStream(fileStream: NodeJS.ReadableStream): Promise<AnalysisResult> {
     return new Promise((resolve, reject) => {
@@ -58,12 +83,12 @@ export class FeedAnalyzer {
         });
     });
   }
+
   private processBatchWithWorker(batch: FeedItem[]) {
     const workerPath = path.join(__dirname, '..', 'dist', 'worker.js');
     console.log('Worker path:', workerPath);
     console.log('Current directory:', __dirname);
     console.log('File exists:', require('fs').existsSync(workerPath));
-  
 
     const worker = new Worker(workerPath, { 
       workerData: { batch },
@@ -119,5 +144,6 @@ export class FeedAnalyzer {
       errorCounts: {},
       errors: []
     };
+    this.idSet.clear();
   }
 }

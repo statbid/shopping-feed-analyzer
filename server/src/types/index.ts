@@ -11,9 +11,12 @@ export interface FeedItem {
     product_type?: string;
     gender?: string;
     age_group?: string;
+    image_link?: string;
+    availability?: string;
+    price?: string;
+    condition?: string;
     [key: string]: string | undefined;
   }
-  
   export interface ErrorResult {
     id: string;
     errorType: string;

@@ -17,3 +17,7 @@ export const promotionalWords = [
 export const nonBreakingSpaceRegex = /\u00A0/;
 
 export const leadingTrailingWhitespaceRegex = /^\s|\s$/;
+
+export const MAX_DESCRIPTION_LENGTH = 5000;
+export const MAX_ID_LENGTH = 50;
+

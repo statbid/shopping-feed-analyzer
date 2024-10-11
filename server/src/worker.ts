@@ -35,9 +35,18 @@ const allChecks = [
   errorCheckers.checkDescriptionRepeatedWhitespace,
   errorCheckers.checkDescriptionRepeatedCommas,
   errorCheckers.checkDescriptionHtml,
-  errorCheckers.checkDescriptionHtmlEntities
+  errorCheckers.checkDescriptionHtmlEntities,
+  errorCheckers.checkDescriptionLength,
+  errorCheckers.checkDescriptionNonBreakingSpaces,
+  errorCheckers.checkIdLength,
+  errorCheckers.checkIdIsSet,
+  errorCheckers.checkLinkIsSet,
+  errorCheckers.checkImageLink,
+  errorCheckers.checkAvailability,
+  errorCheckers.checkPrice,
+  errorCheckers.checkBrand,
+  errorCheckers.checkCondition,
 ];
-
 
 function processItem(item: FeedItem): ErrorResult[] {
   const errors: ErrorResult[] = [];

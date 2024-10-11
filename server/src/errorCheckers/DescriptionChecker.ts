@@ -6,7 +6,9 @@ import {
     repeatedWhitespaceRegex, 
     repeatedCommaRegex,
     htmlTagRegex, 
-    htmlEntityRegex 
+    htmlEntityRegex,
+    MAX_DESCRIPTION_LENGTH,
+    nonBreakingSpaceRegex 
   } from '../utils/constants';
 
 
@@ -108,3 +110,44 @@ export function checkDescriptionWhitespace(item: FeedItem): ErrorResult | null {
     }
     return null;
   }
+
+  
+export function checkDescriptionLength(item: FeedItem): ErrorResult | null {
+    if (item.description && item.description.length > MAX_DESCRIPTION_LENGTH) {
+      return {
+        id: item.id || 'UNKNOWN',
+        errorType: 'Description Too Long',
+        details: `Description exceeds ${MAX_DESCRIPTION_LENGTH} characters`,
+        affectedField: 'description',
+        value: item.description.substring(0, 100) + '...' // Truncate for the error message
+      };
+    }
+    return null;
+  }
+  
+  export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult | null {
+    if (item.description && nonBreakingSpaceRegex.test(item.description)) {
+      return {
+        id: item.id || 'UNKNOWN',
+        errorType: 'Non-Breaking Spaces in Description',
+        details: 'Description contains non-breaking spaces',
+        affectedField: 'description',
+        value: item.description
+      };
+    }
+    return null;
+  }
+
+
+ 
+export const DescriptionChecker = [
+    checkDescriptionMissingSpaces,
+    checkDescriptionRepeatedDashes,
+    checkDescriptionWhitespace,
+    checkDescriptionRepeatedWhitespace,
+    checkDescriptionRepeatedCommas,
+    checkDescriptionHtml,
+    checkDescriptionHtmlEntities,
+    checkDescriptionLength,
+    checkDescriptionNonBreakingSpaces
+  ];
