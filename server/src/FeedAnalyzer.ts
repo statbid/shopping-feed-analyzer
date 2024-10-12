@@ -5,6 +5,9 @@ import { cpus } from 'os';
 import path from 'path';
 import { FeedItem, ErrorResult, AnalysisResult } from './types';
 
+
+
+
 export class FeedAnalyzer {
   private result: AnalysisResult = {
     totalProducts: 0,
@@ -154,4 +157,30 @@ export class FeedAnalyzer {
     };
     this.idSet.clear();
   }
+
+
+  countTotalProducts(fileStream: NodeJS.ReadableStream): Promise<number> {
+    return new Promise((resolve, reject) => {
+      let count = 0;
+      const parser = parse({
+        columns: true,
+        skip_empty_lines: true,
+        delimiter: '\t',
+      });
+  
+      fileStream
+        .pipe(parser)
+        .on('data', () => {
+          count++;
+        })
+        .on('end', () => {
+          resolve(count);
+        })
+        .on('error', (err) => {
+          reject(err);
+        });
+    });
+  }
+
+  
 }

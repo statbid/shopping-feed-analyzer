@@ -25,7 +25,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const worker_threads_1 = require("worker_threads");
 const errorCheckers = __importStar(require("./errorCheckers"));
+/*
 console.log('Worker started');
+console.log('Worker process started');
+console.log('Current directory:', process.cwd());
+console.log('__dirname:', __dirname);
+console.log('Imported modules:', Object.keys(require.cache));*/
 const allChecks = [
     errorCheckers.checkTitleSize,
     errorCheckers.checkTitleColor,
@@ -38,6 +43,29 @@ const allChecks = [
     errorCheckers.checkGoogleProductCategory,
     errorCheckers.checkApparelAttributes,
     errorCheckers.checkProductType,
+    errorCheckers.checkTitleMaterial,
+    errorCheckers.checkTitleWhitespace,
+    errorCheckers.checkTitleRepeatedWhitespace,
+    errorCheckers.checkTitleRepeatedDashes,
+    errorCheckers.checkTitleRepeatedCommas,
+    errorCheckers.checkTitlePunctuation,
+    errorCheckers.checkTitleHtml,
+    errorCheckers.checkTitleHtmlEntities,
+    errorCheckers.checkTitlePromotionalWords,
+    errorCheckers.checkTitleMissingSpaces,
+    errorCheckers.checkTitleNonBreakingSpaces,
+    errorCheckers.checkDescriptionWhitespace,
+    errorCheckers.checkDescriptionRepeatedWhitespace,
+    errorCheckers.checkDescriptionRepeatedCommas,
+    errorCheckers.checkDescriptionHtml,
+    errorCheckers.checkDescriptionHtmlEntities,
+    errorCheckers.checkDescriptionLength,
+    errorCheckers.checkDescriptionNonBreakingSpaces,
+    errorCheckers.checkIdLength,
+    errorCheckers.checkIdIsSet,
+    errorCheckers.checkImageLink,
+    errorCheckers.checkAvailability,
+    errorCheckers.checkPrice,
 ];
 function processItem(item) {
     const errors = [];
@@ -53,7 +81,10 @@ if (worker_threads_1.parentPort) {
     const { batch } = worker_threads_1.workerData;
     const errors = [];
     for (const item of batch) {
-        errors.push(...processItem(item));
+        const itemErrors = processItem(item);
+        errors.push(...itemErrors);
+        // console.log(`Processed item ${item.id}, found ${itemErrors.length} errors`);
     }
+    //  console.log(`Worker finished processing ${batch.length} items, found ${errors.length} total errors`);
     worker_threads_1.parentPort.postMessage({ errors, processedCount: batch.length });
 }

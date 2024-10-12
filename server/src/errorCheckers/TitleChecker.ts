@@ -223,15 +223,31 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
   
   export function checkTitlePromotionalWords(item: FeedItem): ErrorResult | null {
     if (item.title) {
-      const lowercaseTitle = item.title.toLowerCase();
-      const foundWords = promotionalWords.filter(word => lowercaseTitle.includes(word));
+      const foundWords = promotionalWords.filter(word => {
+     
+        const regex = new RegExp(`\\b${word}\\b`, 'i');
+        return regex.test(item.title!);
+      });
+  
       if (foundWords.length > 0) {
+        const examples = foundWords.slice(0, 3).map(word => {
+          const regex = new RegExp(`\\b${word}\\b`, 'gi');
+          const match = regex.exec(item.title!);
+          if (match) {
+            const startIndex = Math.max(0, match.index - 20);
+            const endIndex = Math.min(item.title!.length, match.index + match[0].length + 20);
+            const context = item.title!.slice(startIndex, endIndex);
+            return `"${context}" (found: "${match[0]}")`;
+          }
+          return '';
+        }).filter(Boolean);
+  
         return {
           id: item.id || 'UNKNOWN',
           errorType: 'Promotional Words in Title',
-          details: `Title contains promotional words: ${foundWords.join(', ')}`,
+          details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
           affectedField: 'title',
-          value: item.title
+          value: examples[0] || item.title
         };
       }
     }

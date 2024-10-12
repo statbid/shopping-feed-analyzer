@@ -18,3 +18,5 @@ __exportStar(require("./TitleChecker"), exports);
 __exportStar(require("./DescriptionChecker"), exports);
 __exportStar(require("./CategoryChecker"), exports);
 __exportStar(require("./ProductTypeChecker"), exports);
+__exportStar(require("./IdChecker"), exports);
+//export * from './RequiredFieldsChecker';

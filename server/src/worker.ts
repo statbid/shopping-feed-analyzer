@@ -1,12 +1,12 @@
 import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from './types';
 import * as errorCheckers from './errorCheckers';
-
+/*
 console.log('Worker started');
 console.log('Worker process started');
 console.log('Current directory:', process.cwd());
 console.log('__dirname:', __dirname);
-console.log('Imported modules:', Object.keys(require.cache));
+console.log('Imported modules:', Object.keys(require.cache));*/
 
 const allChecks = [
   errorCheckers.checkTitleSize,
@@ -40,12 +40,9 @@ const allChecks = [
   errorCheckers.checkDescriptionNonBreakingSpaces,
   errorCheckers.checkIdLength,
   errorCheckers.checkIdIsSet,
-  errorCheckers.checkLinkIsSet,
   errorCheckers.checkImageLink,
   errorCheckers.checkAvailability,
   errorCheckers.checkPrice,
-  errorCheckers.checkBrand,
-  errorCheckers.checkCondition,
 ];
 
 function processItem(item: FeedItem): ErrorResult[] {
@@ -63,7 +60,10 @@ if (parentPort) {
   const { batch } = workerData as { batch: FeedItem[] };
   const errors: ErrorResult[] = [];
   for (const item of batch) {
-    errors.push(...processItem(item));
+    const itemErrors = processItem(item);
+    errors.push(...itemErrors);
+   // console.log(`Processed item ${item.id}, found ${itemErrors.length} errors`);
   }
+//  console.log(`Worker finished processing ${batch.length} items, found ${errors.length} total errors`);
   parentPort.postMessage({ errors, processedCount: batch.length });
 }

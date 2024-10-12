@@ -38,18 +38,18 @@ export function checkImageLink(item: FeedItem): ErrorResult | null {
     return null;
   }
   
-  export function checkPrice(item: FeedItem): ErrorResult | null {
-    if (!item.price || item.price.trim() === '') {
-      return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Missing Price',
-        details: 'Price is not set',
-        affectedField: 'price',
-        value: item.price || ''
-      };
-    }
-    return null;
+export function checkPrice(item: FeedItem): ErrorResult | null {
+  if (!item.price || item.price.trim() === '') {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing Price',
+      details: 'Price is not set',
+      affectedField: 'price',
+      value: item.price || ''
+    };
   }
+  return null;
+}
   
   export function checkBrand(item: FeedItem): ErrorResult | null {
     if (!item.brand || item.brand.trim() === '') {
@@ -78,6 +78,11 @@ export function checkImageLink(item: FeedItem): ErrorResult | null {
   }
 
   
-export const requiredFieldsChecks = [
-  checkLinkIsSet
-];
+  export const requiredFieldsChecks = [
+    checkLinkIsSet,
+    checkImageLink,
+    checkPrice,
+    checkCondition,
+    checkBrand,
+    checkAvailability
+  ];

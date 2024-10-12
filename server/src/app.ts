@@ -22,6 +22,8 @@ const safeStringify = (obj: any) => {
   }
 };
 
+
+
 app.post('/api/analyze', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
@@ -30,21 +32,29 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
   try {
     const fileStream = fs.createReadStream(req.file.path);
     const analyzer = new FeedAnalyzer();
+
+    // Count total products first
+    const totalProducts = await analyzer.countTotalProducts(fs.createReadStream(req.file.path));
+    analyzer.resetAnalysis(); // Make sure to reset before starting analysis
     
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      'Connection': 'keep-alive',
     });
 
     const sendUpdate = (data: any) => {
       res.write(`data: ${safeStringify(data)}\n\n`);
     };
 
+    // Send total products to frontend initially
+    sendUpdate({ totalProducts });
+
+    // Analyze the stream and send progress updates
     const results = await analyzer.analyzeStream(fileStream, (progress: number) => {
       sendUpdate({ progress });
     });
-    
+
     // Send final results
     sendUpdate({ results, completed: true });
     res.end();
@@ -63,6 +73,7 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     }
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

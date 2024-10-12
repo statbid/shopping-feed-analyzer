@@ -19,6 +19,7 @@ interface AnalysisResultsProps {
   };
   fileName: string;
   onDownloadDetails: (errorType: string) => void;
+  onDownloadReport: () => void;
   isLoading: boolean;
 }
 
@@ -26,6 +27,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   results, 
   fileName, 
   onDownloadDetails,
+  onDownloadReport,
   isLoading
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,14 +47,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     return results.errors.find(error => error.errorType === errorType);
   };
 
-  // Simulating progress update during analysis
   useEffect(() => {
     if (isLoading) {
-      setProcessedProducts(0); // Reset progress when loading starts
+      setProcessedProducts(0); 
       const interval = setInterval(() => {
         setProcessedProducts((prev) => {
           if (prev < results.totalProducts) {
-            return prev + Math.ceil(results.totalProducts / 50); // Increment progress
+            return prev + Math.ceil(results.totalProducts / 50); 
           }
           clearInterval(interval);
           return results.totalProducts;
@@ -92,7 +93,10 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
         {/* "Download the report" and "Learn more" sections */}
         <div className="mt-8 border-t border-gray-300 pt-4">
-          <button className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
+            onClick={onDownloadReport}
+          >
             <span>Download the report</span>
             <Download className="w-5 h-5" />
           </button>

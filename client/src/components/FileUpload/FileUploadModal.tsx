@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef, ChangeEvent, DragEvent } from 'react';
 import { Upload, Eye, Download } from 'lucide-react';
 
-
 interface FileUploadModalProps {
     isOpen: boolean;
     onClose: () => void;
     onFileSelect: (file: File) => void;
-  }
+}
 
-  
 const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFileSelect }) => {
     const [isDragging, setIsDragging] = useState(false);
   
@@ -42,7 +40,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
     if (!isOpen) return null;
   
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
         <div className="bg-white p-6 rounded-lg">
           <h2 className="text-xl mb-4">Upload File</h2>
           <div 
@@ -78,8 +76,6 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
         </div>
       </div>
     );
-  };
-
-
+};
 
 export default FileUploadModal;

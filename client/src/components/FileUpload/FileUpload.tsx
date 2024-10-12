@@ -33,7 +33,6 @@ export default function FileUpload() {
   const [processedProducts, setProcessedProducts] = useState(0);
   const [totalProducts, setTotalProducts] = useState(0);
 
-
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (uploadStatus.type === 'success') {
@@ -91,16 +90,16 @@ export default function FileUpload() {
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        
+  
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop() || '';
-        
+  
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              console.log('Received data:', data);  // Add this line for debugging
+              console.log('Received data:', data);
   
               if (data.error) {
                 console.error('Server error:', data.error, data.details);
@@ -108,6 +107,9 @@ export default function FileUpload() {
                 return;
               }
   
+              if (data.totalProducts) {
+                setTotalProducts(data.totalProducts);
+              }
               if (data.progress) {
                 setProcessedProducts(data.progress);
               }
@@ -135,7 +137,6 @@ export default function FileUpload() {
     }
   };
 
-  
   const handleDownloadDetails = (errorType: string) => {
     if (!analysisResults) return;
 
@@ -150,7 +151,28 @@ export default function FileUpload() {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', `${errorType.replace(/\s+/g, '_')}_errors.csv`);
+      link.setAttribute('download', `${file?.name.replace(/\.[^/.]+$/, '')}_${errorType.replace(/\s+/g, '_')}_errors.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!analysisResults) return;
+
+    const csvContent = [
+      ['Product ID', 'Error Type', 'Details', 'Affected Field', 'Value'],
+      ...analysisResults.errors.map(error => [error.id, error.errorType, error.details, error.affectedField, error.value])
+    ].map(e => e.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${file?.name.replace(/\.[^/.]+$/, '')}_full_report.csv`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
@@ -184,13 +206,15 @@ export default function FileUpload() {
         isLoading={isLoading}
       />
 
-      {uploadStatus.message && (
-        <div className={`p-4 mt-4 rounded ${
-          uploadStatus.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-        }`}>
-          <p className="font-bold">
-            {uploadStatus.type === 'error' ? 'Error' : 'Success'}
-          </p>
+      {uploadStatus.type === 'success' && (
+        <div className="text-green-600 text-sm mt-2">
+          {uploadStatus.message}
+        </div>
+      )}
+
+      {uploadStatus.type === 'error' && (
+        <div className="p-4 mt-4 rounded bg-red-100 text-red-700">
+          <p className="font-bold">Error</p>
           <p>{uploadStatus.message}</p>
         </div>
       )}
@@ -201,6 +225,7 @@ export default function FileUpload() {
             results={analysisResults}
             fileName={file?.name || ''}
             onDownloadDetails={handleDownloadDetails}
+            onDownloadReport={handleDownloadReport}
             isLoading={isLoading}
           />
         </div>
@@ -212,7 +237,7 @@ export default function FileUpload() {
         onFileSelect={handleFileSelect} 
       />
 
-<ProgressModal 
+      <ProgressModal 
         isOpen={isProgressModalOpen}
         totalProducts={totalProducts}
         processedProducts={processedProducts}

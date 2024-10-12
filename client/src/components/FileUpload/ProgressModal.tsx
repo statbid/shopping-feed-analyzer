@@ -17,6 +17,7 @@ const ProgressModal: React.FC<ProgressModalProps> = ({ isOpen, totalProducts, pr
         <div className="w-full h-4 bg-gray-200 rounded-full mt-4">
           <div
             className="h-full bg-blue-500 rounded-full"
+            //style={{ width: `${(processedProducts / totalProducts) * 100}%` }}
             style={{ width: `${(processedProducts / totalProducts) * 100}%` }}
           ></div>
         </div>
