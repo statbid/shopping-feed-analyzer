@@ -3,19 +3,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkGoogleProductCategory = checkGoogleProductCategory;
 exports.checkApparelAttributes = checkApparelAttributes;
 function checkGoogleProductCategory(item) {
-    if (item.google_product_category) {
-        const categoryLevels = item.google_product_category.split('>').filter(Boolean).length;
+    var _a;
+    // Ensure the category exists and is not just empty spaces
+    const category = (_a = item.google_product_category) === null || _a === void 0 ? void 0 : _a.trim();
+    if (category) {
+        // Split the category by ">" and filter out empty levels
+        const categoryLevels = category.split('>').filter(level => level.trim()).length;
+        // If fewer than 3 levels, mark it as an error
         if (categoryLevels < 3) {
             return {
                 id: item.id || 'UNKNOWN',
                 errorType: 'Unspecific Google Product Category',
                 details: `Google Product Category isn't specific enough (less than 3 levels)`,
                 affectedField: 'google_product_category',
-                value: item.google_product_category
+                value: item.google_product_category || ''
             };
         }
     }
     else {
+        // If the category is missing, mark it as an error
         return {
             id: item.id || 'UNKNOWN',
             errorType: 'Missing Google Product Category',

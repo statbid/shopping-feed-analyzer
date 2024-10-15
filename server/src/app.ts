@@ -20,6 +20,7 @@ const safeStringify = (obj: any) => {
     console.error('Error stringifying object:', error);
     return JSON.stringify({ error: 'Error stringifying response' });
   }
+  
 };
 
 

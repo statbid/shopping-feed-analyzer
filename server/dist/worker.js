@@ -25,12 +25,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const worker_threads_1 = require("worker_threads");
 const errorCheckers = __importStar(require("./errorCheckers"));
-/*
-console.log('Worker started');
-console.log('Worker process started');
-console.log('Current directory:', process.cwd());
-console.log('__dirname:', __dirname);
-console.log('Imported modules:', Object.keys(require.cache));*/
 const allChecks = [
     errorCheckers.checkTitleSize,
     errorCheckers.checkTitleColor,

@@ -46,7 +46,7 @@ class FeedAnalyzer {
     analyzeStream(fileStream, progressCallback) {
         return new Promise((resolve, reject) => {
             const parser = (0, csv_parse_1.parse)({
-                columns: true,
+                columns: (header) => header.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()), // Normalize headers
                 skip_empty_lines: true,
                 delimiter: '\t',
                 relax_column_count: true,

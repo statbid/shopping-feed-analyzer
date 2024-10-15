@@ -1,12 +1,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from './types';
 import * as errorCheckers from './errorCheckers';
-/*
-console.log('Worker started');
-console.log('Worker process started');
-console.log('Current directory:', process.cwd());
-console.log('__dirname:', __dirname);
-console.log('Imported modules:', Object.keys(require.cache));*/
+
 
 const allChecks = [
   errorCheckers.checkTitleSize,
@@ -43,6 +38,8 @@ const allChecks = [
   errorCheckers.checkImageLink,
   errorCheckers.checkAvailability,
   errorCheckers.checkPrice,
+
+
 ];
 
 function processItem(item: FeedItem): ErrorResult[] {

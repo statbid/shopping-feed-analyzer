@@ -46,12 +46,14 @@ export class FeedAnalyzer {
   analyzeStream(fileStream: NodeJS.ReadableStream, progressCallback?: (progress: number) => void): Promise<AnalysisResult> {
     return new Promise((resolve, reject) => {
       const parser = parse({
-        columns: true,
+        columns: (header: string[]) => header.map((h: string) => h.trim().replace(/\s+/g, '_').toLowerCase()), // Normalize headers
         skip_empty_lines: true,
         delimiter: '\t',
         relax_column_count: true,
         trim: true,
       });
+      
+      
 
       const batchSize = 1000;
       let batch: FeedItem[] = [];

@@ -1,19 +1,29 @@
 // CategoryChecker.ts
 import { FeedItem, ErrorResult } from '../types';
 
+/*****Google Product Category isn't specific enough**********Google Product Category isn't set************** */
+
+
 export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
-  if (item.google_product_category) {
-    const categoryLevels = item.google_product_category.split('>').filter(Boolean).length;
+  // Ensure the category exists and is not just empty spaces
+  const category = item.google_product_category?.trim();
+
+  if (category) {
+    // Split the category by ">" and filter out empty levels
+    const categoryLevels = category.split('>').filter(level => level.trim()).length;
+    
+    // If fewer than 3 levels, mark it as an error
     if (categoryLevels < 3) {
       return {
         id: item.id || 'UNKNOWN',
         errorType: 'Unspecific Google Product Category',
         details: `Google Product Category isn't specific enough (less than 3 levels)`,
         affectedField: 'google_product_category',
-        value: item.google_product_category
+        value: item.google_product_category || ''
       };
     }
   } else {
+    // If the category is missing, mark it as an error
     return {
       id: item.id || 'UNKNOWN',
       errorType: 'Missing Google Product Category',
@@ -22,8 +32,12 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
       value: ''
     };
   }
+
   return null;
 }
+
+
+/*******Google Product Category contains “Apparel”, but color, size, gender, or age_group are missing************** */
 
 export function checkApparelAttributes(item: FeedItem): ErrorResult | null {
   if (item.google_product_category && item.google_product_category.toLowerCase().includes('apparel')) {
@@ -45,3 +59,4 @@ export function checkApparelAttributes(item: FeedItem): ErrorResult | null {
   }
   return null;
 }
+

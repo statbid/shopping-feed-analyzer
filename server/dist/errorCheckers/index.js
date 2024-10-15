@@ -19,4 +19,4 @@ __exportStar(require("./DescriptionChecker"), exports);
 __exportStar(require("./CategoryChecker"), exports);
 __exportStar(require("./ProductTypeChecker"), exports);
 __exportStar(require("./IdChecker"), exports);
-//export * from './RequiredFieldsChecker';
+__exportStar(require("./RequiredFieldsChecker"), exports);

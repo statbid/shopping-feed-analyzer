@@ -12,16 +12,25 @@ exports.checkDescriptionLength = checkDescriptionLength;
 exports.checkDescriptionNonBreakingSpaces = checkDescriptionNonBreakingSpaces;
 exports.checkDescriptionPromotionalWords = checkDescriptionPromotionalWords;
 const constants_1 = require("../utils/constants");
-// Helper function to get context
-function getContext(text, index, length) {
-    const words = text.split(/\s+/);
-    const wordIndex = words.findIndex((word, i) => {
-        const startIndex = words.slice(0, i).join(' ').length;
-        return startIndex <= index && index < startIndex + word.length;
-    });
-    const start = Math.max(0, wordIndex - 3);
-    const end = Math.min(words.length, wordIndex + 4);
-    return words.slice(start, end).join(' ');
+function truncateContext(context, match) {
+    const maxLength = 40;
+    const matchIndex = context.indexOf(match);
+    const start = Math.max(0, matchIndex - Math.floor((maxLength - match.length) / 2));
+    const end = Math.min(context.length, matchIndex + match.length + Math.floor((maxLength - match.length) / 2));
+    let truncatedContext = context.substring(start, end).trim();
+    if (start > 0) {
+        truncatedContext = '.' + truncatedContext;
+    }
+    if (end < context.length) {
+        truncatedContext += '.';
+    }
+    return truncatedContext;
+}
+function getContext(description, matchIndex, matchLength) {
+    const contextRadius = 50; // Number of characters to show around the match
+    const start = Math.max(0, matchIndex - contextRadius);
+    const end = Math.min(description.length, matchIndex + matchLength + contextRadius);
+    return description.substring(start, end);
 }
 // Helper function to safely get matches
 function getMatches(regex, text) {
@@ -32,39 +41,48 @@ function getMatches(regex, text) {
     }
     return matches;
 }
+/*************************Description contains missing spaces like word,word******************************************** */
 function checkDescriptionMissingSpaces(item) {
     if (item.description) {
         const matches = getMatches(constants_1.missingSpaceRegex, item.description);
         if (matches.length > 0) {
-            const examples = matches.slice(0, 3).map(match => {
+            // Generate context for each match, without limiting to 3 instances
+            const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                return `"${context}" (found: "${match[0]}")`;
+                const truncatedContext = truncateContext(context, match[0]);
+                // Only include (case #) if there is more than one match
+                return matches.length > 1 ? `(case ${index + 1}) ".${truncatedContext}."` : `".${truncatedContext}."`;
             });
             return {
                 id: item.id || 'UNKNOWN',
                 errorType: 'Missing Spaces After Commas',
-                details: `Found ${matches.length} instance(s): ${examples.join('; ')}`,
+                details: `Found ${matches.length} instance(s) of Missing Spaces After Commas`,
                 affectedField: 'description',
-                value: examples[0]
+                // Join all the cases with semicolons
+                value: examples.join('; ')
             };
         }
     }
     return null;
 }
+/************Description contains repeated dashes************************** */
 function checkDescriptionRepeatedDashes(item) {
     if (item.description) {
         const matches = getMatches(constants_1.repeatedDashesRegex, item.description);
         if (matches.length > 0) {
-            const examples = matches.slice(0, 3).map(match => {
+            const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                return `"${context}" (found: "${match[0]}")`;
+                const truncatedContext = truncateContext(context, match[0]);
+                return matches.length > 1
+                    ? `(case ${index + 1}) "...${truncatedContext}..."`
+                    : `"...${truncatedContext}..."`;
             });
             return {
                 id: item.id || 'UNKNOWN',
                 errorType: 'Repeated Dashes in Description',
-                details: `Found ${matches.length} instance(s): ${examples.join('; ')}`,
+                details: `Found ${matches.length} instance(s) of repeated dashes`,
                 affectedField: 'description',
-                value: examples[0]
+                value: examples.join('; ')
             };
         }
     }
