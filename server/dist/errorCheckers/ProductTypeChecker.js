@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.checkProductType = checkProductType;
+/*******Product Type isn't set***** */
 function checkProductType(item) {
     if (!item.product_type || item.product_type.trim() === '') {
         return {

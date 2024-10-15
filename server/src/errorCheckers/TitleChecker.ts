@@ -168,7 +168,7 @@ export function checkTitleDuplicateWords(item: FeedItem): ErrorResult | null {
 
 
 
-
+/**********Product Title contains bad characters like: ^, $, @, !, "", ''************ */
 
 export function checkTitleSpecialCharacters(item: FeedItem): ErrorResult | null {
   if (item.title) {
@@ -186,6 +186,7 @@ export function checkTitleSpecialCharacters(item: FeedItem): ErrorResult | null 
   return null;
 }
 
+/*************Product Title contains abbreviations like pck instead of pack***************************** */
 export function checkTitleBadAbbreviations(item: FeedItem): ErrorResult | null {
   if (item.title) {
     const badAbbreviationsMatches = item.title.match(badAbbreviationsRegex);
@@ -202,23 +203,36 @@ export function checkTitleBadAbbreviations(item: FeedItem): ErrorResult | null {
   return null;
 }
 
+
+/***********Product Title doesn't contain brand************** */
+
 export function checkTitleBrand(item: FeedItem): ErrorResult | null {
   const titleLower = item.title?.toLowerCase() || '';
-  
-  if (item.brand && !titleLower.includes(item.brand.toLowerCase())) {
-    return {
-      id: item.id || 'UNKNOWN',
-      errorType: 'Missing Brand in Title',
-      details: `Missing brand: ${item.brand}`,
-      affectedField: 'title',
-      value: item.title || ''
-    };
+  const brandLower = item.brand?.toLowerCase() || '';
+
+  if (item.brand) {
+    // Tokenize the brand by splitting on spaces and hyphens, allowing partial brand matches
+    const brandTokens = brandLower.split(/[\s\-]+/);
+    
+    const isBrandInTitle = brandTokens.some(token => titleLower.includes(token));
+
+    if (!isBrandInTitle) {
+      return {
+        id: item.id || 'UNKNOWN',
+        errorType: 'Missing Brand in Title',
+        details: `Missing brand: ${item.brand}`,
+        affectedField: 'title',
+        value: item.title || ''
+      };
+    }
   }
+
   return null;
 }
 
 
 
+/************Product Title doesn't contain material when material is set***************** */
 
 export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     const titleLower = item.title?.toLowerCase() || '';
@@ -235,19 +249,28 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     return null;
   }
   
-  export function checkTitleWhitespace(item: FeedItem): ErrorResult | null {
-    if (item.title && (item.title.startsWith(' ') || item.title.endsWith(' '))) {
-      return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Whitespace at Title Start/End',
-        details: 'Title contains whitespace at start or end',
-        affectedField: 'title',
-        value: item.title
-      };
-    }
-    return null;
+
+
+/*********Product Title contains whitespace at start or end**************** */
+
+
+export function checkTitleWhitespace(item: FeedItem): ErrorResult | null {
+  if (item.title && (/^\s/.test(item.title) || /\s$/.test(item.title))) {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Whitespace at Title Start/End',
+      details: 'Title contains whitespace at start or end',
+      affectedField: 'title',
+      value: item.title
+    };
   }
-  
+  return null;
+}
+
+
+/***************Product Title contains repeated whitespace**************************** */
+
+
   export function checkTitleRepeatedWhitespace(item: FeedItem): ErrorResult | null {
     if (item.title && repeatedWhitespaceRegex.test(item.title)) {
       return {
@@ -260,7 +283,11 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     }
     return null;
   }
-  
+
+
+  /*************Product Title contains repeated dashes*********************** */
+
+
   export function checkTitleRepeatedDashes(item: FeedItem): ErrorResult | null {
     if (item.title && repeatedDashRegex.test(item.title)) {
       return {
@@ -274,6 +301,9 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     return null;
   }
   
+
+  /***********Product Title contains repeated commas************* */
+
   export function checkTitleRepeatedCommas(item: FeedItem): ErrorResult | null {
     if (item.title && repeatedCommaRegex.test(item.title)) {
       return {
@@ -287,6 +317,9 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     return null;
   }
   
+
+/************Product Title contains punctuation at start or end************************* */
+
   export function checkTitlePunctuation(item: FeedItem): ErrorResult | null {
     if (item.title && punctuationStartEndRegex.test(item.title)) {
       return {
@@ -300,7 +333,8 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     return null;
   }
 
-  
+  /*****************Product Title contains HTML********************* */
+
 export function checkTitleHtml(item: FeedItem): ErrorResult | null {
     if (item.title && htmlTagRegex.test(item.title)) {
       return {
@@ -313,6 +347,10 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
     }
     return null;
   }
+
+
+
+  /********Product Title contains HTML entities (&reg, &copy, &trade)******************** */
   
   export function checkTitleHtmlEntities(item: FeedItem): ErrorResult | null {
     if (item.title && htmlEntityRegex.test(item.title)) {
@@ -327,6 +365,10 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
     return null;
   }
   
+
+  /***********Product Title contains promotional words
+   *       (save, off, free shipping, best seller, 30% off, buy one get one, open box)********************************* */
+
   export function checkTitlePromotionalWords(item: FeedItem): ErrorResult | null {
     if (item.title) {
       const foundWords = promotionalWords.filter(word => {
@@ -343,7 +385,7 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
             const startIndex = Math.max(0, match.index - 20);
             const endIndex = Math.min(item.title!.length, match.index + match[0].length + 20);
             const context = item.title!.slice(startIndex, endIndex);
-            return `"${context}" (found: "${match[0]}")`;
+            return `"${context}"`;
           }
           return '';
         }).filter(Boolean);
@@ -360,6 +402,8 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
     return null;
   }
   
+
+
   /***************TODO*************** */
   export function checkTitleMissingSpaces(item: FeedItem): ErrorResult | null {
     if (item.title && missingSpaceRegex.test(item.title)) {

@@ -136,6 +136,7 @@ function checkTitleDuplicateWords(item) {
     }
     return null;
 }
+/**********Product Title contains bad characters like: ^, $, @, !, "", ''************ */
 function checkTitleSpecialCharacters(item) {
     if (item.title) {
         const specialCharsMatches = item.title.match(constants_1.specialCharsRegex);
@@ -151,6 +152,7 @@ function checkTitleSpecialCharacters(item) {
     }
     return null;
 }
+/*************Product Title contains abbreviations like pck instead of pack***************************** */
 function checkTitleBadAbbreviations(item) {
     if (item.title) {
         const badAbbreviationsMatches = item.title.match(constants_1.badAbbreviationsRegex);
@@ -166,20 +168,28 @@ function checkTitleBadAbbreviations(item) {
     }
     return null;
 }
+/***********Product Title doesn't contain brand************** */
 function checkTitleBrand(item) {
-    var _a;
+    var _a, _b;
     const titleLower = ((_a = item.title) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
-    if (item.brand && !titleLower.includes(item.brand.toLowerCase())) {
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Missing Brand in Title',
-            details: `Missing brand: ${item.brand}`,
-            affectedField: 'title',
-            value: item.title || ''
-        };
+    const brandLower = ((_b = item.brand) === null || _b === void 0 ? void 0 : _b.toLowerCase()) || '';
+    if (item.brand) {
+        // Tokenize the brand by splitting on spaces and hyphens, allowing partial brand matches
+        const brandTokens = brandLower.split(/[\s\-]+/);
+        const isBrandInTitle = brandTokens.some(token => titleLower.includes(token));
+        if (!isBrandInTitle) {
+            return {
+                id: item.id || 'UNKNOWN',
+                errorType: 'Missing Brand in Title',
+                details: `Missing brand: ${item.brand}`,
+                affectedField: 'title',
+                value: item.title || ''
+            };
+        }
     }
     return null;
 }
+/************Product Title doesn't contain material when material is set***************** */
 function checkTitleMaterial(item) {
     var _a;
     const titleLower = ((_a = item.title) === null || _a === void 0 ? void 0 : _a.toLowerCase()) || '';
@@ -194,8 +204,9 @@ function checkTitleMaterial(item) {
     }
     return null;
 }
+/*********Product Title contains whitespace at start or end**************** */
 function checkTitleWhitespace(item) {
-    if (item.title && (item.title.startsWith(' ') || item.title.endsWith(' '))) {
+    if (item.title && (/^\s/.test(item.title) || /\s$/.test(item.title))) {
         return {
             id: item.id || 'UNKNOWN',
             errorType: 'Whitespace at Title Start/End',
@@ -206,6 +217,7 @@ function checkTitleWhitespace(item) {
     }
     return null;
 }
+/***************Product Title contains repeated whitespace**************************** */
 function checkTitleRepeatedWhitespace(item) {
     if (item.title && constants_1.repeatedWhitespaceRegex.test(item.title)) {
         return {
@@ -218,6 +230,7 @@ function checkTitleRepeatedWhitespace(item) {
     }
     return null;
 }
+/*************Product Title contains repeated dashes*********************** */
 function checkTitleRepeatedDashes(item) {
     if (item.title && constants_1.repeatedDashRegex.test(item.title)) {
         return {
@@ -230,6 +243,7 @@ function checkTitleRepeatedDashes(item) {
     }
     return null;
 }
+/***********Product Title contains repeated commas************* */
 function checkTitleRepeatedCommas(item) {
     if (item.title && constants_1.repeatedCommaRegex.test(item.title)) {
         return {
@@ -242,6 +256,7 @@ function checkTitleRepeatedCommas(item) {
     }
     return null;
 }
+/************Product Title contains punctuation at start or end************************* */
 function checkTitlePunctuation(item) {
     if (item.title && constants_1.punctuationStartEndRegex.test(item.title)) {
         return {
@@ -254,6 +269,7 @@ function checkTitlePunctuation(item) {
     }
     return null;
 }
+/*****************Product Title contains HTML********************* */
 function checkTitleHtml(item) {
     if (item.title && constants_1.htmlTagRegex.test(item.title)) {
         return {
@@ -266,6 +282,7 @@ function checkTitleHtml(item) {
     }
     return null;
 }
+/********Product Title contains HTML entities (&reg, &copy, &trade)******************** */
 function checkTitleHtmlEntities(item) {
     if (item.title && constants_1.htmlEntityRegex.test(item.title)) {
         return {
@@ -278,6 +295,8 @@ function checkTitleHtmlEntities(item) {
     }
     return null;
 }
+/***********Product Title contains promotional words
+ *       (save, off, free shipping, best seller, 30% off, buy one get one, open box)********************************* */
 function checkTitlePromotionalWords(item) {
     if (item.title) {
         const foundWords = constants_1.promotionalWords.filter(word => {
@@ -292,7 +311,7 @@ function checkTitlePromotionalWords(item) {
                     const startIndex = Math.max(0, match.index - 20);
                     const endIndex = Math.min(item.title.length, match.index + match[0].length + 20);
                     const context = item.title.slice(startIndex, endIndex);
-                    return `"${context}" (found: "${match[0]}")`;
+                    return `"${context}"`;
                 }
                 return '';
             }).filter(Boolean);

@@ -12,12 +12,12 @@ exports.sizeSynonyms = {
 };
 exports.inchMatch = (/^(\d+(\.\d+)?)(["']|in\.?|inch)$/);
 exports.ignoreWords = new Set(['x', 'by', 'in', 'inch', 'inches', 'ft', 'feet', 'cm', 'm', 'mm']);
-exports.specialCharsRegex = /[^a-zA-Z0-9\s.,;:()\-]/g;
+exports.specialCharsRegex = /[^a-zA-Z0-9\s.,;:()]/g;
 exports.badAbbreviationsRegex = /\b(pck|pkg|qty|qt|pc|pcs|ea|(?<=\s|^)in\.(?=\s|$)|ft)\b/gi;
 exports.repeatedDashRegex = /-{2,}/g;
-exports.punctuationStartEndRegex = /^[!,.?:;]|[!,.?:;]$/;
+exports.punctuationStartEndRegex = /^[\p{P}]|[\p{P}]$/u;
 exports.promotionalWords = [
-    'save', 'off', 'free shipping', 'best seller', '% off', 'buy', 'open box', 'clearance'
+    'save', 'free shipping', 'best seller', '% off', 'buy', 'open box', 'clearance'
 ];
 exports.MAX_DESCRIPTION_LENGTH = 5000;
 exports.MAX_ID_LENGTH = 50;

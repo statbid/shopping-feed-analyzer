@@ -9,6 +9,17 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
   const category = item.google_product_category?.trim();
 
   if (category) {
+    // First, check if the category is purely numeric (e.g., "500")
+    if (/^\d+$/.test(category)) {
+      return {
+        id: item.id || 'UNKNOWN',
+        errorType: 'Invalid Google Product Category',
+        details: 'Google Product Category is invalid (numbered category is not allowed)',
+        affectedField: 'google_product_category',
+        value: item.google_product_category || ''
+      };
+    }
+
     // Split the category by ">" and filter out empty levels
     const categoryLevels = category.split('>').filter(level => level.trim()).length;
     
@@ -57,6 +68,24 @@ export function checkApparelAttributes(item: FeedItem): ErrorResult | null {
       };
     }
   }
+  return null;
+}
+
+/*******Google Product Category isn't valid****** */
+
+export function checkGoogleProductCategoryValidity(item: FeedItem): ErrorResult | null {
+  const category = item.google_product_category?.trim();
+ 
+  if (category && /^\d+$/.test(category)) {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Invalid Google Product Category',
+      details: 'Google Product Category is invalid (numbered category is not allowed)',
+      affectedField: 'google_product_category',
+      value: item.google_product_category || ''
+    };
+  }
+
   return null;
 }
 

@@ -460,5 +460,446 @@ describe('FeedAnalyzer', () => {
                 }
             });
         });
+        describe('titleBadAbbreviationsCheck', () => {
+            it('should return an error for bad abbreviations in title', () => {
+                const item = { id: '1', title: 'Package contains 2 pck and 1 pkg' };
+                const error = errorCheckers.checkTitleBadAbbreviations(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Bad Abbreviations in Title');
+                    expect(error.details).toContain('pck');
+                    expect(error.details).toContain('pkg');
+                }
+            });
+            it('should return null for valid abbreviations like "2pcs"', () => {
+                const item = { id: '2', title: 'Package contains 2pcs of items' };
+                const error = errorCheckers.checkTitleBadAbbreviations(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error for standalone "pcs"', () => {
+                const item = { id: '3', title: 'Package contains pcs of items' };
+                const error = errorCheckers.checkTitleBadAbbreviations(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Bad Abbreviations in Title');
+                    expect(error.details).toContain('pcs');
+                }
+            });
+            it('should return null when there are no bad abbreviations', () => {
+                const item = { id: '4', title: 'This is a normal title with no bad abbreviations' };
+                const error = errorCheckers.checkTitleBadAbbreviations(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('googleProductCategoryValidityCheck', () => {
+            it('should return an error for purely numeric Google Product Category', () => {
+                const item = {
+                    id: '1',
+                    google_product_category: '499954'
+                };
+                const error = errorCheckers.checkGoogleProductCategoryValidity(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Invalid Google Product Category');
+                    expect(error.details).toBe('Google Product Category is invalid (numbered category is not allowed)');
+                }
+            });
+            it('should return null for valid hierarchical Google Product Category', () => {
+                const item = {
+                    id: '2',
+                    google_product_category: 'Animals & Pet Supplies > Pet Supplies'
+                };
+                const error = errorCheckers.checkGoogleProductCategoryValidity(item);
+                expect(error).toBeNull();
+            });
+            it('should return null for a deeper hierarchical Google Product Category', () => {
+                const item = {
+                    id: '3',
+                    google_product_category: 'Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Litter Box Liners'
+                };
+                const error = errorCheckers.checkGoogleProductCategoryValidity(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('titleSpecialCharactersCheck', () => {
+            it('should return null when there are no special characters in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes Black'
+                };
+                const error = errorCheckers.checkTitleSpecialCharacters(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error for special characters like "@", "$", and "^"', () => {
+                const item = {
+                    id: '2',
+                    title: 'Nike Running Shoes @$%^'
+                };
+                const error = errorCheckers.checkTitleSpecialCharacters(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Special Characters in Title');
+                    expect(error.details).toContain('@');
+                    expect(error.details).toContain('$');
+                    expect(error.details).toContain('%');
+                    expect(error.details).toContain('^');
+                }
+            });
+            it('should return an error for quotes (single or double)', () => {
+                const item = {
+                    id: '3',
+                    title: 'Nike "Air" Jordan\'s'
+                };
+                const error = errorCheckers.checkTitleSpecialCharacters(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Special Characters in Title');
+                    expect(error.details).toContain('"');
+                    expect(error.details).toContain("'");
+                }
+            });
+            it('should return an error for special characters like "!" and "#"', () => {
+                const item = {
+                    id: '4',
+                    title: 'Nike Running Shoes #Best!'
+                };
+                const error = errorCheckers.checkTitleSpecialCharacters(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Special Characters in Title');
+                    expect(error.details).toContain('#');
+                    expect(error.details).toContain('!');
+                }
+            });
+            it('should return null for titles with allowed punctuation marks', () => {
+                const item = {
+                    id: '5',
+                    title: 'Nike Running Shoes: New Model, (2022 Edition)'
+                };
+                const error = errorCheckers.checkTitleSpecialCharacters(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('titleBrandCheck', () => {
+            it('should return null when the full brand is present in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes',
+                    brand: 'Nike'
+                };
+                const error = errorCheckers.checkTitleBrand(item);
+                expect(error).toBeNull();
+            });
+            it('should return null when a partial brand is present in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Jocko GO Energy Drink - Blue Raspberry (12 pk)',
+                    brand: 'Jocko Fuel'
+                };
+                const error = errorCheckers.checkTitleBrand(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when the brand is missing in the title', () => {
+                const item = {
+                    id: '4',
+                    title: 'Running Shoes',
+                    brand: 'Nike'
+                };
+                const error = errorCheckers.checkTitleBrand(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Missing Brand in Title');
+                    expect(error.details).toContain('Nike');
+                }
+            });
+        });
+        describe('titleMaterialCheck', () => {
+            it('should return null when material is present in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Stainless Steel Water Bottle - 750ml',
+                    material: 'Stainless Steel'
+                };
+                const error = errorCheckers.checkTitleMaterial(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when material is missing from the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Water Bottle - 750ml',
+                    material: 'Stainless Steel'
+                };
+                const error = errorCheckers.checkTitleMaterial(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Missing Material in Title');
+                    expect(error.details).toContain('Stainless Steel');
+                }
+            });
+            it('should return null when no material is set', () => {
+                const item = {
+                    id: '3',
+                    title: 'Plastic Water Bottle - 500ml',
+                    material: ''
+                };
+                const error = errorCheckers.checkTitleMaterial(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('titleWhitespaceCheck', () => {
+            it('should return null when there is no whitespace at the start or end of the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitleWhitespace(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there is whitespace at the start of the title', () => {
+                const item = {
+                    id: '2',
+                    title: ' Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitleWhitespace(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Whitespace at Title Start/End');
+                    expect(error.details).toBe('Title contains whitespace at start or end');
+                    expect(error.value).toBe(' Nike Running Shoes');
+                }
+            });
+            it('should return an error when there is whitespace at the end of the title', () => {
+                const item = {
+                    id: '3',
+                    title: 'Nike Running Shoes '
+                };
+                const error = errorCheckers.checkTitleWhitespace(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Whitespace at Title Start/End');
+                    expect(error.details).toBe('Title contains whitespace at start or end');
+                    expect(error.value).toBe('Nike Running Shoes ');
+                }
+            });
+            it('should return an error when there is whitespace at both the start and end of the title', () => {
+                const item = {
+                    id: '4',
+                    title: ' Nike Running Shoes '
+                };
+                const error = errorCheckers.checkTitleWhitespace(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Whitespace at Title Start/End');
+                    expect(error.details).toBe('Title contains whitespace at start or end');
+                    expect(error.value).toBe(' Nike Running Shoes ');
+                }
+            });
+            it('should return null when the title does not have whitespace at the start or end but contains whitespace internally', () => {
+                const item = {
+                    id: '5',
+                    title: 'Nike Running Shoes with extra comfort'
+                };
+                const error = errorCheckers.checkTitleWhitespace(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('titleRepeatedWhitespaceCheck', () => {
+            it('should return null when there is no repeated whitespace in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitleRepeatedWhitespace(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there is repeated whitespace in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Nike  Running  Shoes'
+                };
+                const error = errorCheckers.checkTitleRepeatedWhitespace(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Repeated Whitespace in Title');
+                    expect(error.details).toBe('Title contains repeated whitespace');
+                    expect(error.value).toBe('Nike  Running  Shoes');
+                }
+            });
+        });
+        describe('titleRepeatedDashesCheck', () => {
+            it('should return null when there are no repeated dashes in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes - New Model'
+                };
+                const error = errorCheckers.checkTitleRepeatedDashes(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when repeated dashes are present in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Nike--Running--Shoes - New Model'
+                };
+                const error = errorCheckers.checkTitleRepeatedDashes(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Repeated Dashes in Title');
+                    expect(error.details).toBe('Title contains repeated dashes');
+                    expect(error.value).toBe('Nike--Running--Shoes - New Model');
+                }
+            });
+            it('should return null when single dashes are used appropriately in the title', () => {
+                const item = {
+                    id: '5',
+                    title: 'Nike - Running - Shoes - New Model'
+                };
+                const error = errorCheckers.checkTitleRepeatedDashes(item);
+                expect(error).toBeNull();
+            });
+        });
+        describe('checkTitleRepeatedCommas', () => {
+            it('should return null when there are no repeated commas in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes, New Model'
+                };
+                const error = errorCheckers.checkTitleRepeatedCommas(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there are repeated commas in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Nike,,Running,,Shoes'
+                };
+                const error = errorCheckers.checkTitleRepeatedCommas(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Repeated Commas in Title');
+                    expect(error.details).toBe('Title contains repeated commas');
+                    expect(error.value).toBe('Nike,,Running,,Shoes');
+                }
+            });
+        });
+        describe('checkTitlePunctuation', () => {
+            it('should return null when there is no punctuation at the start or end of the title', () => {
+                const item = {
+                    id: '4',
+                    title: 'Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitlePunctuation(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there is punctuation at the start of the title', () => {
+                const item = {
+                    id: '5',
+                    title: '!Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitlePunctuation(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Punctuation at Title Start/End');
+                    expect(error.details).toBe('Title contains punctuation at start or end');
+                    expect(error.value).toBe('!Nike Running Shoes');
+                }
+            });
+            it('should return an error when there is punctuation at the end of the title', () => {
+                const item = {
+                    id: '6',
+                    title: 'Nike Running Shoes!'
+                };
+                const error = errorCheckers.checkTitlePunctuation(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Punctuation at Title Start/End');
+                    expect(error.details).toBe('Title contains punctuation at start or end');
+                    expect(error.value).toBe('Nike Running Shoes!');
+                }
+            });
+            it('should return an error when there is punctuation at both the start and end of the title', () => {
+                const item = {
+                    id: '7',
+                    title: '!Nike Running Shoes!'
+                };
+                const error = errorCheckers.checkTitlePunctuation(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Punctuation at Title Start/End');
+                    expect(error.details).toBe('Title contains punctuation at start or end');
+                    expect(error.value).toBe('!Nike Running Shoes!');
+                }
+            });
+        });
+        describe('checkTitleHtml', () => {
+            it('should return null when there are no HTML tags in the title', () => {
+                const item = {
+                    id: '8',
+                    title: 'Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitleHtml(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there are HTML tags in the title', () => {
+                const item = {
+                    id: '9',
+                    title: 'Nike <b>Running</b> Shoes'
+                };
+                const error = errorCheckers.checkTitleHtml(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('HTML in Title');
+                    expect(error.details).toBe('Title contains HTML tags');
+                    expect(error.value).toBe('Nike <b>Running</b> Shoes');
+                }
+            });
+            it('should return an error when there are multiple HTML tags in the title', () => {
+                const item = {
+                    id: '10',
+                    title: '<div>Nike Running Shoes</div>'
+                };
+                const error = errorCheckers.checkTitleHtml(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('HTML in Title');
+                    expect(error.details).toBe('Title contains HTML tags');
+                    expect(error.value).toBe('<div>Nike Running Shoes</div>');
+                }
+            });
+        });
+        describe('titleHtmlEntitiesCheck', () => {
+            it('should return null when there are no HTML entities in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitleHtmlEntities(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when there is a registered HTML entity in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Nike Running Shoes &reg; New Model'
+                };
+                const error = errorCheckers.checkTitleHtmlEntities(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('HTML Entities in Title');
+                    expect(error.details).toBe('Title contains HTML entities');
+                    expect(error.value).toBe('Nike Running Shoes &reg; New Model');
+                }
+            });
+            it('should return an error when there are multiple HTML entities in the title', () => {
+                const item = {
+                    id: '3',
+                    title: 'Nike &copy; Running Shoes &trade;'
+                };
+                const error = errorCheckers.checkTitleHtmlEntities(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('HTML Entities in Title');
+                    expect(error.details).toBe('Title contains HTML entities');
+                    expect(error.value).toBe('Nike &copy; Running Shoes &trade;');
+                }
+            });
+        });
     });
 });

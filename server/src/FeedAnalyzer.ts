@@ -50,7 +50,7 @@ export class FeedAnalyzer {
         skip_empty_lines: true,
         delimiter: '\t',
         relax_column_count: true,
-        trim: true,
+       // trim: true,
       });
       
       

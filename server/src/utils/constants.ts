@@ -12,12 +12,19 @@ export const inchMatch =(/^(\d+(\.\d+)?)(["']|in\.?|inch)$/);
 
 
 export const ignoreWords = new Set(['x', 'by', 'in', 'inch', 'inches', 'ft', 'feet', 'cm', 'm', 'mm']);
-export const specialCharsRegex = /[^a-zA-Z0-9\s.,;:()\-]/g;
+export const specialCharsRegex = /[^a-zA-Z0-9\s.,;:()]/g;
 export const badAbbreviationsRegex = /\b(pck|pkg|qty|qt|pc|pcs|ea|(?<=\s|^)in\.(?=\s|$)|ft)\b/gi;
+
+
 export const repeatedDashRegex = /-{2,}/g;
-export const punctuationStartEndRegex = /^[!,.?:;]|[!,.?:;]$/;
+
+export const punctuationStartEndRegex = /^[\p{P}]|[\p{P}]$/u;
+
+
+
 export const promotionalWords = [
-  'save', 'off', 'free shipping', 'best seller', '% off', 'buy', 'open box', 'clearance'
+
+  'save', 'free shipping', 'best seller', '% off', 'buy', 'open box', 'clearance'
 ];
 export const MAX_DESCRIPTION_LENGTH = 5000;
 export const MAX_ID_LENGTH = 50;
