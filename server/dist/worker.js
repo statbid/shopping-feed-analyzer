@@ -64,6 +64,15 @@ const allChecks = [
     errorCheckers.checkPrice,
     errorCheckers.checkCondition,
     errorCheckers.checkBrand,
+    errorCheckers.checkImageLinkCommas,
+    errorCheckers.checkProductTypePromotionalWords,
+    errorCheckers.checkProductTypeCommas,
+    errorCheckers.checkProductTypeRepeatedTiers,
+    errorCheckers.checkProductTypeWhitespace,
+    errorCheckers.checkProductTypeRepeatedWhitespace,
+    errorCheckers.checkProductTypeAngleBrackets,
+    errorCheckers.checkGTINLength,
+    errorCheckers.checkGTINValidity
 ];
 function processItem(item) {
     const errors = [];
