@@ -35,7 +35,9 @@ export const repeatedWhitespaceRegex = /\s{2,}/g;
 export const repeatedCommaRegex = /,{2,}/g;
 export const htmlTagRegex = /<[^>]*>/g;
 export const htmlEntityRegex = /&[a-z]+;/gi;
-export const nonBreakingSpaceRegex = /\u00A0/g;
+
+export const nonBreakingSpaceRegex = /\xA0/g; 
+
 
 
 // Helper function to escape special characters in regex patterns

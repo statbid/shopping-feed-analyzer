@@ -339,6 +339,7 @@ function checkTitleMissingSpaces(item) {
     }
     return null;
 }
+/***********Product Title contains non breaking spaces******************** */
 function checkTitleNonBreakingSpaces(item) {
     if (item.title && constants_1.nonBreakingSpaceRegex.test(item.title)) {
         return {

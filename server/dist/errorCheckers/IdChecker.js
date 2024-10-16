@@ -21,7 +21,7 @@ function checkIdIsSet(item) {
         return {
             id: 'UNKNOWN',
             errorType: 'Id Not Set',
-            details: 'Id is blank or not set',
+            details: `Id is blank or not set`,
             affectedField: 'id',
             value: ''
         };

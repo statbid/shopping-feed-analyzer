@@ -28,7 +28,7 @@ exports.repeatedWhitespaceRegex = /\s{2,}/g;
 exports.repeatedCommaRegex = /,{2,}/g;
 exports.htmlTagRegex = /<[^>]*>/g;
 exports.htmlEntityRegex = /&[a-z]+;/gi;
-exports.nonBreakingSpaceRegex = /\u00A0/g;
+exports.nonBreakingSpaceRegex = /\xA0/g;
 // Helper function to escape special characters in regex patterns
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

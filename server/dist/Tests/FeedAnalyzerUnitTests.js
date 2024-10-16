@@ -214,49 +214,6 @@ describe('FeedAnalyzer', () => {
                 expect(error).toBeNull();
             });
         });
-        /********************************** */
-        describe('titleDuplicateWordsCheck', () => {
-            it('should return null when there are no duplicate words', () => {
-                const item = {
-                    id: '1',
-                    title: 'Nike Running Shoes'
-                };
-                const error = errorCheckers.checkTitleDuplicateWords(item);
-                expect(error).toBeNull();
-            });
-            it('should detect duplicate words in the title', () => {
-                const item = {
-                    id: '2',
-                    title: 'Nike Air Jordan Jordan Shoes'
-                };
-                const error = errorCheckers.checkTitleDuplicateWords(item);
-                expect(error).not.toBeNull();
-                if (error) {
-                    expect(error.errorType).toBe('Duplicate Words in Title');
-                    expect(error.details).toContain('Title contains duplicate words: jordan');
-                }
-            });
-            it('should ignore numeric values with units', () => {
-                const item = {
-                    id: '4',
-                    title: 'Nike 12in Jordan 12ft Shoes'
-                };
-                const error = errorCheckers.checkTitleDuplicateWords(item);
-                expect(error).toBeNull();
-            });
-            it('should detect multiple duplicate words', () => {
-                const item = {
-                    id: '5',
-                    title: 'Nike Jordan Jordan Shoes Shoes'
-                };
-                const error = errorCheckers.checkTitleDuplicateWords(item);
-                expect(error).not.toBeNull();
-                if (error) {
-                    expect(error.errorType).toBe('Duplicate Words in Title');
-                    expect(error.details).toContain('Title contains duplicate words: jordan, shoes');
-                }
-            });
-        });
         /******************************** */
         describe('googleProductCategoryCheck', () => {
             it('should return an error when Google Product Category is not set', () => {
@@ -898,6 +855,42 @@ describe('FeedAnalyzer', () => {
                     expect(error.errorType).toBe('HTML Entities in Title');
                     expect(error.details).toBe('Title contains HTML entities');
                     expect(error.value).toBe('Nike &copy; Running Shoes &trade;');
+                }
+            });
+        });
+        describe('titlePromotionalWordsCheck', () => {
+            it('should return null when there are no promotional words in the title', () => {
+                const item = {
+                    id: '1',
+                    title: 'Nike Running Shoes - New Model'
+                };
+                const error = errorCheckers.checkTitlePromotionalWords(item);
+                expect(error).toBeNull();
+            });
+            it('should return an error when a single promotional word is present in the title', () => {
+                const item = {
+                    id: '2',
+                    title: 'Best Seller Nike Running Shoes'
+                };
+                const error = errorCheckers.checkTitlePromotionalWords(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Promotional Words in Title');
+                    expect(error.details).toContain('Found 1 promotional word(s): best seller');
+                    expect(error.value).toContain('\"Best Seller Nike Running Shoes\"');
+                }
+            });
+            it('should return an error when multiple promotional words are present in the title', () => {
+                const item = {
+                    id: '3',
+                    title: 'Save on Nike Running Shoes - Best Seller'
+                };
+                const error = errorCheckers.checkTitlePromotionalWords(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.errorType).toBe('Promotional Words in Title');
+                    expect(error.details).toContain('Found 2 promotional word(s): save, best seller');
+                    expect(error.value).toContain('\"Save on Nike Running Sho\"');
                 }
             });
         });

@@ -60,6 +60,10 @@ const allChecks = [
     errorCheckers.checkImageLink,
     errorCheckers.checkAvailability,
     errorCheckers.checkPrice,
+    errorCheckers.checkLinkIsSet,
+    errorCheckers.checkPrice,
+    errorCheckers.checkCondition,
+    errorCheckers.checkBrand,
 ];
 function processItem(item) {
     const errors = [];

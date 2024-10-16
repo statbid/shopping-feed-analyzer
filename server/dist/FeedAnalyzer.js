@@ -1,14 +1,33 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedAnalyzer = void 0;
 const csv_parse_1 = require("csv-parse");
 const stream_1 = require("stream");
-const worker_threads_1 = require("worker_threads");
 const os_1 = require("os");
-const path_1 = __importDefault(require("path"));
+const errorCheckers = __importStar(require("./errorCheckers"));
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -16,41 +35,62 @@ class FeedAnalyzer {
             errorCounts: {},
             errors: []
         };
-        this.idSet = new Set();
+        this.idCounts = new Map();
         this.numWorkers = Math.max(1, (0, os_1.cpus)().length - 1);
         this.activeWorkers = 0;
     }
     processBatch(batch) {
         for (const item of batch) {
             this.result.totalProducts++;
-            this.checkDuplicateId(item);
+            this.checkAllErrors(item);
         }
+    }
+    checkAllErrors(item) {
+        // Check for duplicate IDs
+        this.checkDuplicateId(item);
+        // Run all other error checks
+        Object.values(errorCheckers).forEach(checker => {
+            if (typeof checker === 'function') {
+                const error = checker(item);
+                if (error) {
+                    this.addErrors([error]);
+                }
+            }
+            else if (Array.isArray(checker)) {
+                checker.forEach(subChecker => {
+                    if (typeof subChecker === 'function') {
+                        const error = subChecker(item);
+                        if (error) {
+                            this.addErrors([error]);
+                        }
+                    }
+                });
+            }
+        });
     }
     checkDuplicateId(item) {
         if (item.id) {
-            if (this.idSet.has(item.id)) {
+            const count = (this.idCounts.get(item.id) || 0) + 1;
+            this.idCounts.set(item.id, count);
+            if (count > 1) {
                 const error = {
                     id: item.id,
                     errorType: 'Duplicate Id',
-                    details: 'This id appears multiple times in the feed',
+                    details: `This id appears ${count} times in the feed`,
                     affectedField: 'id',
                     value: item.id
                 };
                 this.addErrors([error]);
-            }
-            else {
-                this.idSet.add(item.id);
             }
         }
     }
     analyzeStream(fileStream, progressCallback) {
         return new Promise((resolve, reject) => {
             const parser = (0, csv_parse_1.parse)({
-                columns: (header) => header.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()), // Normalize headers
+                columns: (header) => header.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()),
                 skip_empty_lines: true,
                 delimiter: '\t',
                 relax_column_count: true,
-                // trim: true,
             });
             const batchSize = 1000;
             let batch = [];
@@ -60,7 +100,7 @@ class FeedAnalyzer {
                 transform: (item, _, callback) => {
                     batch.push(item);
                     if (batch.length >= batchSize) {
-                        this.processBatchWithWorker(batch);
+                        this.processBatch(batch);
                         totalProcessed += batch.length;
                         if (progressCallback) {
                             progressCallback(totalProcessed);
@@ -71,65 +111,45 @@ class FeedAnalyzer {
                 },
                 flush: (callback) => {
                     if (batch.length > 0) {
-                        this.processBatchWithWorker(batch);
+                        this.processBatch(batch);
                         totalProcessed += batch.length;
                         if (progressCallback) {
                             progressCallback(totalProcessed);
                         }
                     }
-                    this.waitForWorkers().then(() => callback());
+                    callback();
                 }
             });
             fileStream
                 .pipe(parser)
                 .pipe(transformer)
-                .on('finish', () => resolve(this.result))
+                .on('finish', () => {
+                console.log(`Total products processed: ${this.result.totalProducts}`);
+                console.log(`Total unique IDs: ${this.idCounts.size}`);
+                console.log(`Total errors: ${this.result.errors.length}`);
+                resolve(this.result);
+            })
                 .on('error', (err) => {
                 console.error('Error parsing file:', err);
                 reject(new Error('Error parsing file. Please ensure it is a valid TSV file.'));
             });
         });
     }
-    processBatchWithWorker(batch) {
-        const workerPath = path_1.default.join(__dirname, '..', 'dist', 'worker.js');
-        console.log('Worker path:', workerPath);
-        console.log('Current directory:', __dirname);
-        console.log('File exists:', require('fs').existsSync(workerPath));
-        const worker = new worker_threads_1.Worker(workerPath, {
-            workerData: { batch },
-            stderr: true
-        });
-        worker.on('message', (message) => {
-            this.result.totalProducts += message.processedCount;
-            this.addErrors(message.errors);
-        });
-        worker.on('error', (err) => {
-            console.error('Worker error:', err);
-        });
-        worker.on('exit', (code) => {
-            if (code !== 0) {
-                console.error(`Worker stopped with exit code ${code}`);
-            }
-            this.activeWorkers--;
-        });
-        this.activeWorkers++;
-    }
-    waitForWorkers() {
-        return new Promise((resolve) => {
-            const checkWorkers = () => {
-                if (this.activeWorkers === 0) {
-                    resolve();
-                }
-                else {
-                    setTimeout(checkWorkers, 100);
-                }
-            };
-            checkWorkers();
-        });
-    }
     addErrors(errors) {
         for (const error of errors) {
-            this.result.errors.push(error);
+            // For duplicate IDs, update the existing error instead of adding a new one
+            if (error.errorType === 'Duplicate Id') {
+                const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
+                if (existingError) {
+                    existingError.details = error.details;
+                }
+                else {
+                    this.result.errors.push(error);
+                }
+            }
+            else {
+                this.result.errors.push(error);
+            }
             this.result.errorCounts[error.errorType] = (this.result.errorCounts[error.errorType] || 0) + 1;
         }
     }
@@ -142,7 +162,7 @@ class FeedAnalyzer {
             errorCounts: {},
             errors: []
         };
-        this.idSet.clear();
+        this.idCounts.clear();
     }
     countTotalProducts(fileStream) {
         return new Promise((resolve, reject) => {

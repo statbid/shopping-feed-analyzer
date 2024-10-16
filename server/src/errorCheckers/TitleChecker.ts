@@ -418,18 +418,22 @@ export function checkTitleHtml(item: FeedItem): ErrorResult | null {
     return null;
   }
   
-  export function checkTitleNonBreakingSpaces(item: FeedItem): ErrorResult | null {
-    if (item.title && nonBreakingSpaceRegex.test(item.title)) {
-      return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Non-Breaking Spaces in Title',
-        details: 'Title contains non-breaking spaces',
-        affectedField: 'title',
-        value: item.title
-      };
-    }
-    return null;
+
+  /***********Product Title contains non breaking spaces******************** */
+
+export function checkTitleNonBreakingSpaces(item: FeedItem): ErrorResult | null {
+  if (item.title && nonBreakingSpaceRegex.test(item.title)) {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Non-Breaking Spaces in Title',
+      details: 'Title contains non-breaking spaces',
+      affectedField: 'title',
+      value: item.title
+    };
   }
+  return null;
+}
+
 
 
   export const TitleChecker = [

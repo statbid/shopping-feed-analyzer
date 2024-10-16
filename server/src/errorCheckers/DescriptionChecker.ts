@@ -33,7 +33,7 @@ function truncateContext(context: string, match: string): string {
 
 
 function getContext(description: string, matchIndex: number, matchLength: number): string {
-  const contextRadius = 50; // Number of characters to show around the match
+  const contextRadius = 15; // Number of characters to show around the match
   const start = Math.max(0, matchIndex - contextRadius);
   const end = Math.min(description.length, matchIndex + matchLength + contextRadius);
   return description.substring(start, end);
@@ -110,105 +110,140 @@ export function checkDescriptionRepeatedDashes(item: FeedItem): ErrorResult | nu
 
 
 
-
-
-
-
+/************Whitespace at Edges in Description************************** */
 export function checkDescriptionWhitespace(item: FeedItem): ErrorResult | null {
   if (item.description && leadingTrailingWhitespaceRegex.test(item.description)) {
-    const trimmed = item.description.trim();
     const leadingSpace = item.description.length - item.description.trimStart().length;
     const trailingSpace = item.description.length - item.description.trimEnd().length;
+
+    let value = '';
+    if (leadingSpace > 0) {
+      const firstWord = item.description.trimStart().split(' ')[0];
+      value = `"  ${firstWord}..."`;
+    }
+    if (trailingSpace > 0) {
+      const lastWord = item.description.trimEnd().split(' ').pop();
+      value = `"...${lastWord}  "`;
+    }
+
     return {
       id: item.id || 'UNKNOWN',
       errorType: 'Whitespace at Edges in Description',
-      details: `Description has ${leadingSpace} leading and ${trailingSpace} trailing whitespace characters`,
+      details: `Description has ${leadingSpace} whitespaces at the begining and ${trailingSpace}  whitespaces at the end`,
       affectedField: 'description',
-      value: `"${item.description.slice(0, 10)}...${item.description.slice(-10)}"`
+      value: value
     };
   }
   return null;
 }
 
+
+/************Repeated Whitespace in Description************************** */
 export function checkDescriptionRepeatedWhitespace(item: FeedItem): ErrorResult | null {
   if (item.description) {
     const matches = getMatches(repeatedWhitespaceRegex, item.description);
     if (matches.length > 0) {
-      const examples = matches.slice(0, 3).map(match => {
+      const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
-        return `"${context}" (found: "${match[0].replace(/\s/g, '␣')}")`;
+        const markedContext = context.replace(match[0], match[0].replace(/\s/g, '␣'));
+        return `"...${markedContext}..."`;
       });
+
       return {
         id: item.id || 'UNKNOWN',
         errorType: 'Repeated Whitespace in Description',
-        details: `Found ${matches.length} instance(s): ${examples.join('; ')}`,
+        details: `Found ${matches.length} instance(s) of repeated whitespaces in description`,
         affectedField: 'description',
-        value: examples[0]
+        value: examples.join('; ')  
       };
     }
   }
   return null;
 }
 
+
+/************Repeated Commas in Description************************** */
 export function checkDescriptionRepeatedCommas(item: FeedItem): ErrorResult | null {
   if (item.description) {
     const matches = getMatches(repeatedCommaRegex, item.description);
     if (matches.length > 0) {
-      const examples = matches.slice(0, 3).map(match => {
+      const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
-        return `"${context}" (found: "${match[0]}")`;
+        const markedContext = context.replace(match[0], match[0]); // Repeated commas are already visible
+        return `"...${markedContext}..."`;
       });
+
       return {
         id: item.id || 'UNKNOWN',
         errorType: 'Repeated Commas in Description',
-        details: `Found ${matches.length} instance(s): ${examples.join('; ')}`,
+        details: `Found ${matches.length} instance(s) of repeated commas in description`,
         affectedField: 'description',
-        value: examples[0]
+        value: examples.join('; ')  // Display all found instances
       };
     }
   }
   return null;
 }
 
+/************HTML in Description************************** */
 export function checkDescriptionHtml(item: FeedItem): ErrorResult | null {
   if (item.description) {
     const matches = getMatches(htmlTagRegex, item.description);
     if (matches.length > 0) {
-      const examples = matches.slice(0, 3).map(match => {
+     
+      const foundTags = matches.map(match => match[0]).join(', ');
+
+      const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
-        return `"${context}" (found: "${match[0]}")`;
+        return `"...${context}..."`;
       });
+
       return {
         id: item.id || 'UNKNOWN',
         errorType: 'HTML in Description',
-        details: `Found ${matches.length} HTML tag(s): ${examples.join('; ')}`,
+        details: `Found ${matches.length} HTML tag(s): ${foundTags}`,
         affectedField: 'description',
-        value: examples[0]
+        value: examples.join('; ')  
       };
     }
   }
   return null;
 }
 
+/************HTML Entities in Description************************** */
 export function checkDescriptionHtmlEntities(item: FeedItem): ErrorResult | null {
   if (item.description) {
     const matches = getMatches(htmlEntityRegex, item.description);
     if (matches.length > 0) {
-      const examples = matches.slice(0, 3).map(match => {
+    
+      const foundEntities = matches.map(match => match[0]).join(', ');
+      const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
-        return `"${context}" (found: "${match[0]}")`;
+        return `"...${context}..."`;
       });
+
       return {
         id: item.id || 'UNKNOWN',
         errorType: 'HTML Entities in Description',
-        details: `Found ${matches.length} HTML entitie(s): ${examples.join('; ')}`,
+        details: `Found ${matches.length} HTML entitie(s): ${foundEntities}`,
         affectedField: 'description',
-        value: examples[0]
+        value: examples.join('; ')  
       };
     }
   }
   return null;
 }
+
+
+
+
+
+
+
+
+
+/**********Product Description too long************ */
+
 
 export function checkDescriptionLength(item: FeedItem): ErrorResult | null {
   if (item.description && item.description.length > MAX_DESCRIPTION_LENGTH) {
@@ -223,25 +258,32 @@ export function checkDescriptionLength(item: FeedItem): ErrorResult | null {
   return null;
 }
 
+
+
+/***********Description contains non-breaking spaces******************** */
+
 export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult | null {
-  if (item.description) {
+  if (item.description && nonBreakingSpaceRegex.test(item.description)) {
     const matches = getMatches(nonBreakingSpaceRegex, item.description);
-    if (matches.length > 0) {
-      const examples = matches.slice(0, 3).map(match => {
-        const context = getContext(item.description!, match.index!, match[0].length);
-        return `"${context}" (found: "␠")`;
-      });
-      return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Non-Breaking Spaces in Description',
-        details: `Found ${matches.length} non-breaking space(s): ${examples.join('; ')}`,
-        affectedField: 'description',
-        value: examples[0]
-      };
-    }
+
+    const examples = matches.map((match, index) => {
+      const context = getContext(item.description!, match.index!, match[0].length);
+      return `"...${context}..."`; // Display context with the non-breaking space
+    });
+
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Non-Breaking Spaces in Description',
+      details: `Found ${matches.length} instance(s) of non-breaking spaces in description`,
+      affectedField: 'description',
+      value: examples.join('; ')  // Show all cases with context
+    };
   }
   return null;
 }
+
+
+
 
 export function checkDescriptionPromotionalWords(item: FeedItem): ErrorResult | null {
   if (item.description) {

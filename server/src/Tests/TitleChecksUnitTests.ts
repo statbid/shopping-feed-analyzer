@@ -72,6 +72,111 @@ describe('FeedAnalyzer', () => {
 
 
 
+/*********** Unit Tests for Non-Breaking Spaces Check ******************** */
+
+describe('checkTitleNonBreakingSpaces', () => {
+  it('should return null when there are no non-breaking spaces', () => {
+    const item: FeedItem = {
+      id: '1',
+      title: 'Nike Running Shoes'
+    };
+    const error = errorCheckers.checkTitleNonBreakingSpaces(item);
+    expect(error).toBeNull();
+  });
+
+  it('should detect non-breaking spaces in the title', () => {
+    const item: FeedItem = {
+      id: '2',
+      title: 'Nike Running Shoes' // Contains non-breaking spaces
+    };
+    const error = errorCheckers.checkTitleNonBreakingSpaces(item);
+    
+    expect(error).not.toBeNull();
+    if (error) {
+      expect(error.errorType).toBe('Non-Breaking Spaces in Title');
+      expect(error.details).toBe('Title contains non-breaking spaces');
+      expect(error.value).toBe(item.title);
+    }
+  });
+
+});
+
+
+
+
+
+/************ Unit Tests for Product Description Too Long ************************** */
+describe('checkDescriptionLength', () => {
+  const MAX_DESCRIPTION_LENGTH = 5000;
+
+  it('should return null when the description is within the limit', () => {
+    const item: FeedItem = {
+      id: '1',
+      description: 'This is a short description within the limit.'
+    };
+    const error = errorCheckers.checkDescriptionLength(item);
+    expect(error).toBeNull();
+  });
+
+  it('should detect when the description exceeds the limit', () => {
+    const longDescription = 'a'.repeat(5050); // Create a string with 5050 'a' characters
+    const item: FeedItem = {
+      id: '2',
+      description: longDescription
+    };
+    const error = errorCheckers.checkDescriptionLength(item);
+    expect(error).not.toBeNull();
+    if (error) {
+      expect(error.errorType).toBe('Description Too Long');
+      expect(error.details).toBe('Description exceeds 5000 characters (current length: 5050)');
+      expect(error.value).toBe(`${longDescription.substring(0, 50)}...${longDescription.substring(5000)}`);
+    }
+  });
+
+  it('should handle an empty description without returning an error', () => {
+    const item: FeedItem = {
+      id: '3',
+      description: ''
+    };
+    const error = errorCheckers.checkDescriptionLength(item);
+    expect(error).toBeNull();
+  });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     
