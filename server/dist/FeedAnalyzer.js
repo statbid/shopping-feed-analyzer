@@ -124,9 +124,6 @@ class FeedAnalyzer {
                 .pipe(parser)
                 .pipe(transformer)
                 .on('finish', () => {
-                console.log(`Total products processed: ${this.result.totalProducts}`);
-                console.log(`Total unique IDs: ${this.idCounts.size}`);
-                console.log(`Total errors: ${this.result.errors.length}`);
                 resolve(this.result);
             })
                 .on('error', (err) => {

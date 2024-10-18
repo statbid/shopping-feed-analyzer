@@ -1,6 +1,7 @@
 import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from './types';
 import * as errorCheckers from './errorCheckers';
+import { error } from 'console';
 
 
 const allChecks = [
@@ -49,12 +50,14 @@ errorCheckers.checkProductTypeRepeatedTiers,
 errorCheckers.checkProductTypeWhitespace,
 errorCheckers.checkProductTypeRepeatedWhitespace,
 errorCheckers.checkProductTypeAngleBrackets,
-//errorCheckers.checkGTINLength,
-//errorCheckers.checkGTINValidity
-
-  
-
+errorCheckers.checkGTINLength,
+errorCheckers.checkGTINValidity,
+errorCheckers.checkMonitoredPharmacyWords,
+errorCheckers.checkGenderMismatch,
+errorCheckers.checkAgeGroupMismatch,
 ];
+
+
 
 function processItem(item: FeedItem): ErrorResult[] {
   const errors: ErrorResult[] = [];

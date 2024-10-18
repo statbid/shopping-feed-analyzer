@@ -20,3 +20,5 @@ __exportStar(require("./CategoryChecker"), exports);
 __exportStar(require("./ProductTypeChecker"), exports);
 __exportStar(require("./IdChecker"), exports);
 __exportStar(require("./RequiredFieldsChecker"), exports);
+__exportStar(require("./ProhibitedContentChecker"), exports);
+__exportStar(require("./AttributeMismatchChecker"), exports);

@@ -72,7 +72,10 @@ const allChecks = [
     errorCheckers.checkProductTypeRepeatedWhitespace,
     errorCheckers.checkProductTypeAngleBrackets,
     errorCheckers.checkGTINLength,
-    errorCheckers.checkGTINValidity
+    errorCheckers.checkGTINValidity,
+    errorCheckers.checkMonitoredPharmacyWords,
+    errorCheckers.checkGenderMismatch,
+    errorCheckers.checkAgeGroupMismatch,
 ];
 function processItem(item) {
     const errors = [];

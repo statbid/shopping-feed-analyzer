@@ -39,14 +39,28 @@ function checkProductType(item) {
 }
 function checkProductTypePromotionalWords(item) {
     if (item.product_type) {
-        const foundWords = constants_1.promotionalWords.filter(word => new RegExp(`\\b${word}\\b`, 'i').test(item.product_type));
+        const foundWords = constants_1.promotionalWords.filter(word => {
+            const regex = new RegExp(`\\b${word.replace(/\s+/g, '\\s+')}\\b`, 'i');
+            return regex.test(item.product_type);
+        });
         if (foundWords.length > 0) {
+            const examples = foundWords.slice(0, 3).map(word => {
+                const regex = new RegExp(`\\b${word.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+                const match = regex.exec(item.product_type);
+                if (match) {
+                    const startIndex = Math.max(0, match.index - 20);
+                    const endIndex = Math.min(item.product_type.length, match.index + match[0].length + 20);
+                    const context = item.product_type.slice(startIndex, endIndex);
+                    return `"${context}"`;
+                }
+                return '';
+            }).filter(Boolean);
             return {
                 id: item.id || 'UNKNOWN',
                 errorType: 'Promotional Words in Product Type',
-                details: `Found promotional word(s): ${foundWords.join(', ')}`,
+                details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
                 affectedField: 'product_type',
-                value: item.product_type
+                value: examples[0] || item.product_type
             };
         }
     }
@@ -105,32 +119,51 @@ function checkProductTypeRepeatedWhitespace(item) {
     return null;
 }
 function checkProductTypeAngleBrackets(item) {
-    if (item.product_type && (/^>|\s>|>\s|>$/.test(item.product_type))) {
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Angle Brackets at Product Type Start/End',
-            details: 'Product type contains angle brackets at start or end',
-            affectedField: 'product_type',
-            value: item.product_type
-        };
+    if (item.product_type) {
+        const trimmedProductType = item.product_type.trim();
+        if (trimmedProductType.startsWith('>') || trimmedProductType.endsWith('>')) {
+            return {
+                id: item.id || 'UNKNOWN',
+                errorType: 'Angle Bracket at Product Type Start or End',
+                details: 'Product type starts or ends with an angle bracket',
+                affectedField: 'product_type',
+                value: item.product_type
+            };
+        }
     }
     return null;
+}
+function parseGTIN(gtin) {
+    // Replace comma with dot for proper parsing of scientific notation
+    const normalizedGTIN = gtin.replace(',', '.');
+    // Check if the string is in scientific notation
+    if (/e/i.test(normalizedGTIN)) {
+        // Parse the scientific notation and convert to a regular number
+        const number = parseFloat(normalizedGTIN);
+        // Convert the number to a string, removing any decimal point
+        return Math.round(number).toString();
+    }
+    // If not in scientific notation, just remove non-digit characters
+    return normalizedGTIN.replace(/[^\d]/g, '');
 }
 function checkGTINLength(item) {
-    if (item.gtin && ![8, 12, 13, 14].includes(item.gtin.length)) {
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Incorrect GTIN Length',
-            details: 'GTIN length is incorrect',
-            affectedField: 'gtin',
-            value: item.gtin
-        };
+    if (item.gtin) {
+        const cleanGTIN = parseGTIN(item.gtin);
+        if (![8, 12, 13, 14].includes(cleanGTIN.length)) {
+            return {
+                id: item.id || 'UNKNOWN',
+                errorType: 'Incorrect GTIN Length',
+                details: `GTIN length is ${cleanGTIN.length}, expected 8, 12, 13, or 14 digits`,
+                affectedField: 'gtin',
+                value: item.gtin
+            };
+        }
     }
     return null;
 }
-// Bonus: GTIN check digit validation
 function isValidGTIN(gtin) {
-    const digits = gtin.split('').map(Number);
+    const cleanGTIN = parseGTIN(gtin);
+    const digits = cleanGTIN.split('').map(Number);
     const checkDigit = digits.pop();
     const sum = digits.reduce((acc, digit, index) => {
         return acc + digit * (index % 2 === 0 ? 3 : 1);
@@ -139,14 +172,17 @@ function isValidGTIN(gtin) {
     return checkDigit === calculatedCheckDigit;
 }
 function checkGTINValidity(item) {
-    if (item.gtin && !isValidGTIN(item.gtin)) {
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Invalid GTIN',
-            details: 'GTIN check digit is invalid',
-            affectedField: 'gtin',
-            value: item.gtin
-        };
+    if (item.gtin) {
+        const cleanGTIN = parseGTIN(item.gtin);
+        if (![8, 12, 13, 14].includes(cleanGTIN.length) || !isValidGTIN(cleanGTIN)) {
+            return {
+                id: item.id || 'UNKNOWN',
+                errorType: 'Invalid GTIN',
+                details: 'GTIN is invalid (incorrect length or check digit)',
+                affectedField: 'gtin',
+                value: item.gtin
+            };
+        }
     }
     return null;
 }
