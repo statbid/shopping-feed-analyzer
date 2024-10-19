@@ -7,3 +7,4 @@ export * from './RequiredFieldsChecker';
 export * from './ProhibitedContentChecker'
 export * from  './AttributeMismatchChecker';
 export * from './GTINChecker';
+//export * from './SpellChecker'

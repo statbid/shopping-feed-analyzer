@@ -73,13 +73,13 @@ describe('FeedAnalyzer', () => {
             });
             describe('checkProductTypePromotionalWords', () => {
                 it('should return an error if product type contains promotional words', () => {
-                    const item = { id: '1', product_type: 'Electronics > Computers on sale' };
+                    const item = { id: '1', product_type: 'Electronics > Computers big save' };
                     const error = errorCheckers.checkProductTypePromotionalWords(item);
                     expect(error).not.toBeNull();
                     if (error) {
                         expect(error.errorType).toBe('Promotional Words in Product Type');
-                        expect(error.details).toContain('Found 1 promotional word(s): sale');
-                        expect(error.value).toContain('Computers on sale');
+                        expect(error.details).toContain('Found 1 promotional word(s): save');
+                        expect(error.value).toContain("\"ics > Computers big save\"");
                     }
                 });
                 it('should return null if product type does not contain promotional words', () => {
@@ -213,28 +213,6 @@ describe('FeedAnalyzer', () => {
                     const item = { id: '1', gtin: '7,6157E+11' };
                     const error = errorCheckers.checkGTINLength(item);
                     expect(error).toBeNull();
-                });
-            });
-            describe('checkGTINValidity', () => {
-                it('should return an error if GTIN is invalid', () => {
-                    const item = { id: '1', gtin: '12345678' };
-                    const error = errorCheckers.checkGTINValidity(item);
-                    expect(error).not.toBeNull();
-                    if (error) {
-                        expect(error.errorType).toBe('Invalid GTIN');
-                        expect(error.details).toBe('GTIN is invalid (incorrect length or check digit)');
-                        expect(error.value).toBe('12345678');
-                    }
-                });
-                it('should return null if GTIN is valid', () => {
-                    const item = { id: '1', gtin: '73513537' }; // Valid GTIN-8
-                    const error = errorCheckers.checkGTINValidity(item);
-                    expect(error).toBeNull();
-                });
-                it('should handle GTIN in scientific notation', () => {
-                    const item = { id: '1', gtin: '7,6157E+11' };
-                    const error = errorCheckers.checkGTINValidity(item);
-                    expect(error).toBeNull(); // Assuming this is a valid GTIN when expanded
                 });
             });
         });

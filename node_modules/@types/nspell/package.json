@@ -1,0 +1,27 @@
+{
+    "name": "@types/nspell",
+    "version": "2.1.6",
+    "description": "TypeScript definitions for nspell",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/nspell",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Ulrich Block",
+            "githubUsername": "ulrichblock",
+            "url": "https://github.com/ulrichblock"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/nspell"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "0eaab00227cb8cf0056b4b695b03118bab47907d26430d2854e17a2ca85ab617",
+    "typeScriptVersion": "4.5"
+}

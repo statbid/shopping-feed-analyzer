@@ -26,6 +26,49 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const errorCheckers = __importStar(require("../errorCheckers"));
 describe('FeedAnalyzer', () => {
     describe('errorCheckers', () => {
+        /************Missing Spaces after commas***********************/
+        describe('descriptionMissingSpacesCheck', () => {
+            it('should return null when there is no description', () => {
+                const item = { id: '1', description: '' };
+                const error = errorCheckers.checkDescriptionMissingSpaces(item);
+                expect(error).toBeNull();
+            });
+            it('should return null when there are no matches', () => {
+                const item = { id: '2', description: 'This description, is perfectly formatted.' };
+                const error = errorCheckers.checkDescriptionMissingSpaces(item);
+                expect(error).toBeNull();
+            });
+            it('should return one instance without case numbering when there is one match', () => {
+                const item = { id: '3', description: 'This handmade,acetate frame is great.' };
+                const error = errorCheckers.checkDescriptionMissingSpaces(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.details).toBe('Found 1 instance(s) of Missing Spaces After Commas');
+                    expect(error.value).toBe("\".This handmade,acetate frame i.\"");
+                }
+            });
+            it('should return multiple instances with case numbering when there are multiple matches', () => {
+                const item = { id: '4', description: 'This handmade,acetate frame is unique,craftsmanship is key.' };
+                const error = errorCheckers.checkDescriptionMissingSpaces(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.details).toBe('Found 2 instance(s) of Missing Spaces After Commas');
+                    expect(error.value).toContain("(case 1) \".This handmade,acetate frame i.\"; (case 2) \".etate frame is unique,craftsmanship i.\"");
+                }
+            });
+            it('should return all instances when there are more matches', () => {
+                const item = {
+                    id: '5',
+                    description: 'This handmade,acetate frame,unique design,craftsmanship is key,work of art,beauty.'
+                };
+                const error = errorCheckers.checkDescriptionMissingSpaces(item);
+                expect(error).not.toBeNull();
+                if (error) {
+                    expect(error.details).toBe('Found 5 instance(s) of Missing Spaces After Commas');
+                    expect(error.value).toContain("(case 1) \".This handmade,acetate frame,u.\"; (case 2) \".ndmade,acetate frame,unique design,c.\"; (case 3) \".e frame,unique design,craftsmanship i.\"; (case 4) \".aftsmanship is key,work of art,bea.\"; (case 5) \".is key,work of art,beauty..\"");
+                }
+            });
+        });
         /************ Unit Tests for Description Contains Repeated Dashes ************************** */
         describe('checkDescriptionRepeatedDashes', () => {
             it('should return null when there are no repeated dashes', () => {
@@ -46,7 +89,7 @@ describe('FeedAnalyzer', () => {
                 if (error) {
                     expect(error.errorType).toBe('Repeated Dashes in Description');
                     expect(error.details).toBe('Found 1 instance(s) of repeated dashes');
-                    expect(error.value).toContain('\"....a description with -- repeated dashes....\"');
+                    expect(error.value).toContain("\"...scription with -- repeated dashe...\"");
                 }
             });
         });
@@ -107,7 +150,7 @@ describe('FeedAnalyzer', () => {
                 if (error) {
                     expect(error.errorType).toBe('Repeated Whitespace in Description');
                     expect(error.details).toBe('Found 1 instance(s) of repeated whitespaces in description');
-                    expect(error.value).toContain("\"...This description␣␣has repeated whitespaces....\"");
+                    expect(error.value).toContain("\"...his description␣␣has repeated wh...\"");
                 }
             });
         });
@@ -131,7 +174,7 @@ describe('FeedAnalyzer', () => {
                 if (error) {
                     expect(error.errorType).toBe('Repeated Commas in Description');
                     expect(error.details).toBe('Found 1 instance(s) of repeated commas in description');
-                    expect(error.value).toContain('\"...This description,, has repeated commas....\"');
+                    expect(error.value).toContain("\"...his description,, has repeated c...\"");
                 }
             });
         });
@@ -155,7 +198,7 @@ describe('FeedAnalyzer', () => {
                 if (error) {
                     expect(error.errorType).toBe('HTML in Description');
                     expect(error.details).toBe('Found 2 HTML tag(s): <div>, </div>');
-                    expect(error.value).toContain("\"...This description contains <div>HTML</div> tags....\"; \"...This description contains <div>HTML</div> tags....\"");
+                    expect(error.value).toContain("\"...ption contains <div>HTML</div> tags...\"; \"...tains <div>HTML</div> tags....\"");
                 }
             });
         });
@@ -179,7 +222,7 @@ describe('FeedAnalyzer', () => {
                 if (error) {
                     expect(error.errorType).toBe('HTML Entities in Description');
                     expect(error.details).toBe('Found 2 HTML entitie(s): &copy;, &reg;');
-                    expect(error.value).toContain("\"...This description contains &copy; and &reg; entities....\"; \"...This description contains &copy; and &reg; entities....\"");
+                    expect(error.value).toContain("\"...ption contains &copy; and &reg; enti...\"; \"...ins &copy; and &reg; entities....\"");
                 }
             });
         });
@@ -196,14 +239,14 @@ describe('FeedAnalyzer', () => {
             it('should detect non-breaking spaces in the description', () => {
                 const item = {
                     id: '2',
-                    description: 'This is a description with one non-breaking space.'
+                    description: 'This is a description with one non-breaki ng space.'
                 };
                 const error = errorCheckers.checkDescriptionNonBreakingSpaces(item);
                 expect(error).not.toBeNull();
                 if (error) {
                     expect(error.errorType).toBe('Non-Breaking Spaces in Description');
                     expect(error.details).toBe('Found 1 instance(s) of non-breaking spaces in description');
-                    expect(error.value).toContain('"...a description with one..."');
+                    expect(error.value).toContain("\"... one non-breaki ng space....\"");
                 }
             });
         });

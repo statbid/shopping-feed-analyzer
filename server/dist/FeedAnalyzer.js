@@ -24,10 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedAnalyzer = void 0;
+// FeedAnalyzer.ts - Updated with Spell Checker Integration
 const csv_parse_1 = require("csv-parse");
 const stream_1 = require("stream");
 const os_1 = require("os");
 const errorCheckers = __importStar(require("./errorCheckers"));
+const spellChecker = __importStar(require("./errorCheckers/SpellChecker"));
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -65,6 +67,15 @@ class FeedAnalyzer {
                         }
                     }
                 });
+            }
+        });
+        // Run spell checks
+        Object.values(spellChecker).forEach(checker => {
+            if (typeof checker === 'function') {
+                const errors = checker(item);
+                if (errors && errors.length > 0) {
+                    this.addErrors(errors);
+                }
             }
         });
     }

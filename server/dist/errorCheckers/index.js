@@ -22,3 +22,4 @@ __exportStar(require("./IdChecker"), exports);
 __exportStar(require("./RequiredFieldsChecker"), exports);
 __exportStar(require("./ProhibitedContentChecker"), exports);
 __exportStar(require("./AttributeMismatchChecker"), exports);
+__exportStar(require("./GTINChecker"), exports);

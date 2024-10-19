@@ -1,3 +1,4 @@
+// FeedAnalyzer.ts - Updated with Spell Checker Integration
 import { parse } from 'csv-parse';
 import { Transform } from 'stream';
 import { Worker } from 'worker_threads';
@@ -5,6 +6,7 @@ import { cpus } from 'os';
 import path from 'path';
 import { FeedItem, ErrorResult, AnalysisResult } from './types';
 import * as errorCheckers from './errorCheckers';
+import * as spellChecker from './errorCheckers/SpellChecker';
 
 export class FeedAnalyzer {
   private result: AnalysisResult = {
@@ -46,6 +48,16 @@ export class FeedAnalyzer {
         });
       }
     });
+
+    // Run spell checks
+    Object.values(spellChecker).forEach(checker => {
+      if (typeof checker === 'function') {
+        const errors = checker(item);
+        if (errors && errors.length > 0) {
+          this.addErrors(errors);
+        }
+      }
+    });
   }
 
   private checkDuplicateId(item: FeedItem) {
@@ -83,7 +95,7 @@ export class FeedAnalyzer {
         objectMode: true,
         transform: (item: FeedItem, _, callback) => {
           batch.push(item);
-          
+
           if (batch.length >= batchSize) {
             this.processBatch(batch);
             totalProcessed += batch.length;
@@ -92,7 +104,7 @@ export class FeedAnalyzer {
             }
             batch = [];
           }
-          
+
           callback();
         },
         flush: (callback) => {
@@ -111,7 +123,6 @@ export class FeedAnalyzer {
         .pipe(parser)
         .pipe(transformer)
         .on('finish', () => {
-         
           resolve(this.result);
         })
         .on('error', (err) => {
@@ -159,7 +170,7 @@ export class FeedAnalyzer {
         skip_empty_lines: true,
         delimiter: '\t',
       });
-  
+
       fileStream
         .pipe(parser)
         .on('data', () => {
