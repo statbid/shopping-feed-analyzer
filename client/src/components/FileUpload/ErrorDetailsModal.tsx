@@ -1,5 +1,5 @@
-import React from 'react';
-import { X } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ErrorResult {
   id: string;
@@ -16,7 +16,39 @@ interface ErrorDetailsModalProps {
   errors: ErrorResult[];
 }
 
+const ITEMS_PER_PAGE = 100;
+const VIRTUAL_WINDOW_SIZE = 20;
+
 const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, errorType, errors }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [virtualStart, setVirtualStart] = useState(0);
+
+  // Reset pagination when modal opens with new error type
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentPage(1);
+      setVirtualStart(0);
+    }
+  }, [isOpen, errorType]);
+
+  const totalPages = Math.ceil(errors.length / ITEMS_PER_PAGE);
+
+  // Ensure current page is valid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const currentPageData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return errors.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, errors]);
+
+  const virtualizedData = useMemo(() => {
+    return currentPageData.slice(virtualStart, virtualStart + VIRTUAL_WINDOW_SIZE);
+  }, [currentPageData, virtualStart]);
+
   if (!isOpen) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -25,35 +57,77 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
     }
   };
 
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, errors.length);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={handleBackdropClick}>
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white rounded-lg w-[80vw] h-[80vh] flex flex-col">
-        {/* Fixed header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-2xl font-bold">Detailed Errors: {errorType}</h2>
+        {/* Fixed Header */}
+        <div className="flex justify-between items-center p-4 border-b">
+          <div>
+            <h2 className="text-2xl font-bold">Detailed Errors: {errorType}</h2>
+            <p className="text-sm text-gray-600">
+              Showing {errors.length > 0 ? startIndex : 0}-{endIndex} of {errors.length} errors
+            </p>
+          </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-6 h-6" />
           </button>
         </div>
-        
-        {/* Scrollable content */}
-        <div className="flex-grow overflow-auto p-6">
-          <div className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-6">
-            <div className="font-bold text-gray-700">Product ID</div>
-            <div className="font-bold text-gray-700">Details</div>
-            <div className="font-bold text-gray-700">Affected Field</div>
-            <div className="font-bold text-gray-700">Value</div>
-            
-            {errors.map((error, index) => (
-              <React.Fragment key={index}>
-                <div className="break-all">{error.id}</div>
-                <div>{error.details}</div>
-                <div>{error.affectedField}</div>
-                <div className="break-words">{error.value}</div>
-              </React.Fragment>
-            ))}
+
+        {/* Fixed Table Header */}
+        <div className="sticky top-0 bg-gray-100 z-10">
+          <div className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 font-bold border-b">
+            <div>Product ID</div>
+            <div>Details</div>
+            <div>Affected Field</div>
+            <div>Value</div>
           </div>
         </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          {virtualizedData.map((error, index) => (
+            <div 
+              key={`${error.id}-${index}`}
+              className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 border-b border-gray-200 hover:bg-gray-50"
+            >
+              <div className="truncate">{error.id}</div>
+              <div className="truncate">{error.details}</div>
+              <div className="truncate">{error.affectedField}</div>
+              <div className="truncate">{error.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Fixed Footer with Pagination */}
+        {totalPages > 1 && (
+          <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-white">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300 flex items-center"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+            </button>
+            
+            <span className="text-sm">
+              Page {currentPage} of {totalPages}
+            </span>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300 flex items-center"
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

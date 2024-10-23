@@ -5,87 +5,160 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.spellChecks = void 0;
 exports.checkSpelling = checkSpelling;
+//import type * as NspellType from 'nspell';
 const nspell_1 = __importDefault(require("nspell"));
 const fs_1 = require("fs");
 const path_1 = __importDefault(require("path"));
-// Load the dictionaries
-const aff = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.aff'));
-const dic = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.dic'));
-const spell = (0, nspell_1.default)(aff, dic);
-// Cache for word corrections
-const correctionCache = new Map();
-// Additional words to ignore
-const ignoreWords = new Set(['no', 'no.', 'vs', 'vs.', 'etc', 'etc.']);
-function getValidCorrections(word) {
-    if (correctionCache.has(word)) {
-        return correctionCache.get(word);
+// Singleton class for spell checker management
+class SpellChecker {
+    constructor() {
+        this.correctionCache = new Map();
+        this.validationCache = new Map();
+        this.ready = false;
+        this.spell = this.initializeSpellChecker();
     }
-    const suggestions = spell.suggest(word);
-    correctionCache.set(word, suggestions);
-    return suggestions;
+    initializeSpellChecker() {
+        console.log('Initializing spell checker...');
+        const startTime = Date.now();
+        try {
+            const aff = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.aff'));
+            const dic = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.dic'));
+            const spell = (0, nspell_1.default)(aff, dic);
+            // Pre-cache common words
+            this.preloadCommonWords(spell);
+            const endTime = Date.now();
+            console.log(`Spell checker initialized in ${endTime - startTime}ms`);
+            this.ready = true;
+            return spell;
+        }
+        catch (error) {
+            console.error('Failed to initialize spell checker:', error);
+            throw error;
+        }
+    }
+    preloadCommonWords(spell) {
+        // Common product-related words to pre-validate
+        const commonWords = [
+            'product', 'quality', 'premium', 'warranty', 'shipping',
+            'available', 'includes', 'features', 'material', 'color',
+            'size', 'weight', 'height', 'width', 'length',
+            'package', 'content', 'delivery', 'brand', 'model',
+            'series', 'version', 'type', 'style', 'design'
+        ];
+        commonWords.forEach(word => {
+            const isValid = spell.correct(word);
+            this.validationCache.set(word, isValid);
+            if (!isValid) {
+                this.correctionCache.set(word, spell.suggest(word));
+            }
+        });
+    }
+    static getInstance() {
+        if (!SpellChecker.instance) {
+            SpellChecker.instance = new SpellChecker();
+        }
+        return SpellChecker.instance;
+    }
+    isReady() {
+        return this.ready;
+    }
+    correct(word) {
+        if (this.validationCache.has(word)) {
+            return this.validationCache.get(word);
+        }
+        const isValid = this.spell.correct(word);
+        this.validationCache.set(word, isValid);
+        return isValid;
+    }
+    suggest(word) {
+        if (this.correctionCache.has(word)) {
+            return this.correctionCache.get(word);
+        }
+        const suggestions = this.spell.suggest(word);
+        this.correctionCache.set(word, suggestions);
+        return suggestions;
+    }
 }
-function normalizeWord(word) {
-    return word.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()™®©]/g, '');
-}
-function isLikelyProperNoun(word) {
-    return /^[A-Z][a-z]+$/.test(word);
-}
-function isNumber(word) {
-    // This regex matches numbers (including decimals), years, and dimensions
-    return /^(\d+\.?\d*|\d{4}|\d+["']?[DWHLdwhl]?)$/.test(word.replace(/[,]/g, ''));
-}
-function isSpecialCase(word) {
-    // Check for words with apostrophes, hyphens, or trademark symbols
-    return /[''\-™®©]/.test(word) || word.startsWith("'") || word.endsWith("'");
-}
-function isBrandWord(word, brand) {
-    const brandWords = brand.toLowerCase().split(/\s+/);
-    return brandWords.includes(word.toLowerCase());
-}
+// Initialize spell checker singleton
+const spellChecker = SpellChecker.getInstance();
+// Efficient word filtering with Set
+const ignoreWords = new Set([
+    'no', 'no.', 'vs', 'vs.', 'etc', 'etc.',
+    // Add more common product-related terms
+    'qty', 'ref', 'upc', 'sku', 'isbn', 'eol', 'msrp',
+    'usb', 'hdmi', 'lcd', 'led', 'ac', 'dc', '3d', '4k',
+    'uk', 'us', 'eu', 'ce', 'ul', 'iso', 'din', 'en'
+]);
+// Regex patterns compiled once
+const numberPattern = /^(\d+\.?\d*|\d{4}|\d+["']?[DWHLdwhl]?)$/;
+const properNounPattern = /^[A-Z][a-z]+$/;
+const specialCharPattern = /[''\-™®©]/;
+// Optimized helper functions
+const isNumber = (word) => numberPattern.test(word.replace(/[,]/g, ''));
+const isLikelyProperNoun = (word) => properNounPattern.test(word);
+const isSpecialCase = (word) => specialCharPattern.test(word) || word.startsWith("'") || word.endsWith("'");
+const isBrandWord = (word, brand) => {
+    if (!brand)
+        return false;
+    const wordLower = word.toLowerCase();
+    const brandLower = brand.toLowerCase();
+    if (brandLower.includes(wordLower))
+        return true;
+    return brand.toLowerCase().split(/\s+/).includes(wordLower);
+};
+// Word processing cache
+const processedWords = new Map();
 function checkSpelling(item) {
+    if (!spellChecker.isReady()) {
+        console.warn('Spell checker not ready');
+        return [];
+    }
     const errors = [];
-    const startTime = Date.now();
-    let wordCount = 0;
-    let misspelledCount = 0;
+    const seenWords = new Set();
+    function processWord(word, fieldName) {
+        // Skip if word already processed in this item
+        if (seenWords.has(word))
+            return;
+        seenWords.add(word);
+        // Check process cache
+        const cacheKey = `${word}:${item.brand || ''}`;
+        if (processedWords.has(cacheKey)) {
+            const shouldSkip = processedWords.get(cacheKey);
+            if (shouldSkip)
+                return;
+        }
+        // Quick filters
+        if (word.length <= 2 ||
+            ignoreWords.has(word.toLowerCase()) ||
+            isNumber(word) ||
+            isSpecialCase(word) ||
+            isBrandWord(word, item.brand || '')) {
+            processedWords.set(cacheKey, true);
+            return;
+        }
+        // Spell check
+        if (!spellChecker.correct(word) && !isLikelyProperNoun(word)) {
+            const suggestions = spellChecker.suggest(word).slice(0, 3);
+            if (suggestions.length > 0 && suggestions[0].toLowerCase() !== word.toLowerCase()) {
+                errors.push({
+                    id: item.id || 'UNKNOWN',
+                    errorType: `Spelling Error in ${fieldName}`,
+                    details: `Misspelled word found: "${word}"`,
+                    affectedField: fieldName,
+                    value: `${word} (Suggestion: ${suggestions.join(', ')})`
+                });
+            }
+        }
+        processedWords.set(cacheKey, false);
+    }
     function checkField(fieldName) {
         const content = item[fieldName];
         if (typeof content === 'string') {
-            const words = content.split(/\s+/);
-            wordCount += words.length;
-            for (const word of words) {
-                const normalizedWord = normalizeWord(word);
-                if (normalizedWord.length > 2 &&
-                    !ignoreWords.has(normalizedWord) &&
-                    !isNumber(word) &&
-                    !isSpecialCase(word) &&
-                    !isBrandWord(word, item.brand || '') &&
-                    !spell.correct(normalizedWord)) {
-                    misspelledCount++;
-                    const corrections = getValidCorrections(normalizedWord);
-                    if (corrections.length > 0 &&
-                        corrections[0].toLowerCase() !== normalizedWord &&
-                        !isLikelyProperNoun(word)) {
-                        errors.push({
-                            id: item.id,
-                            errorType: `Spelling Error in ${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`,
-                            details: `Misspelled word found: "${word}"`,
-                            affectedField: fieldName,
-                            value: `${word} (Suggestion: ${corrections[0]})`
-                        });
-                    }
-                }
-            }
+            content.split(/\s+/).forEach(word => processWord(word, fieldName));
         }
     }
     checkField('title');
     checkField('description');
-    /*
-      const endTime = Date.now();
-      console.log(`Spelling check for item ${item.id}:`);
-      console.log(`  Time taken: ${endTime - startTime}ms`);
-      console.log(`  Words checked: ${wordCount}`);
-      console.log(`  Misspelled words: ${misspelledCount}`);
-      console.log(`  Errors found: ${errors.length}`);*/
     return errors;
 }
 exports.spellChecks = [checkSpelling];
