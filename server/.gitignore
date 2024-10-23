@@ -1,3 +1,5 @@
 
 # dependencies
 /node_modules
+# Ignore uploads folder
+server/uploads/
