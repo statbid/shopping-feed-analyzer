@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Eye, Download } from 'lucide-react';
 import ErrorDetailsModal from './ErrorDetailsModal';
-import ProgressModal from './ProgressModal';
 
 interface ErrorResult {
   id: string;
@@ -64,11 +63,6 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   return (
     <div ref={containerRef} className="font-sans grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6 h-full">
-      <ProgressModal 
-        isOpen={isLoading}
-        totalProducts={results.totalProducts}
-        processedProducts={processedProducts}
-      />
 
       {/* Left Panel (Results) - 25% width */}
       <div className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between h-full overflow-auto">

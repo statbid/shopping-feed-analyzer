@@ -31,7 +31,6 @@ export default function FileUpload() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [processedProducts, setProcessedProducts] = useState(0);
-  const [totalProducts, setTotalProducts] = useState(0);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -67,7 +66,6 @@ export default function FileUpload() {
     setIsLoading(true);
     setIsProgressModalOpen(true);
     setProcessedProducts(0);
-    setTotalProducts(0);
   
     const formData = new FormData();
     formData.append('file', file);
@@ -107,11 +105,8 @@ export default function FileUpload() {
                 return;
               }
   
-              if (data.totalProducts) {
-                setTotalProducts(data.totalProducts);
-              }
-              if (data.progress) {
-                setProcessedProducts(data.progress);
+              if (data.processed) {
+                setProcessedProducts(data.processed);
               }
               if (data.completed) {
                 setAnalysisResults(data.results);
@@ -136,65 +131,6 @@ export default function FileUpload() {
       setIsProgressModalOpen(false);
     }
   };
-
-  const handleDownloadDetails = (errorType: string) => {
-    if (!analysisResults) return;
-
-    const errors = analysisResults.errors.filter(error => error.errorType === errorType);
-    const csvContent = [
-      ['Product ID', 'Error Type', 'Details', 'Affected Field', 'Value'],
-      ...errors.map(error => [error.id, error.errorType, error.details, error.affectedField, error.value])
-    ].map(e => e.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${file?.name.replace(/\.[^/.]+$/, '')}_${errorType.replace(/\s+/g, '_')}_errors.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const handleDownloadReport = () => {
-    if (!analysisResults) return;
-
-    const csvContent = [
-      ['Product ID', 'Error Type', 'Details', 'Affected Field', 'Value'],
-      ...analysisResults.errors.map(error => [error.id, error.errorType, error.details, error.affectedField, error.value])
-    ].map(e => e.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${file?.name.replace(/\.[^/.]+$/, '')}_full_report.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  useEffect(() => {
-    if (isLoading && analysisResults) {
-      const interval = setInterval(() => {
-        setProcessedProducts((prev) => {
-          if (prev < analysisResults.totalProducts) {
-            return prev + Math.ceil(analysisResults.totalProducts / 50);
-          }
-          clearInterval(interval);
-          return analysisResults.totalProducts;
-        });
-      }, 200);
-
-      return () => clearInterval(interval);
-    }
-  }, [isLoading, analysisResults]);
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -224,8 +160,8 @@ export default function FileUpload() {
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}
-            onDownloadDetails={handleDownloadDetails}
-            onDownloadReport={handleDownloadReport}
+            onDownloadDetails={() => {}}
+            onDownloadReport={() => {}}
             isLoading={isLoading}
           />
         </div>
@@ -239,7 +175,6 @@ export default function FileUpload() {
 
       <ProgressModal 
         isOpen={isProgressModalOpen}
-        totalProducts={totalProducts}
         processedProducts={processedProducts}
       />
     </div>

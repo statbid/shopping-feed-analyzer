@@ -28,26 +28,25 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
         return res.status(400).json({ error: 'No file uploaded' });
     }
     try {
+        console.log('Starting analysis for file:', req.file.originalname);
         const fileStream = fs_1.default.createReadStream(req.file.path);
         const analyzer = new FeedAnalyzer_1.FeedAnalyzer();
-        // Count total products first
-        const totalProducts = await analyzer.countTotalProducts(fs_1.default.createReadStream(req.file.path));
-        analyzer.resetAnalysis(); // Make sure to reset before starting analysis
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
         });
         const sendUpdate = (data) => {
+            console.log('Sending update:', data);
             res.write(`data: ${safeStringify(data)}\n\n`);
         };
-        // Send total products to frontend initially
-        sendUpdate({ totalProducts });
         // Analyze the stream and send progress updates
-        const results = await analyzer.analyzeStream(fileStream, (progress) => {
-            sendUpdate({ progress });
+        const results = await analyzer.analyzeStream(fileStream, (processed) => {
+            console.log(`Progress: ${processed} SKUs processed`);
+            sendUpdate({ processed });
         });
         // Send final results
+        // console.log('Analysis complete, sending final results');
         sendUpdate({ results, completed: true });
         res.end();
     }
@@ -64,6 +63,7 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
         // Clean up uploaded file
         if (req.file) {
             fs_1.default.unlinkSync(req.file.path);
+            console.log('Cleaned up uploaded file:', req.file.path);
         }
     }
 });

@@ -20,10 +20,7 @@ const safeStringify = (obj: any) => {
     console.error('Error stringifying object:', error);
     return JSON.stringify({ error: 'Error stringifying response' });
   }
-  
 };
-
-
 
 app.post('/api/analyze', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -31,13 +28,10 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
   }
 
   try {
+    console.log('Starting analysis for file:', req.file.originalname);
     const fileStream = fs.createReadStream(req.file.path);
     const analyzer = new FeedAnalyzer();
 
-    // Count total products first
-    const totalProducts = await analyzer.countTotalProducts(fs.createReadStream(req.file.path));
-    analyzer.resetAnalysis(); // Make sure to reset before starting analysis
-    
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -45,18 +39,18 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     });
 
     const sendUpdate = (data: any) => {
+      console.log('Sending update:', data);
       res.write(`data: ${safeStringify(data)}\n\n`);
     };
 
-    // Send total products to frontend initially
-    sendUpdate({ totalProducts });
-
     // Analyze the stream and send progress updates
-    const results = await analyzer.analyzeStream(fileStream, (progress: number) => {
-      sendUpdate({ progress });
+    const results = await analyzer.analyzeStream(fileStream, (processed: number) => {
+      console.log(`Progress: ${processed} SKUs processed`);
+      sendUpdate({ processed });
     });
 
     // Send final results
+   // console.log('Analysis complete, sending final results');
     sendUpdate({ results, completed: true });
     res.end();
   } catch (error: unknown) {
@@ -71,10 +65,10 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     // Clean up uploaded file
     if (req.file) {
       fs.unlinkSync(req.file.path);
+      console.log('Cleaned up uploaded file:', req.file.path);
     }
   }
 });
-
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
