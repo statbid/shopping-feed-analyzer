@@ -2,4 +2,4 @@
 client/node_modules
 server/node_modules
 # Ignore uploads folder
-server/uploads/
+server/uploads/*
