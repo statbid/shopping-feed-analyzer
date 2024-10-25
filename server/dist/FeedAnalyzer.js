@@ -24,10 +24,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedAnalyzer = void 0;
+// FeedAnalyzer.ts - Updated with Spell Checker Integration
 const csv_parse_1 = require("csv-parse");
 const stream_1 = require("stream");
 const os_1 = require("os");
 const errorCheckers = __importStar(require("./errorCheckers"));
+const spellChecker = __importStar(require("./errorCheckers/SpellChecker"));
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -39,70 +41,43 @@ class FeedAnalyzer {
         this.numWorkers = Math.max(1, (0, os_1.cpus)().length - 1);
         this.activeWorkers = 0;
     }
-    async processBatch(batch) {
+    processBatch(batch) {
         for (const item of batch) {
             this.result.totalProducts++;
-            await this.checkAllErrors(item);
+            this.checkAllErrors(item);
         }
     }
-    async checkAllErrors(item) {
+    checkAllErrors(item) {
         // Check for duplicate IDs
         this.checkDuplicateId(item);
         // Run all other error checks
-        for (const checker of Object.values(errorCheckers)) {
-            try {
-                if (typeof checker === 'function') {
-                    // Check if it's an async function
-                    if (checker.constructor.name === 'AsyncFunction') {
-                        const errors = await checker(item);
-                        if (errors) {
-                            if (Array.isArray(errors)) {
-                                this.addErrors(errors);
-                            }
-                            else {
-                                this.addErrors([errors]);
-                            }
-                        }
-                    }
-                    else {
-                        // Handle synchronous checker
-                        const error = checker(item);
+        Object.values(errorCheckers).forEach(checker => {
+            if (typeof checker === 'function') {
+                const error = checker(item);
+                if (error) {
+                    this.addErrors([error]);
+                }
+            }
+            else if (Array.isArray(checker)) {
+                checker.forEach(subChecker => {
+                    if (typeof subChecker === 'function') {
+                        const error = subChecker(item);
                         if (error) {
-                            // Make sure we only add it if it's an ErrorResult
-                            if ('id' in error && 'errorType' in error) {
-                                this.addErrors([error]);
-                            }
+                            this.addErrors([error]);
                         }
                     }
-                }
-                else if (Array.isArray(checker)) {
-                    for (const subChecker of checker) {
-                        if (typeof subChecker === 'function') {
-                            if (subChecker.constructor.name === 'AsyncFunction') {
-                                const errors = await subChecker(item);
-                                if (errors) {
-                                    if (Array.isArray(errors)) {
-                                        this.addErrors(errors);
-                                    }
-                                    else {
-                                        this.addErrors([errors]);
-                                    }
-                                }
-                            }
-                            else {
-                                const error = subChecker(item);
-                                if (error && 'id' in error && 'errorType' in error) {
-                                    this.addErrors([error]);
-                                }
-                            }
-                        }
-                    }
+                });
+            }
+        });
+        // Run spell checks
+        Object.values(spellChecker).forEach(checker => {
+            if (typeof checker === 'function') {
+                const errors = checker(item);
+                if (errors && errors.length > 0) {
+                    this.addErrors(errors);
                 }
             }
-            catch (err) {
-                console.error('Error in checker:', err);
-            }
-        }
+        });
     }
     checkDuplicateId(item) {
         if (item.id) {
@@ -128,46 +103,32 @@ class FeedAnalyzer {
                 delimiter: '\t',
                 relax_column_count: true,
             });
-            // Define a function to randomize the batch size between 900 and 1100
-            const getRandomBatchSize = () => Math.floor(Math.random() * 201) + 900; // random value between 900 and 1100
-            let batchSize = getRandomBatchSize();
+            const batchSize = 1000;
             let batch = [];
             let totalProcessed = 0;
             const transformer = new stream_1.Transform({
                 objectMode: true,
-                transform: async (item, _, callback) => {
-                    try {
-                        batch.push(item);
-                        if (batch.length >= batchSize) {
-                            await this.processBatch(batch);
-                            totalProcessed += batch.length;
-                            if (progressCallback) {
-                                progressCallback(totalProcessed);
-                            }
-                            batch = [];
-                            // Generate a new random batch size for the next batch
-                            batchSize = getRandomBatchSize();
+                transform: (item, _, callback) => {
+                    batch.push(item);
+                    if (batch.length >= batchSize) {
+                        this.processBatch(batch);
+                        totalProcessed += batch.length;
+                        if (progressCallback) {
+                            progressCallback(totalProcessed);
                         }
-                        callback();
+                        batch = [];
                     }
-                    catch (err) {
-                        callback(err instanceof Error ? err : new Error(String(err)));
-                    }
+                    callback();
                 },
-                flush: async (callback) => {
-                    try {
-                        if (batch.length > 0) {
-                            await this.processBatch(batch);
-                            totalProcessed += batch.length;
-                            if (progressCallback) {
-                                progressCallback(totalProcessed);
-                            }
+                flush: (callback) => {
+                    if (batch.length > 0) {
+                        this.processBatch(batch);
+                        totalProcessed += batch.length;
+                        if (progressCallback) {
+                            progressCallback(totalProcessed);
                         }
-                        callback();
                     }
-                    catch (err) {
-                        callback(err instanceof Error ? err : new Error(String(err)));
-                    }
+                    callback();
                 }
             });
             fileStream
@@ -184,6 +145,7 @@ class FeedAnalyzer {
     }
     addErrors(errors) {
         for (const error of errors) {
+            // For duplicate IDs, update the existing error instead of adding a new one
             if (error.errorType === 'Duplicate Id') {
                 const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
                 if (existingError) {

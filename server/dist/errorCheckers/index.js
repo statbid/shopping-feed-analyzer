@@ -23,3 +23,4 @@ __exportStar(require("./RequiredFieldsChecker"), exports);
 __exportStar(require("./ProhibitedContentChecker"), exports);
 __exportStar(require("./AttributeMismatchChecker"), exports);
 __exportStar(require("./GTINChecker"), exports);
+//export * from './SpellChecker'
