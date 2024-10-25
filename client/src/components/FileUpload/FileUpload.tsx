@@ -3,6 +3,7 @@ import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
+import Toast from './Toast'; // Import the new Toast component
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -31,16 +32,6 @@ export default function FileUpload() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [processedProducts, setProcessedProducts] = useState(0);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (uploadStatus.type === 'success') {
-      timer = setTimeout(() => {
-        setUploadStatus({ type: '', message: '' });
-      }, 2000);
-    }
-    return () => clearTimeout(timer);
-  }, [uploadStatus]);
 
   const handleFileSelect = (selectedFile: File) => {
     if (selectedFile && (
@@ -142,17 +133,12 @@ export default function FileUpload() {
         isLoading={isLoading}
       />
 
-      {uploadStatus.type === 'success' && (
-        <div className="text-green-600 text-sm mt-2">
-          {uploadStatus.message}
-        </div>
-      )}
-
-      {uploadStatus.type === 'error' && (
-        <div className="p-4 mt-4 rounded bg-red-100 text-red-700">
-          <p className="font-bold">Error</p>
-          <p>{uploadStatus.message}</p>
-        </div>
+      {uploadStatus.type && (
+        <Toast 
+          type={uploadStatus.type} 
+          message={uploadStatus.message} 
+          onClose={() => setUploadStatus({ type: '', message: '' })}
+        />
       )}
 
       {analysisResults && (

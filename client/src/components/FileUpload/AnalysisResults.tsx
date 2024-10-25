@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Eye, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Eye, Download, ChevronLeft, ChevronRight, BadgeAlert } from 'lucide-react';
 import ErrorDetailsModal from './ErrorDetailsModal';
 import ErrorFixSuggestions from './ErrorFixSuggestions';
 
@@ -23,20 +23,31 @@ interface AnalysisResultsProps {
   isLoading: boolean;
 }
 
-const AnalysisResults: React.FC<AnalysisResultsProps> = ({ 
-  results, 
-  fileName, 
+const ITEMS_PER_PAGE = 10;
+
+const AnalysisResults: React.FC<AnalysisResultsProps> = ({
+  results,
+  fileName,
   onDownloadDetails,
   onDownloadReport,
-  isLoading
+  isLoading,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [processedProducts, setProcessedProducts] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const totalErrors = Object.values(results.errorCounts).reduce((a, b) => a + b, 0);
   const totalChecksFailed = Object.keys(results.errorCounts).length;
+
+  // Calculate pagination
+  const errorEntries = Object.entries(results.errorCounts);
+  const totalPages = Math.ceil(errorEntries.length / ITEMS_PER_PAGE);
+
+  const currentPageData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return errorEntries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [currentPage, errorEntries]);
 
   const handleViewDetails = (errorType: string) => {
     setSelectedErrorType(errorType);
@@ -44,16 +55,16 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   };
 
   const getFirstErrorOfType = (errorType: string): ErrorResult | undefined => {
-    return results.errors.find(error => error.errorType === errorType);
+    return results.errors.find((error) => error.errorType === errorType);
   };
 
   useEffect(() => {
     if (isLoading) {
-      setProcessedProducts(0); 
+      setProcessedProducts(0);
       const interval = setInterval(() => {
         setProcessedProducts((prev) => {
           if (prev < results.totalProducts) {
-            return prev + Math.ceil(results.totalProducts / 50); 
+            return prev + Math.ceil(results.totalProducts / 50);
           }
           clearInterval(interval);
           return results.totalProducts;
@@ -62,111 +73,163 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     }
   }, [isLoading, results.totalProducts]);
 
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, errorEntries.length);
+
   return (
-<div ref={containerRef} className="font-sans grid grid-cols-1 lg:grid-cols-[1fr_3fr] gap-6 h-full box-border">
+    <div className="font-sans grid grid-cols-12 gap-6 h-full">
+      {/* Left Panel - 20% width (3 columns) */}
+      <div className="col-span-3 bg-[#FCFCFC] rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
+        <div className="grid grid-cols-1 text-2xl font-bold bg-gray-200 border-b order-[#E6EAEE]">
+          <div className="p-4 text-center text-[#232323]">Results</div>
+        </div>
 
-{/* Left Panel (Results) - 25% width */}
-<div className="bg-white p-6 rounded-lg shadow-lg flex flex-col justify-between h-full overflow-auto box-border">
-  <div>
-    <h2 className="text-2xl font-bold">Results</h2>
-
-    <div className="border-t border-gray-300 mt-4 pt-4 box-border">
-      <p className="text-4xl font-bold text-blue-600">{totalErrors}</p>
-      <p className="text-gray-600">Total Errors</p>
-    </div>
-
-    <div className="border-t border-gray-300 mt-4 pt-4 box-border">
-      <p className="text-xl font-semibold">{results.totalProducts}</p>
-      <p className="text-gray-600">Total SKUs Checked</p>
-    </div>
-
-    <div className="border-t border-gray-300 mt-4 pt-4 box-border">
-      <p className="text-xl font-semibold">{totalChecksFailed}</p>
-      <p className="text-gray-600">Total Checks Failed</p>
-    </div>
-  </div>
-
-  {/* "Download the report" and "Learn more" sections */}
-  <div className="mt-8 border-t border-gray-300 pt-4 box-border">
-    <button
-      className="w-full flex items-center justify-between px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200"
-      onClick={onDownloadReport}
-    >
-      <span>Download the report</span>
-      <Download className="w-5 h-5" />
-    </button>
-
-    <p className="mt-4 text-blue-600 hover:underline cursor-pointer">
-      Learn more about the Shopping Feed Analyzer →
-    </p>
-  </div>
-</div>
-
-{/* Right Panel (Error Details) - 75% width */}
-<div className="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full box-border">
-  <div className="border-2 border-gray-200 rounded-lg overflow-hidden flex-grow flex flex-col h-full box-border">
-    {/* Header */}
-    <div className="grid grid-cols-[2fr_1fr_2fr] text-sm font-semibold bg-gray-100 sticky top-0 box-border" style={{ zIndex: 10 }}>
-      <div className="p-3 border-r-2 border-b-2 border-gray-200">Best Practice</div>
-      <div className="p-3 border-r-2 border-b-2 border-gray-200 text-center">Problem Count</div>
-      <div className="p-3 border-b-2 border-gray-200">How to Fix</div>
-    </div>
-
-    {/* Scrollable content */}
-    <div className="overflow-y-auto flex-grow box-border">
-      {Object.entries(results.errorCounts).map(([errorType, count], index) => {
-        const firstError = getFirstErrorOfType(errorType);
-        return (
-          <div key={errorType} className="grid grid-cols-[2fr_1fr_2fr] text-sm border-b border-gray-200 box-border">
-            <div className="p-3 border-r border-gray-200 box-border">
-              <p className="font-medium">{errorType}</p>
-              {firstError && (
-                <div className="text-xs text-gray-600 mt-1">
-                  <p>Example</p>
-                  <p>id: {firstError.id}</p>
-                  <p>details: {firstError.details}</p>
-                  <p>affected field: {firstError.affectedField}</p>
-                  <p>value: {firstError.value}</p>
-                </div>
-              )}
+        <div className="overflow-y-auto flex-grow p-6 space-y-6">
+          {/* Stats Cards */}
+          <div className="space-y-6">
+            <div className="p-3 rounded-lg">
+              <p className="text-4xl font-bold text-[#17235E]">{totalErrors}</p>
+              <p className="font-bold text-xl mt-2">Total Errors</p>
             </div>
-            <div className="p-3 border-r border-gray-200 flex flex-col items-center justify-center box-border">
-              <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs mb-2">
+
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-4xl font-bold">{results.totalProducts}</p>
+              <p className="text-xl mt-2">Total SKUs Checked</p>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-4xl font-bold">{totalChecksFailed}</p>
+              <p className="text-xl mt-2">Failed Checks</p>
+            </div>
+
+            <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200" onClick={onDownloadReport}>
+              <button className="w-full flex items-center bg-transparent rounded-lg font-bold text-xl">
+                <span>Download the report</span>
+                <Download className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded-xl">
+              <p className="mt-4 text-[#17235E] hover:underline cursor-pointer font-bold text-xl">
+                Learn more about the Shopping Feed Analyzer →
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t-2 border-gray-200 p-4 flex justify-between items-center bg-gray-200 flex-shrink-0">
+          <p className="min-h-[30px]"></p>
+        </div>
+      </div>
+      
+      
+      
+  {/* Right Panel - 80% width (9 columns) */}
+<div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
+  <div className="grid grid-cols-[40%,20%,40%] text-[#232323] text-2xl font-bold bg-gray-200 border-b border-[#E6EAEE]">
+    <div className="p-4">Best Practise</div>
+    <div className="p-4 text-center">Problem Count</div>
+    <div className="p-4 text-[#17235E]">How to Fix</div>
+  </div>
+
+  <div className="overflow-y-auto flex-grow">
+    {currentPageData.map(([errorType, count], index) => {
+      const firstError = getFirstErrorOfType(errorType);
+      return (
+        <div
+          key={errorType}
+          className="grid grid-cols-[40%,20%,40%] text-[#232323] text-lg bg-[#FCFCFC] hover:bg-gray-100 transition-colors divide-x divide-[#E6EAEE] border-b border-gray-200"
+        >
+          <div className="p-4">
+            <p className="font-bold">{errorType}</p>
+            {firstError && (
+              <div className="mt-2 text-[16px] leading-tight">
+                <p className="font-bold">Example:</p>
+                <p>
+                  <span className="font-bold">id:</span> {firstError.id}
+                </p>
+                <p>
+                  <span className="font-bold">details:</span> {firstError.details}
+                </p>
+                <p>
+                  <span className="font-bold">affected field:</span> {firstError.affectedField}
+                </p>
+                <p>
+                  <span className="font-bold">value:</span> {firstError.value}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 flex flex-col items-center">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="bg-red-100 font-bold text-red-800 px-3 py-1 rounded-full text-[16px]">
                 {count}
               </span>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleViewDetails(errorType)}
-                  className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center text-xs"
-                >
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </button>
-                <button
-                  onClick={() => onDownloadDetails(errorType)}
-                  className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 flex items-center text-xs"
-                >
-                  <Download className="w-3 h-3 mr-1" /> Download
-                </button>
-              </div>
             </div>
-            <div className="p-3">
-  <ErrorFixSuggestions errorType={errorType} />
-</div>
+
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleViewDetails(errorType)}
+                className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center text-[16px]"
+              >
+                <Eye className="w-4 h-4 mr-1" /> View
+              </button>
+              <button
+                onClick={() => onDownloadDetails(errorType)}
+                className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center text-[16px]"
+              >
+                <Download className="w-4 h-4 mr-1" /> Download
+              </button>
+            </div>
           </div>
-        );
-      })}
-    </div>
+
+          <div className="mt-2 text-[16px] leading-tight">
+            <div className="font-bold text-[#17235E]">
+              <ErrorFixSuggestions errorType={errorType} />
+            </div>
+          </div>
+        </div>
+      );
+    })}
   </div>
+
+  {totalPages > 1 && (
+    <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200 flex-shrink-0">
+      <button
+        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+        disabled={currentPage === 1}
+        className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
+      >
+        <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+      </button>
+
+      <div className="text-sm text-[#17235E]">
+        <span>
+          Showing {startIndex}-{endIndex} of {errorEntries.length} errors
+        </span>
+        <span className="mx-2">•</span>
+        <span>Page {currentPage} of {totalPages}</span>
+      </div>
+
+      <button
+        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
+      >
+        Next <ChevronRight className="w-4 h-4 ml-1" />
+      </button>
+    </div>
+  )}
 </div>
 
-<ErrorDetailsModal
-  isOpen={isModalOpen}
-  onClose={() => setIsModalOpen(false)}
-  errorType={selectedErrorType || ''}
-  errors={selectedErrorType ? results.errors.filter(error => error.errorType === selectedErrorType) : []}
-/>
-</div>
-
+      <ErrorDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        errorType={selectedErrorType || ''}
+        errors={selectedErrorType ? results.errors.filter((error) => error.errorType === selectedErrorType) : []}
+      />
+    </div>
   );
 };
 

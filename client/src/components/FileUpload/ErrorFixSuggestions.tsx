@@ -113,7 +113,7 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
   };
 
   return (
-    <div className="text-sm text-gray-700">
+    <div className="font-bold text-[#17235E] text-[17px] leading-tight">
       <div className="bg-blue-50 p-3 rounded-lg">
         <p>{getSuggestion(errorType)}</p>
       </div>

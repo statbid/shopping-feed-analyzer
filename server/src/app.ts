@@ -39,7 +39,7 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     });
 
     const sendUpdate = (data: any) => {
-      console.log('Sending update:', data);
+      //console.log('Sending update:', data);
       res.write(`data: ${safeStringify(data)}\n\n`);
     };
 
@@ -50,7 +50,7 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     });
 
     // Send final results
-   // console.log('Analysis complete, sending final results');
+    console.log('Analysis complete, sending final results');
     sendUpdate({ results, completed: true });
     res.end();
   } catch (error: unknown) {
