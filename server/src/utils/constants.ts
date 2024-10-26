@@ -7,21 +7,16 @@ export const sizeSynonyms: { [key: string]: string[] } = {
   'l': ['l', 'large'],
   'xl': ['xl', 'extra large'],
 };
+
+
+
+
 export const inchMatch =(/^(\d+(\.\d+)?)(["']|in\.?|inch)$/);
-
-
-
 export const ignoreWords = new Set(['x', 'by', 'in', 'inch', 'inches', 'ft', 'feet', 'cm', 'm', 'mm']);
 export const specialCharsRegex = /[^a-zA-Z0-9\s.,;:()]/g;
 export const badAbbreviationsRegex = /\b(pck|pkg|qty|qt|pc|pcs|ea|(?<=\s|^)in\.(?=\s|$)|ft)\b/gi;
-
-
 export const repeatedDashRegex = /-{2,}/g;
-
 export const punctuationStartEndRegex = /^[\p{P}]|[\p{P}]$/u;
-
-
-
 export const promotionalWords = [
 
   'save', 'free shipping', 'best seller', '% off', 'buy', 'open box', 'clearance'

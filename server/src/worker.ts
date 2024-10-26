@@ -25,7 +25,7 @@ const allChecks = [
   errorCheckers.checkTitleHtml,
   errorCheckers.checkTitleHtmlEntities,
   errorCheckers.checkTitlePromotionalWords,
-  errorCheckers.checkTitleMissingSpaces,
+ // errorCheckers.checkTitleSpacing, 
   errorCheckers.checkTitleNonBreakingSpaces,
   errorCheckers.checkDescriptionWhitespace,
   errorCheckers.checkDescriptionRepeatedWhitespace,
@@ -62,9 +62,10 @@ errorCheckers.checkAgeGroupMismatch,
 function processItem(item: FeedItem): ErrorResult[] {
   const errors: ErrorResult[] = [];
   for (const check of allChecks) {
-    const error = check(item);
-    if (error) {
-      errors.push(error);
+    const result = check(item);
+    if (result) {
+      // If result is an array, spread it; if single error, add it
+      errors.push(...(Array.isArray(result) ? result : [result]));
     }
   }
   return errors;

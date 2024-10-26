@@ -7,51 +7,57 @@ interface ErrorFixSuggestionsProps {
 const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) => {
   const getSuggestion = (type: string): string => {
     const suggestions: { [key: string]: string } = {
-      'Size Mismatch': 'Include the product size in the title when the size attribute is set. Use the exact size value or standard size abbreviations (XS, S, M, L, XL) that match your size attribute.',
+      'Title Doesn\'t Contain Size When Size is Set ': 'Include the product size in the title when the size attribute is set. Use the exact size value or standard size abbreviations (XS, S, M, L, XL) that match your size attribute.',
       
-      'Missing Spaces After Commas': 'Add a space after each comma in your descriptions. Example: Change "red,blue,green" to "red, blue, green".',
+      'Description Contains Missing Spaces After Commas': 'Add a space after each comma in your descriptions. Example: Change "red,blue,green" to "red, blue, green".',
       
-      'Color Mismatch': 'Ensure the color mentioned in the color attribute appears in the product title. Use the exact same color term from your attribute.',
+      'Title Doesn\'t Contain Color When Color Is Set': 'Ensure the color mentioned in the color attribute appears in the product title. Use the exact same color term from your attribute.',
       
-      'Duplicate Words in Title': 'Remove redundant words from your title. Example: Change "Nike Air Jordan Jordan Shoes" to "Nike Air Jordan Shoes".',
+      'Title Contains Duplicate Words': 'Remove redundant words from your title. Example: Change "Nike Air Jordan Jordan Shoes" to "Nike Air Jordan Shoes".',
       
-      'Unspecific Google Product Category': 'Use more specific Google Product Categories with at least three levels. Example: Change "Apparel" to "Apparel > Women\'s Clothing > Dresses".',
+      'Google Product Category Isn\'t Specific Enough': 'Use more specific Google Product Categories with at least three levels. Example: Change "Apparel" to "Apparel > Women\'s Clothing > Dresses".',
       
-      'Missing Product Type': 'Add a product type that describes your item\'s category hierarchy. Use the format "Main Category > Subcategory > Product Type".',
+      'Product Type is not set': 'Add a product type that describes your item\'s category hierarchy. Use the format "Main Category > Subcategory > Product Type".',
       
-      'Missing Google Product Category': 'Add a valid Google Product Category from the official Google Product Taxonomy. Ensure it\'s in the format "Category > Subcategory > Product Type".',
+      'Google Product Category is not set': 'Add a valid Google Product Category from the official Google Product Taxonomy. Ensure it\'s in the format "Category > Subcategory > Product Type".',
       
       'Missing Apparel Attributes': 'For apparel items, always include color, size, gender, and age_group attributes. These are required for proper product categorization.',
+       
+    'Spelling Mistake in Title': 'Review and correct the spelling in your product title. Consider the suggested corrections provided. Proper nouns (like brand names) and specialized terms might be flagged incorrectly - verify these before making changes.',
+    
+    'Spelling Mistake in Description': 'Check and correct any misspelled words in your product description. Review the suggested corrections provided. Technical terms, brand names, and product-specific terminology might be flagged - verify these before making changes.',
+     
+      'Description Contains Repeated Dashes': 'Replace multiple dashes with a single dash or use appropriate punctuation. Change "product--description" to "product-description".',
       
-      'Repeated Dashes in Description': 'Replace multiple dashes with a single dash or use appropriate punctuation. Change "product--description" to "product-description".',
+      'Title Contains Special Characters': 'Remove special characters (^, $, @, !, "", \'\') from the title. Use only alphanumeric characters, and basic punctuation.',
       
-      'Special Characters in Title': 'Remove special characters (^, $, @, !, "", \'\') from the title. Use only alphanumeric characters, and basic punctuation.',
+      'Title Contains Bad Abbreviations': 'Replace abbreviated terms with their full words: "pck" → "pack", "qty" → "quantity", "pc" → "piece", etc.',
+
+      'Google Product Category is Invalid': 'Use the Google product taxonomy format "X > Y > Z" instead of numbered values to specify a valid category.',
       
-      'Bad Abbreviations in Title': 'Replace abbreviated terms with their full words: "pck" → "pack", "qty" → "quantity", "pc" → "piece", etc.',
+      'Title Doesn\'t Contain Brand': 'Include the brand name from your brand attribute in the product title.',
+            
+      'Title Doesn\'t Contain Material': 'Include the material specified in your material attribute in the product title.',
       
-      'Missing Brand in Title': 'Include the brand name from your brand attribute in the product title.',
+      'Title Contains Whitespace At Start Or End': 'Remove any spaces or tabs from the beginning and end of your title.',
       
-      'Missing Material in Title': 'Include the material specified in your material attribute in the product title.',
+      'Title Contains Repeated Whitespace': 'Replace multiple spaces with a single space throughout your title.',
       
-      'Whitespace at Title Start/End': 'Remove any spaces or tabs from the beginning and end of your title.',
+      'Title Contains Repeated Dashes': 'Replace multiple dashes with a single dash in your title.',
       
-      'Repeated Whitespace in Title': 'Replace multiple spaces with a single space throughout your title.',
+      'Title Contains Repeated Commas': 'Replace multiple commas with a single comma in your title.',
       
-      'Repeated Dashes in Title': 'Replace multiple dashes with a single dash in your title.',
+      'Title Contains Punctuation At Start Or End': 'Remove any punctuation marks from the start and end of your title.',
       
-      'Repeated Commas in Title': 'Replace multiple commas with a single comma in your title.',
+      'Title Contains HTML Tags': 'Remove any HTML tags from your title. Use plain text only.',
       
-      'Punctuation at Title Start/End': 'Remove any punctuation marks from the start and end of your title.',
+      'Title Contains HTML Entities': 'Replace HTML entities (&reg;, &copy;, &trade;) with their plain text equivalents or remove them.',
       
-      'HTML in Title': 'Remove any HTML tags from your title. Use plain text only.',
+      'Title Contains Promotional Words': 'Remove promotional terms like "save", "off", "free shipping", etc. from your title.',
       
-      'HTML Entities in Title': 'Replace HTML entities (&reg;, &copy;, &trade;) with their plain text equivalents or remove them.',
+      'Title Contains Missing Spaces After Commas': 'Add appropriate spaces between words and after commas in your title.',
       
-      'Promotional Words in Title': 'Remove promotional terms like "save", "off", "free shipping", etc. from your title.',
-      
-      'Missing Spaces in Title': 'Add appropriate spaces between words and after commas in your title.',
-      
-      'Non-Breaking Spaces in Title': 'Replace non-breaking spaces with regular spaces in your title.',
+      'Title Contains Non-Breaking Spaces': 'Replace non-breaking spaces with regular spaces in your title.',
       
       'Whitespace at Edges in Description': 'Remove any spaces or tabs from the beginning and end of your description.',
       
@@ -107,6 +113,7 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       'Age Group Mismatch': 'Ensure the age_group attribute matches any age-related terms in the title.',
       
       'Monitored Pharmacy Words': 'Remove any terms that may violate Google\'s pharmacy policy. Check Google\'s restricted products policy.',
+
     };
 
     return suggestions[type] || 'Review the item and ensure it follows Google Shopping feed requirements.';

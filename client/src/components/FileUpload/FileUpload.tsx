@@ -3,7 +3,7 @@ import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
-import Toast from './Toast'; // Import the new Toast component
+import Toast from './Toast';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -146,8 +146,6 @@ export default function FileUpload() {
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}
-            onDownloadDetails={() => {}}
-            onDownloadReport={() => {}}
             isLoading={isLoading}
           />
         </div>

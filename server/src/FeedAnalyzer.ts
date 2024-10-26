@@ -1,4 +1,3 @@
-// FeedAnalyzer.ts - Updated with Spell Checker Integration
 import { parse } from 'csv-parse';
 import { Transform } from 'stream';
 import { Worker } from 'worker_threads';
@@ -33,16 +32,18 @@ export class FeedAnalyzer {
     // Run all other error checks
     Object.values(errorCheckers).forEach(checker => {
       if (typeof checker === 'function') {
-        const error = checker(item);
-        if (error) {
-          this.addErrors([error]);
+        const result = checker(item);
+        if (result) {
+          // Handle both single errors and arrays of errors
+          this.addErrors(Array.isArray(result) ? result : [result]);
         }
       } else if (Array.isArray(checker)) {
         checker.forEach(subChecker => {
           if (typeof subChecker === 'function') {
-            const error = subChecker(item);
-            if (error) {
-              this.addErrors([error]);
+            const result = subChecker(item);
+            if (result) {
+              // Handle both single errors and arrays of errors
+              this.addErrors(Array.isArray(result) ? result : [result]);
             }
           }
         });
@@ -52,9 +53,10 @@ export class FeedAnalyzer {
     // Run spell checks
     Object.values(spellChecker).forEach(checker => {
       if (typeof checker === 'function') {
-        const errors = checker(item);
-        if (errors && errors.length > 0) {
-          this.addErrors(errors);
+        const result = checker(item);
+        if (result) {
+          // Spell checker results are always arrays
+          this.addErrors(Array.isArray(result) ? result : [result]);
         }
       }
     });
@@ -94,28 +96,35 @@ export class FeedAnalyzer {
       const transformer = new Transform({
         objectMode: true,
         transform: (item: FeedItem, _, callback) => {
-          batch.push(item);
+          try {
+            batch.push(item);
 
-          if (batch.length >= batchSize) {
-            this.processBatch(batch);
-            totalProcessed += batch.length;
-            if (progressCallback) {
-              progressCallback(totalProcessed);
+            if (batch.length >= batchSize) {
+              this.processBatch(batch);
+              totalProcessed += batch.length;
+              if (progressCallback) {
+                progressCallback(totalProcessed);
+              }
+              batch = [];
             }
-            batch = [];
+            callback();
+          } catch (err) {
+            callback(err instanceof Error ? err : new Error(String(err)));
           }
-
-          callback();
         },
         flush: (callback) => {
-          if (batch.length > 0) {
-            this.processBatch(batch);
-            totalProcessed += batch.length;
-            if (progressCallback) {
-              progressCallback(totalProcessed);
+          try {
+            if (batch.length > 0) {
+              this.processBatch(batch);
+              totalProcessed += batch.length;
+              if (progressCallback) {
+                progressCallback(totalProcessed);
+              }
             }
+            callback();
+          } catch (err) {
+            callback(err instanceof Error ? err : new Error(String(err)));
           }
-          callback();
         }
       });
 
@@ -134,7 +143,6 @@ export class FeedAnalyzer {
 
   private addErrors(errors: ErrorResult[]) {
     for (const error of errors) {
-      // For duplicate IDs, update the existing error instead of adding a new one
       if (error.errorType === 'Duplicate Id') {
         const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
         if (existingError) {

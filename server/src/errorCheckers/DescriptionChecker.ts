@@ -61,13 +61,12 @@ export function checkDescriptionMissingSpaces(item: FeedItem): ErrorResult | nul
       const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
         const truncatedContext = truncateContext(context, match[0]);
-        // Only include (case #) if there is more than one match
-        return matches.length > 1 ? `(case ${index + 1}) ".${truncatedContext}."` : `".${truncatedContext}."`;
+           return matches.length > 1 ? `(case ${index + 1}) ".${truncatedContext}."` : `".${truncatedContext}."`;
       });
 
       return {
         id: item.id || 'UNKNOWN',
-        errorType: 'Missing Spaces After Commas',
+        errorType: 'Description Contains Missing Spaces After Commas',
         details: `Found ${matches.length} instance(s) of Missing Spaces After Commas`,
         affectedField: 'description',
         // Join all the cases with semicolons
@@ -98,7 +97,7 @@ export function checkDescriptionRepeatedDashes(item: FeedItem): ErrorResult | nu
 
       return {
         id: item.id || 'UNKNOWN',
-        errorType: 'Repeated Dashes in Description',
+        errorType: 'Description Contains Repeated Dashes',
         details: `Found ${matches.length} instance(s) of repeated dashes`,
         affectedField: 'description',
         value: examples.join('; ')  

@@ -39,15 +39,11 @@ class SpellChecker {
     const startTime = Date.now();
 
     try {
-      // Load or initialize cache
       this.loadCache();
-
-      // Initialize spell checker
       const aff = readFileSync(path.resolve(__dirname, '../dictionaries/en_US.aff'));
       const dic = readFileSync(path.resolve(__dirname, '../dictionaries/en_US.dic'));
       const spell = nspell(aff, dic);
 
-      // If cache is empty, preload common words
       if (this.correctionCache.size === 0) {
         this.preloadCommonWords(spell);
         this.saveCache();
@@ -75,21 +71,17 @@ class SpellChecker {
           const cacheData: CacheData = JSON.parse(readFileSync(this.cachePath, 'utf8'));
           this.validationCache = new Map(Object.entries(cacheData.validationCache));
           this.correctionCache = new Map(Object.entries(cacheData.correctionCache));
-          console.log(`Loaded ${this.validationCache.size} cached validations and ${this.correctionCache.size} cached corrections`);
           
-          // Check if cleanup is needed
           if (stats.size > this.maxCacheSize * this.cleanupThreshold) {
             this.performCleanup();
           }
           return;
         }
-        console.log('Cache exceeds size limit, rebuilding...');
       }
     } catch (error) {
       console.warn('Failed to load cache, will rebuild:', error);
     }
 
-    // Reset caches if loading failed or cache is too large
     this.validationCache.clear();
     this.correctionCache.clear();
   }
@@ -111,7 +103,6 @@ class SpellChecker {
       }
 
       writeFileSync(this.cachePath, JSON.stringify(cacheData), 'utf8');
-      console.log(`Saved ${this.validationCache.size} validations and ${this.correctionCache.size} corrections to cache`);
     } catch (error) {
       console.error('Failed to save cache:', error);
     }
@@ -126,9 +117,6 @@ class SpellChecker {
   }
 
   private performCleanup(): void {
-    console.log('Starting cache cleanup...');
-    
-    // Keep the most recent 70% of entries
     const entries = [...this.validationCache.entries()];
     const keepCount = Math.floor(entries.length * 0.7);
     const entriesToKeep = entries.slice(-keepCount);
@@ -138,7 +126,6 @@ class SpellChecker {
       this.validationCache.set(word, isValid);
     });
 
-    // Also cleanup correction cache
     const correctionEntries = [...this.correctionCache.entries()];
     const keepCorrections = correctionEntries.slice(-keepCount);
     
@@ -148,7 +135,6 @@ class SpellChecker {
     });
 
     this.saveCache();
-    console.log(`Cleanup complete. Kept ${keepCount} entries`);
   }
 
   private preloadCommonWords(spell: ReturnType<typeof nspell>): void {
@@ -160,7 +146,6 @@ class SpellChecker {
       'series', 'version', 'type', 'style', 'design'
     ];
 
-    console.log('Preloading common words...');
     commonWords.forEach(word => {
       const isValid = spell.correct(word);
       this.validationCache.set(word, isValid);
@@ -189,14 +174,8 @@ class SpellChecker {
     const isValid = this.spell.correct(word);
     this.validationCache.set(word, isValid);
     
-    // Check size and cleanup if needed
     if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
       this.performCleanup();
-    }
-    
-    // Save cache periodically
-    if (this.validationCache.size % 1000 === 0) {
-      this.saveCache();
     }
     
     return isValid;
@@ -210,38 +189,17 @@ class SpellChecker {
     const suggestions = this.spell.suggest(word);
     this.correctionCache.set(word, suggestions);
     
-    // Check size and cleanup if needed
     if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
       this.performCleanup();
     }
     
-    // Save cache periodically
-    if (this.correctionCache.size % 1000 === 0) {
-      this.saveCache();
-    }
-    
     return suggestions;
-  }
-
-  public saveCurrentCache(): void {
-    this.saveCache();
-  }
-
-  public getCacheStats(): any {
-    return {
-      size: this.getCurrentCacheSize(),
-      maxSize: this.maxCacheSize,
-      utilizationPercentage: (this.getCurrentCacheSize() / this.maxCacheSize) * 100,
-      validationEntries: this.validationCache.size,
-      correctionEntries: this.correctionCache.size
-    };
   }
 }
 
-// Initialize the singleton instance
 const spellChecker = SpellChecker.getInstance();
 
-// Word processing utilities
+// Utility functions
 const ignoreWords = new Set([
   'no', 'no.', 'vs', 'vs.', 'etc', 'etc.',
   'qty', 'ref', 'upc', 'sku', 'isbn', 'eol', 'msrp',
@@ -253,22 +211,45 @@ const numberPattern = /^(\d+\.?\d*|\d{4}|\d+["']?[DWHLdwhl]?)(%)?$/;
 const properNounPattern = /^[A-Z][a-z]+$/;
 const specialCharPattern = /[''\-™®©]/;
 
-const isNumber = (word: string): boolean => 
-  numberPattern.test(word.replace(/[,]/g, '').replace(/[%$]/g, ''));
+function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-const isLikelyProperNoun = (word: string): boolean => 
-  properNounPattern.test(word);
+function truncateContext(context: string, match: string): string {
+  const maxLength = 40;
+  const matchIndex = context.indexOf(match);
+  const start = Math.max(0, matchIndex - Math.floor((maxLength - match.length) / 2));
+  const end = Math.min(context.length, matchIndex + match.length + Math.floor((maxLength - match.length) / 2));
+  let truncatedContext = context.substring(start, end).trim();
+  if (start > 0) truncatedContext = '.' + truncatedContext;
+  if (end < context.length) truncatedContext += '.';
+  return truncatedContext;
+}
 
-const isSpecialCase = (word: string): boolean => 
-  specialCharPattern.test(word) || word.startsWith("'") || word.endsWith("'");
+function getContext(text: string, matchIndex: number, matchLength: number): string {
+  const contextRadius = 15;
+  const start = Math.max(0, matchIndex - contextRadius);
+  const end = Math.min(text.length, matchIndex + matchLength + contextRadius);
+  return text.substring(start, end);
+}
 
-const isBrandWord = (word: string, brand: string): boolean => {
+function isBrandWord(word: string, brand: string): boolean {
   if (!brand) return false;
   const wordLower = word.toLowerCase();
   const brandLower = brand.toLowerCase();
-  if (brandLower.includes(wordLower)) return true;
-  return brand.toLowerCase().split(/\s+/).includes(wordLower);
-};
+  return brandLower.includes(wordLower) || brandLower.split(/\s+/).includes(wordLower);
+}
+
+interface FieldData {
+  field: string;
+  words: Set<string>;
+  contexts: Array<{
+    word: string;
+    context: string;
+    suggestions: string[];
+    position: number;
+  }>;
+}
 
 export function checkSpelling(item: FeedItem): ErrorResult[] {
   if (!spellChecker.isReady()) {
@@ -276,53 +257,96 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
     return [];
   }
 
+  const isLikelyProperNoun = (word: string): boolean => 
+  properNounPattern.test(word);
+
+
   const errors: ErrorResult[] = [];
-  const seenWords = new Set<string>();
+  const processedWords = new Map<string, FieldData>();
 
-  function processWord(word: string, fieldName: string): void {
-    if (seenWords.has(word)) return;
-    seenWords.add(word);
-
-    const originalWord = word;
-    word = word.replace(/^[^\w]+|[^\w]+$/g, '');
-
-    if (word.length === 0) return;
-
-    // Quick filters
-    if (word.length <= 2 || 
-        ignoreWords.has(word.toLowerCase()) ||
-        isNumber(word) ||
-        isSpecialCase(word) ||
-        isBrandWord(word, item.brand || '')) {
-      return;
-    }
-
-    // Spell check
-    if (!spellChecker.correct(word) && !isLikelyProperNoun(word)) {
-      const suggestions = spellChecker.suggest(word).slice(0, 3);
-      if (suggestions.length > 0 && suggestions[0].toLowerCase() !== word.toLowerCase()) {
-        errors.push({
-          id: item.id || 'UNKNOWN',
-          errorType: `Spelling Error in ${fieldName}`,
-          details: `Misspelled word found: "${originalWord}"`,
-          affectedField: fieldName,
-          value: `${originalWord} (Suggestion: ${suggestions.join(', ')})`
-        });
-      }
-    }
-  }
-
-  function checkField(fieldName: 'title' | 'description'): void {
+  function processField(fieldName: 'title' | 'description'): void {
     const content = item[fieldName];
-    if (typeof content === 'string') {
-      content.split(/\s+/).forEach(word => processWord(word, fieldName));
+    if (typeof content !== 'string') return;
+
+    if (!processedWords.has(fieldName)) {
+      processedWords.set(fieldName, {
+        field: fieldName,
+        words: new Set(),
+        contexts: []
+      });
     }
+
+    const fieldData = processedWords.get(fieldName)!;
+
+    // Find all word positions
+    let position = 0;
+    const words = content.split(/\s+/);
+    
+    for (const word of words) {
+      const cleanWord = word.replace(/^[^\w]+|[^\w]+$/g, '');
+      
+      if (!cleanWord || 
+          cleanWord.length <= 2 || 
+          ignoreWords.has(cleanWord.toLowerCase()) ||
+          numberPattern.test(cleanWord) ||
+          specialCharPattern.test(cleanWord) ||
+          isBrandWord(cleanWord, item.brand || '')) {
+        position = content.indexOf(word, position) + word.length;
+        continue;
+      }
+
+      if (!spellChecker.correct(cleanWord) && !isLikelyProperNoun(cleanWord)) {
+        const suggestions = spellChecker.suggest(cleanWord).slice(0, 3);
+        if (suggestions.length > 0 && suggestions[0].toLowerCase() !== cleanWord.toLowerCase()) {
+          const wordIndex = content.indexOf(word, position);
+          fieldData.words.add(cleanWord);
+          fieldData.contexts.push({
+            word: cleanWord,
+            context: getContext(content, wordIndex, word.length),
+            suggestions,
+            position: wordIndex
+          });
+        }
+      }
+      position = content.indexOf(word, position) + word.length;
+    }
+
+    // Sort contexts by position
+    fieldData.contexts.sort((a, b) => a.position - b.position);
   }
 
-  checkField('title');
-  checkField('description');
+  processField('title');
+  processField('description');
+
+  for (const [fieldName, data] of processedWords) {
+    const { contexts } = data;
+    if (contexts.length === 0) continue;
+
+    const formattedContexts = contexts.map((ctx, index) => {
+      const truncatedContext = truncateContext(ctx.context, ctx.word);
+      // Only underline the current word
+      const highlightedContext = truncatedContext.replace(
+        new RegExp(`\\b${escapeRegExp(ctx.word)}\\b`),
+        `{${ctx.word}}`
+      );
+      return contexts.length > 1 
+        ? `(case ${index + 1}) "${highlightedContext}" (Suggestions: ${ctx.suggestions.join(', ')})`
+        : `"${highlightedContext}" (Suggestions: ${ctx.suggestions.join(', ')})`;
+    });
+
+    const misspelledWordsInOrder = contexts.map(ctx => ctx.word);
+
+    errors.push({
+      id: item.id || 'UNKNOWN',
+      errorType: `Spelling Mistake in ${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}`,
+      details: `Found ${contexts.length} instance(s) of misspelled words in ${fieldName} (${misspelledWordsInOrder.join(', ')})`,
+      affectedField: fieldName,
+      value: formattedContexts.join('; ')
+    });
+  }
 
   return errors;
 }
 
 export const spellChecks = [checkSpelling];
+export { spellChecker };

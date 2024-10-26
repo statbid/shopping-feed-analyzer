@@ -27,7 +27,7 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
     if (categoryLevels < 3) {
       return {
         id: item.id || 'UNKNOWN',
-        errorType: 'Unspecific Google Product Category',
+        errorType: 'Google Product Category Isn\'t Specific Enough',
         details: `Google Product Category isn't specific enough (less than 3 levels)`,
         affectedField: 'google_product_category',
         value: item.google_product_category || ''
@@ -37,7 +37,7 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
     // If the category is missing, mark it as an error
     return {
       id: item.id || 'UNKNOWN',
-      errorType: 'Missing Google Product Category',
+      errorType: 'Google Product Category is not set',
       details: 'Google Product Category is not set',
       affectedField: 'google_product_category',
       value: ''
@@ -49,6 +49,7 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
 
 
 /*******Google Product Category contains “Apparel”, but color, size, gender, or age_group are missing************** */
+
 
 export function checkApparelAttributes(item: FeedItem): ErrorResult | null {
   if (item.google_product_category && item.google_product_category.toLowerCase().includes('apparel')) {
@@ -63,8 +64,8 @@ export function checkApparelAttributes(item: FeedItem): ErrorResult | null {
         id: item.id || 'UNKNOWN',
         errorType: 'Missing Apparel Attributes',
         details: `Apparel item is missing: ${missingAttributes.join(', ')}`,
-        affectedField: 'google_product_category',
-        value: item.google_product_category
+        affectedField: missingAttributes.join(', '), // List all missing fields here
+        value: `Missing required fields for Google Product Category: ${item.google_product_category}`
       };
     }
   }
@@ -79,7 +80,7 @@ export function checkGoogleProductCategoryValidity(item: FeedItem): ErrorResult 
   if (category && /^\d+$/.test(category)) {
     return {
       id: item.id || 'UNKNOWN',
-      errorType: 'Invalid Google Product Category',
+      errorType: 'Google Product Category is Invalid',
       details: 'Google Product Category is invalid (numbered category is not allowed)',
       affectedField: 'google_product_category',
       value: item.google_product_category || ''

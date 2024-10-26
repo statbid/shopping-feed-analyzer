@@ -36,15 +36,24 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
         onFileSelect(files[0]);
       }
     };
+
+    const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.target === e.currentTarget) {
+        onClose();
+      }
+    };
   
     if (!isOpen) return null;
   
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-        <div className="bg-white p-6 rounded-lg">
-          <h2 className="text-xl mb-4">Upload File</h2>
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+        onClick={handleBackdropClick}
+      >
+        <div className="bg-white p-8 rounded-xl w-[600px] max-w-[90vw]">
+          <h2 className="text-2xl font-bold mb-6 text-[#17235E]">Upload File</h2>
           <div 
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors min-h-[300px] flex flex-col justify-center ${
               isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
             }`}
             onDragEnter={handleDragEnter}
@@ -52,7 +61,7 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
             onDragOver={handleDragOver}
             onDrop={handleDrop}
           >
-            <Upload className={`mx-auto h-12 w-12 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
+            <Upload className={`mx-auto h-16 w-16 mb-4 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
             <input
               type="file"
               accept=".csv,.tsv"
@@ -66,13 +75,21 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
             />
             <label 
               htmlFor="file-upload" 
-              className="cursor-pointer text-blue-600 hover:text-blue-800"
+              className="cursor-pointer text-blue-600 hover:text-blue-800 text-lg font-semibold"
             >
               Click to upload
             </label>
-            <p className="text-sm text-gray-500 mt-1">or drag and drop</p>
+            <p className="text-base text-gray-500 mt-2">or drag and drop</p>
+            <p className="text-sm text-gray-400 mt-4">Supported formats: CSV, TSV</p>
           </div>
-          <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-200 rounded">Close</button>
+          <div className="mt-6 flex justify-end">
+            <button 
+              onClick={onClose} 
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );

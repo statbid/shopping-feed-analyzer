@@ -23,7 +23,6 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
   const [currentPage, setCurrentPage] = useState(1);
   const [virtualStart, setVirtualStart] = useState(0);
 
-  // Reset pagination when modal opens with new error type
   useEffect(() => {
     if (isOpen) {
       setCurrentPage(1);
@@ -33,7 +32,6 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
 
   const totalPages = Math.ceil(errors.length / ITEMS_PER_PAGE);
 
-  // Ensure current page is valid
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
@@ -44,6 +42,17 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return errors.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [currentPage, errors]);
+
+  const formatValue = (value: string) => {
+    if (value.includes(';')) {
+      return value.split(';').map((item, index) => (
+        <div key={index} className="mb-1">
+          {item.trim()}
+        </div>
+      ));
+    }
+    return value;
+  };
 
   const virtualizedData = useMemo(() => {
     return currentPageData.slice(virtualStart, virtualStart + VIRTUAL_WINDOW_SIZE);
@@ -66,7 +75,6 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-lg w-[80vw] h-[80vh] flex flex-col">
-        {/* Fixed Header */}
         <div className="flex justify-between items-center p-4 border-b">
           <div>
             <h2 className="text-2xl font-bold">Detailed Errors: {errorType}</h2>
@@ -79,32 +87,29 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({ isOpen, onClose, 
           </button>
         </div>
 
-        {/* Fixed Table Header */}
-        <div className="sticky top-0 bg-gray-100 z-10">
-          <div className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 font-bold border-b">
-            <div>Product ID</div>
-            <div>Details</div>
-            <div>Affected Field</div>
-            <div>Value</div>
-          </div>
+        <div className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 font-bold border-b bg-gray-100">
+          <div>Product ID</div>
+          <div>Details</div>
+          <div>Affected Field</div>
+          <div>Value</div>
         </div>
 
-        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">
           {virtualizedData.map((error, index) => (
             <div 
               key={`${error.id}-${index}`}
               className="grid grid-cols-[1fr_2fr_1fr_2fr] gap-4 p-4 border-b border-gray-200 hover:bg-gray-50"
             >
-              <div className="truncate">{error.id}</div>
-              <div className="truncate">{error.details}</div>
-              <div className="truncate">{error.affectedField}</div>
-              <div className="truncate">{error.value}</div>
+              <div className="break-all">{error.id}</div>
+              <div className="break-words whitespace-pre-wrap">{error.details}</div>
+              <div className="break-words">{error.affectedField}</div>
+              <div className="break-words whitespace-pre-wrap">
+                {formatValue(error.value)}
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Fixed Footer with Pagination */}
         {totalPages > 1 && (
           <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-white">
             <button
