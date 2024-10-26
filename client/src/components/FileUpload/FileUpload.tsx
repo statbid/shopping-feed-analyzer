@@ -24,6 +24,12 @@ interface AnalysisResults {
   errors: ErrorResult[];
 }
 
+interface ProcessingStatus {
+  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing';
+  message?: string;
+}
+
+
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
@@ -32,37 +38,26 @@ export default function FileUpload() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [processedProducts, setProcessedProducts] = useState(0);
-
-  const handleFileSelect = (selectedFile: File) => {
-    if (selectedFile && (
-      selectedFile.type === 'text/csv' || 
-      selectedFile.name.endsWith('.tsv') || 
-      selectedFile.type === 'text/tab-separated-values'
-    )) {
-      setFile(selectedFile);
-      setUploadStatus({ 
-        type: 'success', 
-        message: `${selectedFile.name.split('.').pop()?.toUpperCase()} file selected successfully!` 
-      });
-      setIsModalOpen(false);
-    } else {
-      setFile(null);
-      setUploadStatus({ type: 'error', message: 'Please select a valid CSV or TSV file.' });
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!file) return;
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({ 
+    status: 'uploading' 
+  });
   
+
+  const handleFileSelect = async (selectedFile: File) => {
     setIsLoading(true);
     setIsProgressModalOpen(true);
-    setProcessedProducts(0);
+    setProcessingStatus({ status: 'uploading' });  // Set initial status to uploading
   
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', selectedFile);
   
     try {
-      const response = await fetch('http://localhost:3001/api/analyze', {
+      // If it's a ZIP file, update status to extracting
+      if (selectedFile.name.toLowerCase().endsWith('.zip')) {
+        setProcessingStatus({ status: 'extracting' });
+      }
+  
+      const response = await fetch('http://localhost:3001/api/upload', {
         method: 'POST',
         body: formData,
       });
@@ -71,41 +66,87 @@ export default function FileUpload() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
   
+      const data = await response.json();
+      
+      setFile(selectedFile);
+      setUploadStatus({ 
+        type: 'success', 
+        message: `File processed successfully!` 
+      });
+      setIsModalOpen(false);
+    } catch (error: unknown) {
+      // ... error handling ...
+    } finally {
+      setIsLoading(false);
+      setIsProgressModalOpen(false);
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!file) return;
+
+    setIsLoading(true);
+  setIsProgressModalOpen(true);
+  setProcessedProducts(0);
+  setProcessingStatus({ status: 'analyzing' });
+
+    try {
+      const response = await fetch('http://localhost:3001/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName: file.name }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
-  
+
       let buffer = '';
-  
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-  
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop() || '';
-  
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-              console.log('Received data:', data);
-  
+              
               if (data.error) {
                 console.error('Server error:', data.error, data.details);
-                setUploadStatus({ type: 'error', message: `Error analyzing file: ${data.details || data.error}` });
+                setUploadStatus({ 
+                  type: 'error', 
+                  message: `Error analyzing file: ${data.details || data.error}` 
+                });
                 return;
               }
-  
+
               if (data.processed) {
                 setProcessedProducts(data.processed);
               }
+
               if (data.completed) {
                 setAnalysisResults(data.results);
-                setUploadStatus({ type: 'success', message: 'File analyzed successfully!' });
+                setUploadStatus({ 
+                  type: 'success', 
+                  message: 'File analyzed successfully!' 
+                });
               }
             } catch (jsonError) {
               console.error('Error parsing JSON:', jsonError);
-              setUploadStatus({ type: 'error', message: 'Error parsing server response' });
+              setUploadStatus({ 
+                type: 'error', 
+                message: 'Error parsing server response' 
+              });
             }
           }
         }
@@ -116,7 +157,10 @@ export default function FileUpload() {
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      setUploadStatus({ type: 'error', message: `Error analyzing file: ${errorMessage}` });
+      setUploadStatus({ 
+        type: 'error', 
+        message: `Error analyzing file: ${errorMessage}` 
+      });
     } finally {
       setIsLoading(false);
       setIsProgressModalOpen(false);
@@ -128,7 +172,7 @@ export default function FileUpload() {
       <AnalyzerHeader 
         file={file}
         onUploadClick={() => setIsModalOpen(true)}
-        onAnalyzeClick={handleUpload}
+        onAnalyzeClick={handleAnalyze} 
         isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
       />
@@ -160,6 +204,8 @@ export default function FileUpload() {
       <ProgressModal 
         isOpen={isProgressModalOpen}
         processedProducts={processedProducts}
+        status={processingStatus.status}
+        statusMessage={processingStatus.message}
       />
     </div>
   );

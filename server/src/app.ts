@@ -4,6 +4,7 @@ import multer from 'multer';
 import './worker';
 import fs from 'fs';
 import { FeedAnalyzer } from './FeedAnalyzer';
+import { FileHandler } from './utils/FileHandler';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -22,35 +23,72 @@ const safeStringify = (obj: any) => {
   }
 };
 
-app.post('/api/analyze', upload.single('file'), async (req, res) => {
+// In app.ts
+
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
   try {
-    console.log('Starting analysis for file:', req.file.originalname);
-    const fileStream = fs.createReadStream(req.file.path);
+    console.log('Processing uploaded file:', req.file.originalname);
+    const result = await FileHandler.handleUploadedFile(req.file);
+    
+    res.json({ 
+      success: true, 
+      message: 'File processed successfully',
+      filePath: result.filePath,
+      fileName: result.originalName // Send back the original file name
+    });
+  } catch (error: unknown) {
+    console.error('Error processing file:', error);
+    let errorMessage = 'An unknown error occurred';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ 
+      error: 'Error processing file', 
+      details: errorMessage 
+    });
+  }
+});
+
+app.post('/api/analyze', async (req, res) => {
+  const { fileName } = req.body;
+  console.log('Analyze request received for file:', fileName); // Added logging
+
+  if (!fileName) {
+    console.log('No filename provided in request body:', req.body); // Added logging
+    return res.status(400).json({ error: 'No file name provided' });
+  }
+
+  const filePath = FileHandler.getProcessedFilePath(fileName);
+  console.log('Retrieved file path:', filePath); // Added logging
+
+  if (!filePath || !fs.existsSync(filePath)) {
+    console.log('File not found at path:', filePath); // Added logging
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  const sendUpdate = (data: any) => {
+    res.write(`data: ${safeStringify(data)}\n\n`);
+  };
+
+  try {
+    console.log('Starting analysis for file:', fileName, 'at path:', filePath);
+    const fileStream = fs.createReadStream(filePath);
     const analyzer = new FeedAnalyzer();
 
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    });
-
-    const sendUpdate = (data: any) => {
-      //console.log('Sending update:', data);
-      res.write(`data: ${safeStringify(data)}\n\n`);
-    };
-
-    // Analyze the stream and send progress updates
     const results = await analyzer.analyzeStream(fileStream, (processed: number) => {
-      console.log(`Progress: ${processed} SKUs processed`);
       sendUpdate({ processed });
     });
 
-    // Send final results
-    console.log('Analysis complete, sending final results');
     sendUpdate({ results, completed: true });
     res.end();
   } catch (error: unknown) {
@@ -59,16 +97,12 @@ app.post('/api/analyze', upload.single('file'), async (req, res) => {
     if (error instanceof Error) {
       errorMessage = error.message;
     }
-    res.write(`data: ${safeStringify({ error: 'Error analyzing file', details: errorMessage })}\n\n`);
+    sendUpdate({ error: 'Error analyzing file', details: errorMessage });
     res.end();
-  } finally {
-    // Clean up uploaded file
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-      console.log('Cleaned up uploaded file:', req.file.path);
-    }
   }
 });
+
+
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

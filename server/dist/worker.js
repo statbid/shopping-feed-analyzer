@@ -46,7 +46,7 @@ const allChecks = [
     errorCheckers.checkTitleHtml,
     errorCheckers.checkTitleHtmlEntities,
     errorCheckers.checkTitlePromotionalWords,
-    errorCheckers.checkTitleSpacing,
+    // errorCheckers.checkTitleSpacing, 
     errorCheckers.checkTitleNonBreakingSpaces,
     errorCheckers.checkDescriptionWhitespace,
     errorCheckers.checkDescriptionRepeatedWhitespace,

@@ -16,11 +16,8 @@ exports.checkTitlePunctuation = checkTitlePunctuation;
 exports.checkTitleHtml = checkTitleHtml;
 exports.checkTitleHtmlEntities = checkTitleHtmlEntities;
 exports.checkTitlePromotionalWords = checkTitlePromotionalWords;
-exports.checkMissingSpaces = checkMissingSpaces;
-exports.checkTitleSpacing = checkTitleSpacing;
 exports.checkTitleNonBreakingSpaces = checkTitleNonBreakingSpaces;
 const constants_1 = require("../utils/constants");
-const MissingSpaceChecker_1 = require("./MissingSpaceChecker");
 const abbreviationMappings = {
     'pck': 'pack',
     'pkg': 'package',
@@ -484,67 +481,82 @@ function checkTitlePromotionalWords(item) {
     return null;
 }
 /********************************************************** */
-function checkMissingSpaces(item) {
-    if (!item.title)
-        return null;
-    const words = item.title.split(/[\s-]+/);
-    const errors = [];
-    for (const word of words) {
-        const split = MissingSpaceChecker_1.wordSplitter.findSplit(word);
-        if (split) {
-            errors.push({
-                original: word,
-                suggested: split
-            });
-        }
+/*
+
+export function checkMissingSpaces(item: FeedItem): ErrorResult | null {
+  if (!item.title) return null;
+  
+  const words = item.title.split(/[\s-]+/);
+  const errors: Array<{original: string, suggested: string}> = [];
+  
+  for (const word of words) {
+    const split = wordSplitter.findSplit(word);
+    if (split) {
+      errors.push({
+        original: word,
+        suggested: split
+      });
     }
-    if (errors.length > 0) {
-        const examples = errors.map((error, index) => `(case ${index + 1}) "${error.original}" should be "${error.suggested}"`);
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Missing Spaces in Title',
-            details: `Found ${errors.length} instance(s) of missing spaces between words`,
-            affectedField: 'title',
-            value: examples.join('; ')
-        };
-    }
-    return null;
-}
-// Function to check for missing spaces after commas
-function checkTitleMissingSpacesAfterCommas(item) {
-    if (!item.title)
-        return null;
-    const matches = getMatches(constants_1.missingSpaceRegex, item.title);
-    if (matches.length === 0)
-        return null;
-    const examples = matches.map((match, index) => {
-        const context = getContext(item.title, match.index, match[0].length);
-        return matches.length > 1
-            ? `(case ${index + 1}) "...${context}..."`
-            : `"...${context}..."`;
-    });
+  }
+
+  if (errors.length > 0) {
+    const examples = errors.map((error, index) =>
+      `(case ${index + 1}) "${error.original}" should be "${error.suggested}"`
+    );
+
     return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Missing Spaces After Commas',
-        details: `Found ${matches.length} instance(s) of missing spaces after commas`,
-        affectedField: 'title',
-        value: examples.join('; ')
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing Spaces in Title',
+      details: `Found ${errors.length} instance(s) of missing spaces between words`,
+      affectedField: 'title',
+      value: examples.join('; ')
     };
+  }
+
+  return null;
 }
-function checkTitleSpacing(item) {
-    const missingSpacesError = checkMissingSpaces(item);
-    const missingSpacesAfterCommasError = checkTitleMissingSpacesAfterCommas(item);
-    if (missingSpacesError && missingSpacesAfterCommasError) {
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Title Spacing Issues',
-            details: `${missingSpacesError.details}; ${missingSpacesAfterCommasError.details}`,
-            affectedField: 'title',
-            value: `${missingSpacesError.value}; ${missingSpacesAfterCommasError.value}`
-        };
-    }
-    return missingSpacesError || missingSpacesAfterCommasError;
+
+// Function to check for missing spaces after commas
+function checkTitleMissingSpacesAfterCommas(item: FeedItem): ErrorResult | null {
+  if (!item.title) return null;
+  
+  const matches = getMatches(missingSpaceRegex, item.title);
+  if (matches.length === 0) return null;
+
+  const examples = matches.map((match, index) => {
+    const context = getContext(item.title!, match.index!, match[0].length);
+    return matches.length > 1
+      ? `(case ${index + 1}) "...${context}..."`
+      : `"...${context}..."`;
+  });
+
+  return {
+    id: item.id || 'UNKNOWN',
+    errorType: 'Missing Spaces After Commas',
+    details: `Found ${matches.length} instance(s) of missing spaces after commas`,
+    affectedField: 'title',
+    value: examples.join('; ')
+  };
 }
+
+export function checkTitleSpacing(item: FeedItem): ErrorResult | null {
+  const missingSpacesError = checkMissingSpaces(item);
+  const missingSpacesAfterCommasError = checkTitleMissingSpacesAfterCommas(item);
+  
+  if (missingSpacesError && missingSpacesAfterCommasError) {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Title Spacing Issues',
+      details: `${missingSpacesError.details}; ${missingSpacesAfterCommasError.details}`,
+      affectedField: 'title',
+      value: `${missingSpacesError.value}; ${missingSpacesAfterCommasError.value}`
+    };
+  }
+  
+  return missingSpacesError || missingSpacesAfterCommasError;
+}
+
+*/
 /***********Product Title contains non breaking spaces******************** */
 function checkTitleNonBreakingSpaces(item) {
     if (item.title) {
@@ -585,6 +597,6 @@ exports.TitleChecker = [
     checkTitleHtml,
     checkTitleHtmlEntities,
     checkTitlePromotionalWords,
-    checkTitleSpacing,
+    // checkTitleSpacing, 
     checkTitleNonBreakingSpaces
 ];
