@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import ErrorDetailsModal from './ErrorDetailsModal';
 import ErrorFixSuggestions from './ErrorFixSuggestions';
+import InfoModal from './InfoModal';
+import { CSVExporter } from '../utils/CSVExporter';
+
 
 interface ErrorResult {
   id: string;
@@ -75,6 +78,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [processedProducts, setProcessedProducts] = useState(0);
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   const totalErrors = Object.values(results.errorCounts).reduce((a, b) => a + b, 0);
   const totalChecksFailed = Object.keys(results.errorCounts).length;
@@ -118,66 +122,34 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     return results.errors.find((error) => error.errorType === errorType);
   };
 
+  const handleOpenInfoModal = () => {
+    setIsInfoModalOpen(true);
+  };
+
+  const handleCloseInfoModal = () => {
+    setIsInfoModalOpen(false);
+  };
+
   const handleDownloadDetails = (errorType: string) => {
     const filteredErrors = results.errors.filter(error => error.errorType === errorType);
-    
-    const headers = ['Product ID', 'Error Type', 'Details', 'Affected Field', 'Value'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredErrors.map(error => [
-        `"${error.id}"`,
-        `"${error.errorType}"`,
-        `"${error.details.replace(/"/g, '""')}"`,
-        `"${error.affectedField}"`,
-        `"${error.value.replace(/"/g, '""')}"`
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${fileName.split('.')[0]}_${errorType.replace(/\s+/g, '_')}_errors.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const csvContent = CSVExporter.exportErrors(filteredErrors);
+    CSVExporter.downloadCSV(
+      csvContent,
+      `${fileName.split('.')[0]}_${errorType.replace(/[^\w\s-]/g, '_')}_errors.csv`
+    );
   };
 
   const handleDownloadReport = () => {
-    const summary = [
-      'Feed Analysis Summary',
-      `File Name: ${fileName}`,
-      `Total Products: ${results.totalProducts}`,
-      `Total Errors: ${totalErrors}`,
-      '\nError Counts:',
-      ...Object.entries(results.errorCounts).map(([type, count]) => `${type}: ${count}`),
-      '\nDetailed Errors:'
-    ].join('\n');
-
-    const headers = ['Product ID', 'Error Type', 'Details', 'Affected Field', 'Value'];
-    const detailedErrors = [
-      headers.join(','),
-      ...results.errors.map(error => [
-        `"${error.id}"`,
-        `"${error.errorType}"`,
-        `"${error.details.replace(/"/g, '""')}"`,
-        `"${error.affectedField}"`,
-        `"${error.value.replace(/"/g, '""')}"`
-      ].join(','))
-    ].join('\n');
-
-    const fullContent = `${summary}\n\n${detailedErrors}`;
-
-    const blob = new Blob(['\ufeff' + fullContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${fileName.split('.')[0]}_analysis_report.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const csvContent = CSVExporter.exportSummaryReport(
+      fileName,
+      results.totalProducts,
+      results.errorCounts,
+      results.errors
+    );
+    CSVExporter.downloadCSV(
+      csvContent,
+      `${fileName.split('.')[0]}_analysis_report.csv`
+    );
   };
 
   useEffect(() => {
@@ -230,9 +202,12 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             </div>
 
             <div className="p-3 bg-gray-50 rounded-xl">
-              <p className="mt-4 text-[#17235E] hover:underline cursor-pointer font-bold text-xl">
-                Learn more about the Shopping Feed Analyzer →
-              </p>
+            <p
+              className="mt-4 text-[#17235E] hover:underline cursor-pointer font-bold text-xl"
+              onClick={handleOpenInfoModal}
+            >
+              Learn more about the Shopping Feed Analyzer →
+            </p>
             </div>
           </div>
         </div>
@@ -333,6 +308,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
         errorType={selectedErrorType || ''}
         errors={selectedErrorType ? results.errors.filter((error) => error.errorType === selectedErrorType) : []}
       />
+      <InfoModal isOpen={isInfoModalOpen} onClose={handleCloseInfoModal} />
     </div>
   );
 };

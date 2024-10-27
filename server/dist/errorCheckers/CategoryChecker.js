@@ -9,7 +9,7 @@ function checkGoogleProductCategory(item) {
     // Ensure the category exists and is not just empty spaces
     const category = (_a = item.google_product_category) === null || _a === void 0 ? void 0 : _a.trim();
     if (category) {
-        // First, check if the category is purely numeric (e.g., "500")
+        //check if the category is purely numeric (e.g., "500")
         if (/^\d+$/.test(category)) {
             return {
                 id: item.id || 'UNKNOWN',
@@ -25,8 +25,8 @@ function checkGoogleProductCategory(item) {
         if (categoryLevels < 3) {
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'Google Product Category Isn\'t Specific Enough',
-                details: `Google Product Category isn't specific enough (less than 3 levels)`,
+                errorType: 'Google Product Category is Incomplete',
+                details: `Google Product Category is incomplete (less than 3 levels)`,
                 affectedField: 'google_product_category',
                 value: item.google_product_category || ''
             };

@@ -15,7 +15,7 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       
       'Title Contains Duplicate Words': 'Remove redundant words from your title. Example: Change "Nike Air Jordan Jordan Shoes" to "Nike Air Jordan Shoes".',
       
-      'Google Product Category Isn\'t Specific Enough': 'Use more specific Google Product Categories with at least three levels. Example: Change "Apparel" to "Apparel > Women\'s Clothing > Dresses".',
+      'Google Product Category is Incomplete': 'Use more specific Google Product Categories with at least three levels. Example: Change "Apparel" to "Apparel > Women\'s Clothing > Dresses".',
       
       'Product Type is not set': 'Add a product type that describes your item\'s category hierarchy. Use the format "Main Category > Subcategory > Product Type".',
       
