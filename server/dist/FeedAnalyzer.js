@@ -28,7 +28,7 @@ const csv_parse_1 = require("csv-parse");
 const stream_1 = require("stream");
 const os_1 = require("os");
 const errorCheckers = __importStar(require("./errorCheckers"));
-const spellChecker = __importStar(require("./errorCheckers/SpellChecker"));
+const SpellChecker_1 = require("./errorCheckers/SpellChecker");
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -40,46 +40,60 @@ class FeedAnalyzer {
         this.numWorkers = Math.max(1, (0, os_1.cpus)().length - 1);
         this.activeWorkers = 0;
     }
-    processBatch(batch) {
+    async processBatch(batch) {
         for (const item of batch) {
             this.result.totalProducts++;
-            this.checkAllErrors(item);
+            await this.checkAllErrors(item);
         }
     }
-    checkAllErrors(item) {
-        // Check for duplicate IDs
-        this.checkDuplicateId(item);
-        // Run all other error checks
-        Object.values(errorCheckers).forEach(checker => {
-            if (typeof checker === 'function') {
-                const result = checker(item);
-                if (result) {
-                    // Handle both single errors and arrays of errors
-                    this.addErrors(Array.isArray(result) ? result : [result]);
-                }
-            }
-            else if (Array.isArray(checker)) {
-                checker.forEach(subChecker => {
-                    if (typeof subChecker === 'function') {
-                        const result = subChecker(item);
+    async checkAllErrors(item) {
+        try {
+            // Check for duplicate IDs
+            this.checkDuplicateId(item);
+            // Run all error checks from errorCheckers
+            for (const checker of Object.values(errorCheckers)) {
+                try {
+                    if (typeof checker === 'function') {
+                        // Handle both async and sync functions
+                        const result = checker.constructor.name === 'AsyncFunction'
+                            ? await checker(item)
+                            : checker(item);
                         if (result) {
-                            // Handle both single errors and arrays of errors
                             this.addErrors(Array.isArray(result) ? result : [result]);
                         }
                     }
-                });
-            }
-        });
-        // Run spell checks
-        Object.values(spellChecker).forEach(checker => {
-            if (typeof checker === 'function') {
-                const result = checker(item);
-                if (result) {
-                    // Spell checker results are always arrays
-                    this.addErrors(Array.isArray(result) ? result : [result]);
+                    else if (Array.isArray(checker)) {
+                        for (const subChecker of checker) {
+                            if (typeof subChecker === 'function') {
+                                // Handle both async and sync functions
+                                const result = subChecker.constructor.name === 'AsyncFunction'
+                                    ? await subChecker(item)
+                                    : subChecker(item);
+                                if (result) {
+                                    this.addErrors(Array.isArray(result) ? result : [result]);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (err) {
+                    console.error('Error in error checker:', err);
                 }
             }
-        });
+            // Run spell checks
+            try {
+                const spellErrors = (0, SpellChecker_1.checkSpelling)(item);
+                if (spellErrors && spellErrors.length > 0) {
+                    this.addErrors(spellErrors);
+                }
+            }
+            catch (err) {
+                console.error('Error in spell checker:', err);
+            }
+        }
+        catch (err) {
+            console.error('Error checking item:', err);
+        }
     }
     checkDuplicateId(item) {
         if (item.id) {
@@ -108,14 +122,16 @@ class FeedAnalyzer {
             const batchSize = 1000;
             let batch = [];
             let totalProcessed = 0;
+            let spellCheckPerformed = false;
             const transformer = new stream_1.Transform({
                 objectMode: true,
-                transform: (item, _, callback) => {
+                transform: async (item, _, callback) => {
                     try {
                         batch.push(item);
                         if (batch.length >= batchSize) {
-                            this.processBatch(batch);
+                            await this.processBatch(batch);
                             totalProcessed += batch.length;
+                            spellCheckPerformed = true;
                             if (progressCallback) {
                                 progressCallback(totalProcessed);
                             }
@@ -124,24 +140,41 @@ class FeedAnalyzer {
                         callback();
                     }
                     catch (err) {
+                        console.error('Error processing batch:', err);
                         callback(err instanceof Error ? err : new Error(String(err)));
                     }
                 },
-                flush: (callback) => {
+                flush: async (callback) => {
                     try {
                         if (batch.length > 0) {
-                            this.processBatch(batch);
+                            await this.processBatch(batch);
                             totalProcessed += batch.length;
+                            spellCheckPerformed = true;
                             if (progressCallback) {
                                 progressCallback(totalProcessed);
                             }
                         }
+                        if (spellCheckPerformed) {
+                            console.log('Saving spell checker cache after analysis completion...');
+                            SpellChecker_1.spellChecker.saveCache();
+                        }
                         callback();
                     }
                     catch (err) {
+                        console.error('Error in flush:', err);
                         callback(err instanceof Error ? err : new Error(String(err)));
                     }
                 }
+            });
+            // Add error handlers for better debugging
+            parser.on('error', (error) => {
+                console.error('Parser error:', error);
+            });
+            transformer.on('error', (error) => {
+                console.error('Transformer error:', error);
+            });
+            fileStream.on('error', (error) => {
+                console.error('File stream error:', error);
             });
             fileStream
                 .pipe(parser)

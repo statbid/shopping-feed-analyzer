@@ -1,20 +1,24 @@
 import { FeedItem, ErrorResult } from '../types';
 import nspell from 'nspell';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
+
 import path from 'path';
+
+
+export interface ISpellChecker {
+  isReady(): boolean;
+  correct(word: string): boolean;
+  suggest(word: string): string[];
+  saveCache(): void;
+}
 
 interface CacheData {
   validationCache: { [key: string]: boolean };
   correctionCache: { [key: string]: string[] };
-  metadata: {
-    size: number;
-    wordCount: number;
-    lastCleanup: number;
-  };
 }
 
 // Singleton class for spell checker management
-class SpellChecker {
+class SpellChecker implements ISpellChecker {
   private static instance: SpellChecker;
   private spell: ReturnType<typeof nspell>;
   private correctionCache: Map<string, string[]>;
@@ -24,6 +28,7 @@ class SpellChecker {
   private cachePath: string;
   private maxCacheSize: number = 20 * 1024 * 1024; // 20MB in bytes
   private cleanupThreshold: number = 0.8; // Cleanup at 80% capacity
+  private hasChanges: boolean = false; // Added hasChanges property
 
   private constructor() {
     this.correctionCache = new Map();
@@ -86,16 +91,18 @@ class SpellChecker {
     this.correctionCache.clear();
   }
 
-  private saveCache(): void {
+  public saveCache(): void {
+    if (!this.hasChanges) {
+      
+      return;
+    }
+
+    
     try {
       const cacheData: CacheData = {
         validationCache: Object.fromEntries(this.validationCache),
         correctionCache: Object.fromEntries(this.correctionCache),
-        metadata: {
-          size: this.getCurrentCacheSize(),
-          wordCount: this.validationCache.size,
-          lastCleanup: Date.now()
-        }
+   
       };
 
       if (!existsSync(this.cacheDir)) {
@@ -103,10 +110,15 @@ class SpellChecker {
       }
 
       writeFileSync(this.cachePath, JSON.stringify(cacheData), 'utf8');
+     
+      
+      this.hasChanges = false;
     } catch (error) {
-      console.error('Failed to save cache:', error);
+      console.error('Failed to save spell checker cache:', error);
     }
   }
+
+
 
   private getCurrentCacheSize(): number {
     const cacheData = {
@@ -167,12 +179,18 @@ class SpellChecker {
   }
 
   public correct(word: string): boolean {
-    if (this.validationCache.has(word)) {
+   
+
+  if (this.validationCache.has(word)) {
+     
       return this.validationCache.get(word)!;
     }
 
+  
     const isValid = this.spell.correct(word);
     this.validationCache.set(word, isValid);
+    this.hasChanges = true;
+  
     
     if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
       this.performCleanup();
@@ -181,6 +199,8 @@ class SpellChecker {
     return isValid;
   }
 
+  
+
   public suggest(word: string): string[] {
     if (this.correctionCache.has(word)) {
       return this.correctionCache.get(word)!;
@@ -188,7 +208,9 @@ class SpellChecker {
 
     const suggestions = this.spell.suggest(word);
     this.correctionCache.set(word, suggestions);
-    
+    this.hasChanges = true;
+   
+
     if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
       this.performCleanup();
     }
@@ -252,6 +274,7 @@ interface FieldData {
 }
 
 export function checkSpelling(item: FeedItem): ErrorResult[] {
+ 
   if (!spellChecker.isReady()) {
     console.warn('Spell checker not ready');
     return [];

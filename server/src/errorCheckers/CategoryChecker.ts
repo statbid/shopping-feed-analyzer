@@ -48,6 +48,7 @@ export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
 }
 
 
+
 /*******Google Product Category contains “Apparel”, but color, size, gender, or age_group are missing************** */
 
 

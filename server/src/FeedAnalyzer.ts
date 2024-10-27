@@ -5,7 +5,8 @@ import { cpus } from 'os';
 import path from 'path';
 import { FeedItem, ErrorResult, AnalysisResult } from './types';
 import * as errorCheckers from './errorCheckers';
-import * as spellChecker from './errorCheckers/SpellChecker';
+import { spellChecker, checkSpelling, ISpellChecker } from './errorCheckers/SpellChecker';
+
 
 export class FeedAnalyzer {
   private result: AnalysisResult = {
@@ -18,49 +19,68 @@ export class FeedAnalyzer {
   private numWorkers = Math.max(1, cpus().length - 1);
   private activeWorkers = 0;
 
-  private processBatch(batch: FeedItem[]) {
+  private async processBatch(batch: FeedItem[]) {
     for (const item of batch) {
       this.result.totalProducts++;
-      this.checkAllErrors(item);
+      await this.checkAllErrors(item);
     }
   }
 
-  private checkAllErrors(item: FeedItem) {
-    // Check for duplicate IDs
-    this.checkDuplicateId(item);
+  private async checkAllErrors(item: FeedItem) {
+    try {
+      // Check for duplicate IDs
+      this.checkDuplicateId(item);
 
-    // Run all other error checks
-    Object.values(errorCheckers).forEach(checker => {
-      if (typeof checker === 'function') {
-        const result = checker(item);
-        if (result) {
-          // Handle both single errors and arrays of errors
-          this.addErrors(Array.isArray(result) ? result : [result]);
-        }
-      } else if (Array.isArray(checker)) {
-        checker.forEach(subChecker => {
-          if (typeof subChecker === 'function') {
-            const result = subChecker(item);
+      // Run all error checks from errorCheckers
+      for (const checker of Object.values(errorCheckers)) {
+        try {
+          if (typeof checker === 'function') {
+            // Handle both async and sync functions
+            const result = checker.constructor.name === 'AsyncFunction' 
+              ? await checker(item)
+              : checker(item);
+              
             if (result) {
-              // Handle both single errors and arrays of errors
               this.addErrors(Array.isArray(result) ? result : [result]);
             }
+          } else if (Array.isArray(checker)) {
+            for (const subChecker of checker) {
+              if (typeof subChecker === 'function') {
+                // Handle both async and sync functions
+                const result = subChecker.constructor.name === 'AsyncFunction'
+                  ? await subChecker(item)
+                  : subChecker(item);
+                  
+                if (result) {
+                  this.addErrors(Array.isArray(result) ? result : [result]);
+                }
+              }
+            }
           }
-        });
-      }
-    });
-
-    // Run spell checks
-    Object.values(spellChecker).forEach(checker => {
-      if (typeof checker === 'function') {
-        const result = checker(item);
-        if (result) {
-          // Spell checker results are always arrays
-          this.addErrors(Array.isArray(result) ? result : [result]);
+        } catch (err) {
+          console.error('Error in error checker:', err);
         }
       }
-    });
+
+      // Run spell checks
+      try {
+        
+        const spellErrors = checkSpelling(item);
+        if (spellErrors && spellErrors.length > 0) {
+         
+          this.addErrors(spellErrors);
+        }
+      } catch (err) {
+        console.error('Error in spell checker:', err);
+      }
+
+    } catch (err) {
+      console.error('Error checking item:', err);
+    }
   }
+
+
+
 
   private checkDuplicateId(item: FeedItem) {
     if (item.id) {
@@ -92,16 +112,18 @@ export class FeedAnalyzer {
       const batchSize = 1000;
       let batch: FeedItem[] = [];
       let totalProcessed = 0;
+      let spellCheckPerformed = false;
 
       const transformer = new Transform({
         objectMode: true,
-        transform: (item: FeedItem, _, callback) => {
+        transform: async (item: FeedItem, _, callback) => {
           try {
             batch.push(item);
 
             if (batch.length >= batchSize) {
-              this.processBatch(batch);
+              await this.processBatch(batch);
               totalProcessed += batch.length;
+              spellCheckPerformed = true;
               if (progressCallback) {
                 progressCallback(totalProcessed);
               }
@@ -109,23 +131,48 @@ export class FeedAnalyzer {
             }
             callback();
           } catch (err) {
+            console.error('Error processing batch:', err);
             callback(err instanceof Error ? err : new Error(String(err)));
           }
         },
-        flush: (callback) => {
+        flush: async (callback) => {
           try {
             if (batch.length > 0) {
-              this.processBatch(batch);
+              await this.processBatch(batch);
               totalProcessed += batch.length;
+              spellCheckPerformed = true;
               if (progressCallback) {
                 progressCallback(totalProcessed);
               }
             }
+
+            if (spellCheckPerformed) {
+             
+              console.log('Saving spell checker cache after analysis completion...');
+              spellChecker.saveCache();
+            }
+
             callback();
           } catch (err) {
+            console.error('Error in flush:', err);
             callback(err instanceof Error ? err : new Error(String(err)));
           }
         }
+      });
+
+
+
+      // Add error handlers for better debugging
+      parser.on('error', (error) => {
+        console.error('Parser error:', error);
+      });
+
+      transformer.on('error', (error) => {
+        console.error('Transformer error:', error);
+      });
+
+      fileStream.on('error', (error) => {
+        console.error('File stream error:', error);
       });
 
       fileStream

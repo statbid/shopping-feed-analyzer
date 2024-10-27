@@ -27,10 +27,10 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
             return false;
         }
 
-        // Check file size (100MB max)
-        const maxSize = 100 * 1024 * 1024;
+        // Check file size (500MB max)
+        const maxSize = 500 * 1024 * 1024;
         if (file.size > maxSize) {
-            setError('File size must be less than 100MB');
+            setError('File size must be less than 500MB');
             return false;
         }
 

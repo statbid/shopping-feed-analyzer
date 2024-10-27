@@ -13,6 +13,7 @@ class SpellChecker {
     constructor() {
         this.maxCacheSize = 20 * 1024 * 1024; // 20MB in bytes
         this.cleanupThreshold = 0.8; // Cleanup at 80% capacity
+        this.hasChanges = false; // Added hasChanges property
         this.correctionCache = new Map();
         this.validationCache = new Map();
         this.ready = false;
@@ -67,23 +68,22 @@ class SpellChecker {
         this.correctionCache.clear();
     }
     saveCache() {
+        if (!this.hasChanges) {
+            return;
+        }
         try {
             const cacheData = {
                 validationCache: Object.fromEntries(this.validationCache),
                 correctionCache: Object.fromEntries(this.correctionCache),
-                metadata: {
-                    size: this.getCurrentCacheSize(),
-                    wordCount: this.validationCache.size,
-                    lastCleanup: Date.now()
-                }
             };
             if (!(0, fs_1.existsSync)(this.cacheDir)) {
                 (0, fs_1.mkdirSync)(this.cacheDir, { recursive: true });
             }
             (0, fs_1.writeFileSync)(this.cachePath, JSON.stringify(cacheData), 'utf8');
+            this.hasChanges = false;
         }
         catch (error) {
-            console.error('Failed to save cache:', error);
+            console.error('Failed to save spell checker cache:', error);
         }
     }
     getCurrentCacheSize() {
@@ -140,6 +140,7 @@ class SpellChecker {
         }
         const isValid = this.spell.correct(word);
         this.validationCache.set(word, isValid);
+        this.hasChanges = true;
         if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
             this.performCleanup();
         }
@@ -151,6 +152,7 @@ class SpellChecker {
         }
         const suggestions = this.spell.suggest(word);
         this.correctionCache.set(word, suggestions);
+        this.hasChanges = true;
         if (this.getCurrentCacheSize() > this.maxCacheSize * this.cleanupThreshold) {
             this.performCleanup();
         }
