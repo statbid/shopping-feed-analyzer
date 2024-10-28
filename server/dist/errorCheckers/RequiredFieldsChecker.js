@@ -7,6 +7,7 @@ exports.checkAvailability = checkAvailability;
 exports.checkPrice = checkPrice;
 exports.checkBrand = checkBrand;
 exports.checkCondition = checkCondition;
+exports.checkMPN = checkMPN;
 function checkLinkIsSet(item) {
     if (!item.link || item.link.trim() === '') {
         return {
@@ -79,11 +80,24 @@ function checkCondition(item) {
     }
     return null;
 }
+function checkMPN(item) {
+    if (!item.mpn || item.mpn.trim() === '') {
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Missing MPN',
+            details: 'Manufacturer Part Number (MPN) is not set',
+            affectedField: 'mpn',
+            value: item.mpn || ''
+        };
+    }
+    return null;
+}
 exports.requiredFieldsChecks = [
     checkLinkIsSet,
     checkImageLink,
     checkPrice,
     checkCondition,
     checkBrand,
-    checkAvailability
+    checkAvailability,
+    checkMPN
 ];

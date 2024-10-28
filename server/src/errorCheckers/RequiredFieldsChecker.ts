@@ -78,11 +78,25 @@ export function checkPrice(item: FeedItem): ErrorResult | null {
   }
 
   
-  export const requiredFieldsChecks = [
-    checkLinkIsSet,
-    checkImageLink,
-    checkPrice,
-    checkCondition,
-    checkBrand,
-    checkAvailability
-  ];
+export function checkMPN(item: FeedItem): ErrorResult | null {
+  if (!item.mpn || item.mpn.trim() === '') {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing MPN',
+      details: 'Manufacturer Part Number (MPN) is not set',
+      affectedField: 'mpn',
+      value: item.mpn || ''
+    };
+  }
+  return null;
+}
+
+export const requiredFieldsChecks = [
+  checkLinkIsSet,
+  checkImageLink,
+  checkPrice,
+  checkCondition,
+  checkBrand,
+  checkAvailability,
+  checkMPN
+];

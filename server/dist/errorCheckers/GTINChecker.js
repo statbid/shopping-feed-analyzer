@@ -2,61 +2,39 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GTINChecker = void 0;
 exports.checkGTINLength = checkGTINLength;
-exports.checkGTINValidity = checkGTINValidity;
-function parseGTIN(gtin) {
-    // Replace comma with dot for proper parsing of scientific notation
-    const normalizedGTIN = gtin.replace(',', '.');
-    // Check if the string is in scientific notation
-    if (/e/i.test(normalizedGTIN)) {
-        // Parse the scientific notation and convert to a regular number
-        const number = parseFloat(normalizedGTIN);
-        // Convert the number to a string, removing any decimal point
-        return Math.round(number).toString();
+function cleanGTIN(gtin) {
+    // First check if it's in scientific notation
+    if (/^-?\d*\.?\d+e[+-]?\d+$/i.test(gtin)) {
+        // Convert scientific notation to regular number and remove decimals
+        return Math.round(parseFloat(gtin)).toString();
     }
-    // If not in scientific notation, just remove non-digit characters
-    return normalizedGTIN.replace(/[^\d]/g, '');
+    // If not scientific notation, just remove non-digits
+    return gtin.replace(/[^\d]/g, '');
 }
 function checkGTINLength(item) {
-    if (item.gtin) {
-        const cleanGTIN = parseGTIN(item.gtin);
-        if (![8, 12, 13, 14].includes(cleanGTIN.length)) {
-            return {
-                id: item.id || 'UNKNOWN',
-                errorType: 'Incorrect GTIN Length',
-                details: `GTIN length is ${cleanGTIN.length}, expected 8, 12, 13, or 14 digits`,
-                affectedField: 'gtin',
-                value: item.gtin
-            };
-        }
+    var _a;
+    // Skip check if GTIN is null, undefined, or empty string
+    if (!((_a = item.gtin) === null || _a === void 0 ? void 0 : _a.trim())) {
+        return null;
     }
-    return null;
-}
-function isValidGTIN(gtin) {
-    const cleanGTIN = parseGTIN(gtin);
-    const digits = cleanGTIN.split('').map(Number);
-    const checkDigit = digits.pop();
-    const sum = digits.reduce((acc, digit, index) => {
-        return acc + digit * (index % 2 === 0 ? 3 : 1);
-    }, 0);
-    const calculatedCheckDigit = (10 - (sum % 10)) % 10;
-    return checkDigit === calculatedCheckDigit;
-}
-function checkGTINValidity(item) {
-    if (item.gtin) {
-        const cleanGTIN = parseGTIN(item.gtin);
-        if (![8, 12, 13, 14].includes(cleanGTIN.length) || !isValidGTIN(cleanGTIN)) {
-            return {
-                id: item.id || 'UNKNOWN',
-                errorType: 'Invalid GTIN',
-                details: 'GTIN is invalid (incorrect length or check digit)',
-                affectedField: 'gtin',
-                value: item.gtin
-            };
-        }
+    // Clean the GTIN
+    const cleanedGTIN = cleanGTIN(item.gtin);
+    const validLengths = [8, 12, 13, 14];
+    // Skip check if input contains non-numeric characters after scientific notation conversion
+    if (!/^\d+$/.test(cleanedGTIN)) {
+        return null;
+    }
+    if (!validLengths.includes(cleanedGTIN.length)) {
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Incorrect GTIN Length',
+            details: `GTIN length is ${cleanedGTIN.length}, expected 8, 12, 13, or 14 digits`,
+            affectedField: 'gtin',
+            value: `"${cleanedGTIN}"`
+        };
     }
     return null;
 }
 exports.GTINChecker = [
-    checkGTINLength,
-    checkGTINValidity
+    checkGTINLength
 ];

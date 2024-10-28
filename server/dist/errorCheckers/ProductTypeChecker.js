@@ -55,7 +55,7 @@ function checkProductTypePromotionalWords(item) {
             }).filter(Boolean);
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'Promotional Words in Product Type',
+                errorType: 'Product Type Contains Promotional Words',
                 details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
                 affectedField: 'product_type',
                 value: examples[0] || item.product_type
@@ -69,7 +69,7 @@ function checkProductTypeCommas(item) {
         return {
             id: item.id || 'UNKNOWN',
             errorType: 'Commas in Product Type',
-            details: 'Product type contains commas',
+            details: 'Product Type Contains Commas',
             affectedField: 'product_type',
             value: item.product_type
         };
@@ -83,7 +83,7 @@ function checkProductTypeRepeatedTiers(item) {
         if (tiers.length !== uniqueTiers.size) {
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'Repeated Tiers in Product Type',
+                errorType: 'Product Type Contains Repeated Tiers',
                 details: 'Product type contains repeated tiers',
                 affectedField: 'product_type',
                 value: item.product_type

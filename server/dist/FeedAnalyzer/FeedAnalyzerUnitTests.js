@@ -58,7 +58,7 @@ describe('FeedAnalyzer', () => {
                 const errors = FeedAnalyzer_1.FeedAnalyzer.errorCheckers.titleSizeCheck(item);
                 console.log('Errors returned:', JSON.stringify(errors));
                 expect(errors).toHaveLength(1);
-                expect(errors[0].errorType).toBe('Size Mismatch');
+                expect(errors[0].errorType).toBe('Title Doesn\'t Contain Size When Size is Set');
                 expect(errors[0].details).toContain('L');
             });
             it('should not report errors when size is in title', () => {
@@ -95,7 +95,7 @@ describe('FeedAnalyzer', () => {
                 };
                 const errors = FeedAnalyzer_1.FeedAnalyzer.errorCheckers.titleSizeCheck(item);
                 expect(errors).toHaveLength(1);
-                expect(errors[0].errorType).toBe('Size Mismatch');
+                expect(errors[0].errorType).toBe('Title Doesn\'t Contain Size When Size is Set');
             });
         });
         /**********************Duplicate Words in title ******************************************* */

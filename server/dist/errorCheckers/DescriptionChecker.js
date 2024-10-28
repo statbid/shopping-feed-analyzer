@@ -8,9 +8,9 @@ exports.checkDescriptionRepeatedWhitespace = checkDescriptionRepeatedWhitespace;
 exports.checkDescriptionRepeatedCommas = checkDescriptionRepeatedCommas;
 exports.checkDescriptionHtml = checkDescriptionHtml;
 exports.checkDescriptionHtmlEntities = checkDescriptionHtmlEntities;
-exports.checkDescriptionLength = checkDescriptionLength;
-exports.checkDescriptionNonBreakingSpaces = checkDescriptionNonBreakingSpaces;
 exports.checkDescriptionPromotionalWords = checkDescriptionPromotionalWords;
+exports.checkDescriptionNonBreakingSpaces = checkDescriptionNonBreakingSpaces;
+exports.checkDescriptionLength = checkDescriptionLength;
 const constants_1 = require("../utils/constants");
 function truncateContext(context, match) {
     const maxLength = 40;
@@ -103,7 +103,7 @@ function checkDescriptionWhitespace(item) {
         }
         return {
             id: item.id || 'UNKNOWN',
-            errorType: 'Whitespace at Edges in Description',
+            errorType: 'Description Contains Whitespace at Start or End',
             details: `Description has ${leadingSpace} whitespaces at the begining and ${trailingSpace}  whitespaces at the end`,
             affectedField: 'description',
             value: value
@@ -123,7 +123,7 @@ function checkDescriptionRepeatedWhitespace(item) {
             });
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'Repeated Whitespace in Description',
+                errorType: 'Description Contains Repeated Whitespace',
                 details: `Found ${matches.length} instance(s) of repeated whitespaces in description`,
                 affectedField: 'description',
                 value: examples.join('; ')
@@ -132,22 +132,23 @@ function checkDescriptionRepeatedWhitespace(item) {
     }
     return null;
 }
-/************Repeated Commas in Description************************** */
 function checkDescriptionRepeatedCommas(item) {
     if (item.description) {
         const matches = getMatches(constants_1.repeatedCommaRegex, item.description);
         if (matches.length > 0) {
             const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                const markedContext = context.replace(match[0], match[0]); // Repeated commas are already visible
-                return `"...${markedContext}..."`;
+                const truncatedContext = truncateContext(context, match[0]);
+                return matches.length > 1
+                    ? `(case ${index + 1}) "${truncatedContext}"`
+                    : `"${truncatedContext}"`;
             });
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'Repeated Commas in Description',
-                details: `Found ${matches.length} instance(s) of repeated commas in description`,
+                errorType: 'Description Contains Repeated Commas',
+                details: `Found ${matches.length} instance(s) of repeated commas`,
                 affectedField: 'description',
-                value: examples.join('; ') // Display all found instances
+                value: examples.join('; ')
             };
         }
     }
@@ -158,14 +159,17 @@ function checkDescriptionHtml(item) {
     if (item.description) {
         const matches = getMatches(constants_1.htmlTagRegex, item.description);
         if (matches.length > 0) {
-            const foundTags = matches.map(match => match[0]).join(', ');
             const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                return `"...${context}..."`;
+                const truncatedContext = truncateContext(context, match[0]);
+                return matches.length > 1
+                    ? `(case ${index + 1}) "${truncatedContext}"`
+                    : `"${truncatedContext}"`;
             });
+            const foundTags = matches.map(match => match[0]).join(', ');
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'HTML in Description',
+                errorType: 'Description Contains HTML',
                 details: `Found ${matches.length} HTML tag(s): ${foundTags}`,
                 affectedField: 'description',
                 value: examples.join('; ')
@@ -174,24 +178,76 @@ function checkDescriptionHtml(item) {
     }
     return null;
 }
-/************HTML Entities in Description************************** */
 function checkDescriptionHtmlEntities(item) {
     if (item.description) {
         const matches = getMatches(constants_1.htmlEntityRegex, item.description);
         if (matches.length > 0) {
-            const foundEntities = matches.map(match => match[0]).join(', ');
             const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                return `"...${context}..."`;
+                const truncatedContext = truncateContext(context, match[0]);
+                return matches.length > 1
+                    ? `(case ${index + 1}) "${truncatedContext}"`
+                    : `"${truncatedContext}"`;
             });
+            const foundEntities = matches.map(match => match[0]).join(', ');
             return {
                 id: item.id || 'UNKNOWN',
-                errorType: 'HTML Entities in Description',
-                details: `Found ${matches.length} HTML entitie(s): ${foundEntities}`,
+                errorType: 'Description Contains HTML Entities',
+                details: `Found ${matches.length} HTML entities: ${foundEntities}`,
                 affectedField: 'description',
                 value: examples.join('; ')
             };
         }
+    }
+    return null;
+}
+function checkDescriptionPromotionalWords(item) {
+    if (item.description) {
+        const foundWords = constants_1.promotionalWords.filter(word => {
+            const regex = new RegExp(`\\b${word}\\b`, 'i');
+            return regex.test(item.description);
+        });
+        if (foundWords.length > 0) {
+            const examples = foundWords.map((word, index) => {
+                const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                const match = regex.exec(item.description);
+                if (match) {
+                    const context = getContext(item.description, match.index, match[0].length);
+                    const truncatedContext = truncateContext(context, match[0]);
+                    return foundWords.length > 1
+                        ? `(case ${index + 1}) "${truncatedContext}"`
+                        : `"${truncatedContext}"`;
+                }
+                return '';
+            }).filter(Boolean);
+            return {
+                id: item.id || 'UNKNOWN',
+                errorType: 'Description contains Promotional Words',
+                details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
+                affectedField: 'description',
+                value: examples.join('; ')
+            };
+        }
+    }
+    return null;
+}
+function checkDescriptionNonBreakingSpaces(item) {
+    if (item.description && constants_1.nonBreakingSpaceRegex.test(item.description)) {
+        const matches = getMatches(constants_1.nonBreakingSpaceRegex, item.description);
+        const examples = matches.map((match, index) => {
+            const context = getContext(item.description, match.index, match[0].length);
+            const truncatedContext = truncateContext(context, match[0]);
+            return matches.length > 1
+                ? `(case ${index + 1}) "${truncatedContext}"`
+                : `"${truncatedContext}"`;
+        });
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Description Contains Nonbreaking Spaces',
+            details: `Found ${matches.length} instance(s) of non-breaking spaces`,
+            affectedField: 'description',
+            value: examples.join('; ')
+        };
     }
     return null;
 }
@@ -205,51 +261,6 @@ function checkDescriptionLength(item) {
             affectedField: 'description',
             value: `${item.description.substring(0, 50)}...${item.description.substring(item.description.length - 50)}`
         };
-    }
-    return null;
-}
-/***********Description contains non-breaking spaces******************** */
-function checkDescriptionNonBreakingSpaces(item) {
-    if (item.description && constants_1.nonBreakingSpaceRegex.test(item.description)) {
-        const matches = getMatches(constants_1.nonBreakingSpaceRegex, item.description);
-        const examples = matches.map((match, index) => {
-            const context = getContext(item.description, match.index, match[0].length);
-            return `"...${context}..."`; // Display context with the non-breaking space
-        });
-        return {
-            id: item.id || 'UNKNOWN',
-            errorType: 'Non-Breaking Spaces in Description',
-            details: `Found ${matches.length} instance(s) of non-breaking spaces in description`,
-            affectedField: 'description',
-            value: examples.join('; ') // Show all cases with context
-        };
-    }
-    return null;
-}
-function checkDescriptionPromotionalWords(item) {
-    if (item.description) {
-        const foundWords = constants_1.promotionalWords.filter(word => {
-            const regex = new RegExp(`\\b${word}\\b`, 'i');
-            return regex.test(item.description);
-        });
-        if (foundWords.length > 0) {
-            const examples = foundWords.slice(0, 3).map(word => {
-                const regex = new RegExp(`\\b${word}\\b`, 'gi');
-                const match = regex.exec(item.description);
-                if (match) {
-                    const context = getContext(item.description, match.index, match[0].length);
-                    return `"${context}" (found: "${match[0]}")`;
-                }
-                return '';
-            }).filter(Boolean);
-            return {
-                id: item.id || 'UNKNOWN',
-                errorType: 'Promotional Words in Description',
-                details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
-                affectedField: 'description',
-                value: examples[0] || ''
-            };
-        }
     }
     return null;
 }

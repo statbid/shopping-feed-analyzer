@@ -148,7 +148,7 @@ function getMatches(regex: RegExp, text: string): RegExpExecArray[] {
   if (!sizeInTitle) {
     return {
       id: item.id || 'UNKNOWN',
-      errorType: 'Title Doesn\'t Contain Size When Size is Set ',
+      errorType: 'Title Doesn\'t Contain Size When Size is Set',
       details: `Title does not contain size (${item.size}) when size is set`,
       affectedField: 'title',
       value: item.title,
@@ -328,8 +328,6 @@ export function checkTitleMaterial(item: FeedItem): ErrorResult | null {
     return null;
   }
   
-
-
 /*********Product Title contains whitespace at start or end**************** */
 
 
@@ -370,6 +368,7 @@ export function checkTitleWhitespace(item: FeedItem): ErrorResult | null {
   }
   return null;
 }
+
 /***************Product Title contains repeated whitespace**************************** */
 export function checkTitleRepeatedWhitespace(item: FeedItem): ErrorResult | null {
   if (item.title) {
@@ -396,6 +395,9 @@ export function checkTitleRepeatedWhitespace(item: FeedItem): ErrorResult | null
   }
   return null;
 }
+
+
+
 
 /*************Product Title contains repeated dashes*********************** */
 export function checkTitleRepeatedDashes(item: FeedItem): ErrorResult | null {

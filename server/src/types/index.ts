@@ -15,6 +15,7 @@ export interface FeedItem {
     availability?: string;
     price?: string;
     condition?: string;
+    mpn?: string;
     [key: string]: string | undefined;
   }
   export interface ErrorResult {

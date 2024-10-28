@@ -87,7 +87,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionRepeatedDashes(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Repeated Dashes in Description');
+                    expect(error.errorType).toBe('Description Contains Repeated Dashes');
                     expect(error.details).toBe('Found 1 instance(s) of repeated dashes');
                     expect(error.value).toContain("\"...scription with -- repeated dashe...\"");
                 }
@@ -111,7 +111,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionWhitespace(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Whitespace at Edges in Description');
+                    expect(error.errorType).toBe('Description Contains Whitespace at Start or End');
                     expect(error.details).toBe('Description has 3 whitespaces at the begining and 0  whitespaces at the end');
                     expect(error.value).toBe('"  Leading..."');
                 }
@@ -124,7 +124,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionWhitespace(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Whitespace at Edges in Description');
+                    expect(error.errorType).toBe('Description Contains Whitespace at Start or End');
                     expect(error.details).toBe('Description has 0 whitespaces at the begining and 3  whitespaces at the end');
                     expect(error.value).toBe('"...here.  "');
                 }
@@ -148,7 +148,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionRepeatedWhitespace(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Repeated Whitespace in Description');
+                    expect(error.errorType).toBe('Description Contains Repeated Whitespace');
                     expect(error.details).toBe('Found 1 instance(s) of repeated whitespaces in description');
                     expect(error.value).toContain("\"...his description␣␣has repeated wh...\"");
                 }
@@ -172,7 +172,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionRepeatedCommas(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Repeated Commas in Description');
+                    expect(error.errorType).toBe('Description Contains Repeated Commas');
                     expect(error.details).toBe('Found 1 instance(s) of repeated commas in description');
                     expect(error.value).toContain("\"...his description,, has repeated c...\"");
                 }
@@ -196,7 +196,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionHtml(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('HTML in Description');
+                    expect(error.errorType).toBe('Description Contains HTML');
                     expect(error.details).toBe('Found 2 HTML tag(s): <div>, </div>');
                     expect(error.value).toContain("\"...ption contains <div>HTML</div> tags...\"; \"...tains <div>HTML</div> tags....\"");
                 }
@@ -220,7 +220,7 @@ describe('FeedAnalyzer', () => {
                 const error = errorCheckers.checkDescriptionHtmlEntities(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('HTML Entities in Description');
+                    expect(error.errorType).toBe('Description Contains HTML Entities');
                     expect(error.details).toBe('Found 2 HTML entitie(s): &copy;, &reg;');
                     expect(error.value).toContain("\"...ption contains &copy; and &reg; enti...\"; \"...ins &copy; and &reg; entities....\"");
                 }
@@ -239,14 +239,14 @@ describe('FeedAnalyzer', () => {
             it('should detect non-breaking spaces in the description', () => {
                 const item = {
                     id: '2',
-                    description: 'This is a description with one non-breaki ng space.'
+                    description: 'This is a description with one non-breaki ng space.'
                 };
                 const error = errorCheckers.checkDescriptionNonBreakingSpaces(item);
                 expect(error).not.toBeNull();
                 if (error) {
-                    expect(error.errorType).toBe('Non-Breaking Spaces in Description');
+                    expect(error.errorType).toBe('Description Contains Nonbreaking Spaces');
                     expect(error.details).toBe('Found 1 instance(s) of non-breaking spaces in description');
-                    expect(error.value).toContain("\"... one non-breaki ng space....\"");
+                    expect(error.value).toContain("\"... one non-breaki ng space....\"");
                 }
             });
         });

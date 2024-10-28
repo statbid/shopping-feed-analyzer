@@ -16,6 +16,8 @@ export function checkIdLength(item: FeedItem): ErrorResult | null {
   return null;
 }
 
+
+
 export function checkIdIsSet(item: FeedItem): ErrorResult | null {
 
   if (!item.id || item.id.trim() === '') {

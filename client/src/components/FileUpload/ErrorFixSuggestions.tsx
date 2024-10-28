@@ -55,19 +55,22 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       
       'Title Contains Promotional Words': 'Remove promotional terms like "save", "off", "free shipping", etc. from your title.',
       
+      'Description contains Promotional Words' : 'Remove promotional terms like "save", "off", "free shipping", etc. from your description.',
+      
       'Title Contains Missing Spaces After Commas': 'Add appropriate spaces between words and after commas in your title.',
       
       'Title Contains Non-Breaking Spaces': 'Replace non-breaking spaces with regular spaces in your title.',
+      'Description Contains Nonbreaking Spaces' : 'Replace non-breaking spaces with regular spaces in your description.',
       
-      'Whitespace at Edges in Description': 'Remove any spaces or tabs from the beginning and end of your description.',
+      'Description Contains Whitespace at Start or End': 'Remove any spaces or tabs from the beginning and end of your description.',
       
-      'Repeated Whitespace in Description': 'Replace multiple spaces with a single space throughout your description.',
+      'Description Contains Repeated Whitespace': 'Replace multiple spaces with a single space throughout your description.',
       
-      'Repeated Commas in Description': 'Replace multiple commas with a single comma in your description.',
+      'Description Contains Repeated Commas': 'Replace multiple commas with a single comma in your description.',
       
-      'HTML in Description': 'Remove any HTML tags from your description. Use plain text only.',
+      'Description Contains HTML': 'Remove any HTML tags from your description. Use plain text only.',
       
-      'HTML Entities in Description': 'Replace HTML entities with their plain text equivalents or remove them.',
+      'Description Contains HTML Entities ': 'Replace HTML entities with their plain text equivalents or remove them.',
       
       'Description Too Long': 'Shorten your description to under 5000 characters while maintaining essential product information.',
       
@@ -80,6 +83,7 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       'Link Not Set': 'Add a valid product URL for each item.',
       
       'Missing Image Link': 'Add a valid image URL for each product.',
+      'Missing Manufacturer Part Number (MPN)': 'Add a valid image MPN for each product.',
       
       'Missing Availability': 'Set the availability status (in stock, out of stock, preorder).',
       
@@ -91,11 +95,11 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       
       'Commas in Image Link': 'Remove any commas from your image URLs.',
       
-      'Promotional Words in Product Type': 'Remove promotional terms from product type. Focus on category hierarchy.',
+      'Product Type Contains Promotional Words': 'Remove promotional terms from product type. Focus on category hierarchy.',
       
-      'Commas in Product Type': 'Use ">" instead of commas to separate category levels in product type.',
+      'Product Type Contains Commas': 'Use ">" instead of commas to separate category levels in product type.',
       
-      'Repeated Tiers in Product Type': 'Remove duplicate category levels from your product type hierarchy.',
+      'Product Type Contains Repeated Tiers': 'Remove duplicate category levels from your product type hierarchy.',
       
       'Whitespace at Product Type Start/End': 'Remove spaces from the start and end of your product type.',
       

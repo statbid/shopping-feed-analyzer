@@ -123,7 +123,7 @@ function checkTitleSize(item) {
     if (!sizeInTitle) {
         return {
             id: item.id || 'UNKNOWN',
-            errorType: 'Title Doesn\'t Contain Size When Size is Set ',
+            errorType: 'Title Doesn\'t Contain Size When Size is Set',
             details: `Title does not contain size (${item.size}) when size is set`,
             affectedField: 'title',
             value: item.title,

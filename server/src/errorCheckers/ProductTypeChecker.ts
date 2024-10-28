@@ -54,7 +54,7 @@ export function checkProductTypePromotionalWords(item: FeedItem): ErrorResult | 
 
       return {
         id: item.id || 'UNKNOWN',
-        errorType: 'Promotional Words in Product Type',
+        errorType: 'Product Type Contains Promotional Words',
         details: `Found ${foundWords.length} promotional word(s): ${foundWords.join(', ')}`,
         affectedField: 'product_type',
         value: examples[0] || item.product_type
@@ -69,7 +69,7 @@ export function checkProductTypeCommas(item: FeedItem): ErrorResult | null {
     return {
       id: item.id || 'UNKNOWN',
       errorType: 'Commas in Product Type',
-      details: 'Product type contains commas',
+      details: 'Product Type Contains Commas',
       affectedField: 'product_type',
       value: item.product_type
     };
@@ -84,7 +84,7 @@ export function checkProductTypeRepeatedTiers(item: FeedItem): ErrorResult | nul
     if (tiers.length !== uniqueTiers.size) {
       return {
         id: item.id || 'UNKNOWN',
-        errorType: 'Repeated Tiers in Product Type',
+        errorType: 'Product Type Contains Repeated Tiers',
         details: 'Product type contains repeated tiers',
         affectedField: 'product_type',
         value: item.product_type
