@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requiredFieldsChecks = void 0;
+exports.checkShippingWeight = checkShippingWeight;
 exports.checkLinkIsSet = checkLinkIsSet;
 exports.checkImageLink = checkImageLink;
 exports.checkAvailability = checkAvailability;
@@ -8,6 +9,54 @@ exports.checkPrice = checkPrice;
 exports.checkBrand = checkBrand;
 exports.checkCondition = checkCondition;
 exports.checkMPN = checkMPN;
+const validWeightUnits = new Set([
+    'oz', 'oz.',
+    'lb', 'lb.',
+    'lbs', 'lbs.',
+    'g', 'g.',
+    'kg', 'kg.',
+    'gram', 'grams',
+    'kilogram', 'kilograms',
+    'ounce', 'ounces',
+    'pound', 'pounds'
+]);
+function isValidWeightFormat(weight) {
+    const weightPattern = /^(\d+\.?\d*)\s*([a-zA-Z.]+)$/;
+    const match = weight.trim().match(weightPattern);
+    if (!match) {
+        return false;
+    }
+    const [, value, unit] = match;
+    const numericValue = parseFloat(value);
+    if (isNaN(numericValue) || numericValue <= 0) {
+        return false;
+    }
+    const cleanUnit = unit.toLowerCase().replace(/\.+$/, '');
+    return validWeightUnits.has(cleanUnit);
+}
+function checkShippingWeight(item) {
+    // First check if shipping_weight is set
+    if (!item.shipping_weight || item.shipping_weight.trim() === '') {
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Missing Shipping Weight',
+            details: 'Shipping weight is not set',
+            affectedField: 'shipping_weight',
+            value: ''
+        };
+    }
+    // Then check if it has the correct format
+    if (!isValidWeightFormat(item.shipping_weight)) {
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Invalid Shipping Weight Format',
+            details: 'Shipping weight must include a positive number and valid unit (e.g., "10 oz", "2.5 lbs", "1 kg")',
+            affectedField: 'shipping_weight',
+            value: item.shipping_weight
+        };
+    }
+    return null;
+}
 function checkLinkIsSet(item) {
     if (!item.link || item.link.trim() === '') {
         return {
@@ -99,5 +148,6 @@ exports.requiredFieldsChecks = [
     checkCondition,
     checkBrand,
     checkAvailability,
-    checkMPN
+    checkMPN,
+    checkShippingWeight
 ];

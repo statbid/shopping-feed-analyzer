@@ -73,6 +73,7 @@ const allChecks = [
     errorCheckers.checkProductTypeRepeatedWhitespace,
     errorCheckers.checkProductTypeAngleBrackets,
     errorCheckers.checkGTINLength,
+    errorCheckers.checkShippingWeight,
     errorCheckers.checkMonitoredPharmacyWords,
     errorCheckers.checkGenderMismatch,
     errorCheckers.checkAgeGroupMismatch,

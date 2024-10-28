@@ -64,7 +64,7 @@ describe('TitleChecker', () => {
             expect(error).not.toBeNull();
             if (error) {
                 expect(error.errorType).toBe('Title Contains Duplicate Words');
-                expect(error.details).toContain('Jordan');
+                expect(error.details).toContain('Title contains duplicate words: jordan');
             }
         });
         it('should return null if title does not contain duplicate words', () => {

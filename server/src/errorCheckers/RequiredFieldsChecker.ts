@@ -1,5 +1,65 @@
 import { FeedItem, ErrorResult } from '../types';
 
+
+const validWeightUnits = new Set([
+  'oz', 'oz.',
+  'lb', 'lb.',
+  'lbs', 'lbs.',
+  'g', 'g.',
+  'kg', 'kg.',
+  'gram', 'grams',
+  'kilogram', 'kilograms',
+  'ounce', 'ounces',
+  'pound', 'pounds'
+]);
+
+
+function isValidWeightFormat(weight: string): boolean {
+  const weightPattern = /^(\d+\.?\d*)\s*([a-zA-Z.]+)$/;
+  const match = weight.trim().match(weightPattern);
+
+  if (!match) {
+    return false;
+  }
+
+  const [, value, unit] = match;
+  const numericValue = parseFloat(value);
+
+  if (isNaN(numericValue) || numericValue < 0) {
+    return false;
+  }
+
+  const cleanUnit = unit.toLowerCase().replace(/\.+$/, '');
+  return validWeightUnits.has(cleanUnit);
+}
+
+
+export function checkShippingWeight(item: FeedItem): ErrorResult | null {
+  // First check if shipping_weight is set
+  if (!item.shipping_weight || item.shipping_weight.trim() === '') {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Missing Shipping Weight',
+      details: 'Shipping weight is not set',
+      affectedField: 'shipping_weight',
+      value: ''
+    };
+  }
+
+  // Then check if it has the correct format
+  if (!isValidWeightFormat(item.shipping_weight)) {
+    return {
+      id: item.id || 'UNKNOWN',
+      errorType: 'Invalid Shipping Weight Format',
+      details: 'Shipping weight must be a non-negative number with a valid unit (e.g., "0 oz", "2.5 lbs", "1 kg")',
+      affectedField: 'shipping_weight',
+      value: item.shipping_weight
+    };
+  }
+
+  return null;
+}
+
 export function checkLinkIsSet(item: FeedItem): ErrorResult | null {
   if (!item.link || item.link.trim() === '') {
     return {
@@ -91,6 +151,7 @@ export function checkMPN(item: FeedItem): ErrorResult | null {
   return null;
 }
 
+
 export const requiredFieldsChecks = [
   checkLinkIsSet,
   checkImageLink,
@@ -98,5 +159,6 @@ export const requiredFieldsChecks = [
   checkCondition,
   checkBrand,
   checkAvailability,
-  checkMPN
+  checkMPN,
+  checkShippingWeight
 ];

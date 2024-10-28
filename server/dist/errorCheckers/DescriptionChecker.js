@@ -259,7 +259,7 @@ function checkDescriptionLength(item) {
             errorType: 'Description Too Long',
             details: `Description exceeds ${constants_1.MAX_DESCRIPTION_LENGTH} characters (current length: ${item.description.length})`,
             affectedField: 'description',
-            value: `${item.description.substring(0, 50)}...${item.description.substring(item.description.length - 50)}`
+            value: 'Description Too Long'
         };
     }
     return null;

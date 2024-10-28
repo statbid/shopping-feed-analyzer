@@ -16,6 +16,7 @@ export interface FeedItem {
     price?: string;
     condition?: string;
     mpn?: string;
+    shipping_weight?: string;
     [key: string]: string | undefined;
   }
   export interface ErrorResult {
