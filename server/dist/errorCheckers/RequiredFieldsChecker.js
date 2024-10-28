@@ -28,7 +28,7 @@ function isValidWeightFormat(weight) {
     }
     const [, value, unit] = match;
     const numericValue = parseFloat(value);
-    if (isNaN(numericValue) || numericValue <= 0) {
+    if (isNaN(numericValue) || numericValue < 0) {
         return false;
     }
     const cleanUnit = unit.toLowerCase().replace(/\.+$/, '');
@@ -50,7 +50,7 @@ function checkShippingWeight(item) {
         return {
             id: item.id || 'UNKNOWN',
             errorType: 'Invalid Shipping Weight Format',
-            details: 'Shipping weight must include a positive number and valid unit (e.g., "10 oz", "2.5 lbs", "1 kg")',
+            details: 'Shipping weight must be a non-negative number with a valid unit (e.g., "0 oz", "2.5 lbs", "1 kg")',
             affectedField: 'shipping_weight',
             value: item.shipping_weight
         };

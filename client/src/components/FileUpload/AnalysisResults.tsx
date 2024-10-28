@@ -5,7 +5,6 @@ import ErrorFixSuggestions from './ErrorFixSuggestions';
 import InfoModal from './InfoModal';
 import { CSVExporter } from '../utils/CSVExporter';
 
-
 interface ErrorResult {
   id: string;
   errorType: string;
@@ -79,6 +78,15 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [processedProducts, setProcessedProducts] = useState(0);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [previousLoadingState, setPreviousLoadingState] = useState(isLoading);
+
+  // Reset page when analysis completes
+  useEffect(() => {
+    if (previousLoadingState && !isLoading) {
+      setCurrentPage(1);
+    }
+    setPreviousLoadingState(isLoading);
+  }, [isLoading, previousLoadingState]);
 
   const totalErrors = Object.values(results.errorCounts).reduce((a, b) => a + b, 0);
   const totalChecksFailed = Object.keys(results.errorCounts).length;
@@ -202,12 +210,12 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
             </div>
 
             <div className="p-3 bg-gray-50 rounded-xl">
-            <p
-              className="mt-4 text-[#17235E] hover:underline cursor-pointer font-bold text-xl"
-              onClick={handleOpenInfoModal}
-            >
-              Learn more about the Shopping Feed Analyzer →
-            </p>
+              <p
+                className="mt-4 text-[#17235E] hover:underline cursor-pointer font-bold text-xl"
+                onClick={handleOpenInfoModal}
+              >
+                Learn more about the Shopping Feed Analyzer →
+              </p>
             </div>
           </div>
         </div>
