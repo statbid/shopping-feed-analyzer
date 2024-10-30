@@ -3,8 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.spellChecker = exports.spellChecks = void 0;
+exports.spellChecker = exports.spellChecks = exports.spellingChecks = void 0;
 exports.checkSpelling = checkSpelling;
+exports.checkTitleSpelling = checkTitleSpelling;
+exports.checkDescriptionSpelling = checkDescriptionSpelling;
 const nspell_1 = __importDefault(require("nspell"));
 const fs_1 = require("fs");
 const path_1 = __importDefault(require("path"));
@@ -276,4 +278,19 @@ function checkSpelling(item) {
     }
     return errors;
 }
+function checkTitleSpelling(item) {
+    if (!item.title)
+        return [];
+    return checkSpelling(item).filter(error => error.errorType === 'Spelling Mistake in Title');
+}
+function checkDescriptionSpelling(item) {
+    if (!item.description)
+        return [];
+    return checkSpelling(item).filter(error => error.errorType === 'Spelling Mistake in Description');
+}
+// Export these along with the original spellChecks
+exports.spellingChecks = [
+    checkTitleSpelling,
+    checkDescriptionSpelling
+];
 exports.spellChecks = [checkSpelling];

@@ -4,6 +4,8 @@ import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
 import Toast from './Toast';
+import CheckSelectorModal from './CheckSelectorModal';
+import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -24,13 +26,8 @@ interface AnalysisResults {
   errors: ErrorResult[];
 }
 
-interface ProcessingStatus {
-  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing';
-  message?: string;
-}
-
-
 export default function FileUpload() {
+  // State Management
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -38,34 +35,31 @@ export default function FileUpload() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [processedProducts, setProcessedProducts] = useState(0);
-  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({ 
-    status: 'uploading' 
-  });
-  
+  const [isCheckSelectorModalOpen, setIsCheckSelectorModalOpen] = useState(false);
+  const [selectedChecks, setSelectedChecks] = useState<string[]>(
+    checkCategories.flatMap(cat => cat.checks.map(check => check.id))
+  );
+  const [progressStatus, setProgressStatus] = useState<'uploading' | 'extracting' | 'extracted' | 'analyzing'>('uploading');
 
+  // File Upload Handler
   const handleFileSelect = async (selectedFile: File) => {
     setIsLoading(true);
     setIsProgressModalOpen(true);
-    setProcessingStatus({ status: 'uploading' });  // Set initial status to uploading
-  
+    setProgressStatus('uploading');
+
     const formData = new FormData();
     formData.append('file', selectedFile);
-  
+
     try {
-      // If it's a ZIP file, update status to extracting
-      if (selectedFile.name.toLowerCase().endsWith('.zip')) {
-        setProcessingStatus({ status: 'extracting' });
-      }
-  
       const response = await fetch('http://localhost:3001/api/upload', {
         method: 'POST',
         body: formData,
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       
       setFile(selectedFile);
@@ -75,20 +69,29 @@ export default function FileUpload() {
       });
       setIsModalOpen(false);
     } catch (error: unknown) {
-      // ... error handling ...
+      let errorMessage = 'An unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setUploadStatus({ 
+        type: 'error', 
+        message: `Error processing file: ${errorMessage}` 
+      });
     } finally {
       setIsLoading(false);
       setIsProgressModalOpen(false);
     }
   };
 
+  // Analysis Handler
   const handleAnalyze = async () => {
     if (!file) return;
 
     setIsLoading(true);
-  setIsProgressModalOpen(true);
-  setProcessedProducts(0);
-  setProcessingStatus({ status: 'analyzing' });
+    setIsProgressModalOpen(true);
+    setProcessedProducts(0);
+    setProgressStatus('analyzing');
+    setIsCheckSelectorModalOpen(false);
 
     try {
       const response = await fetch('http://localhost:3001/api/analyze', {
@@ -96,7 +99,10 @@ export default function FileUpload() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ fileName: file.name }),
+        body: JSON.stringify({ 
+          fileName: file.name,
+          enabledChecks: getEnabledChecks(selectedChecks)
+        }),
       });
 
       if (!response.ok) {
@@ -105,7 +111,6 @@ export default function FileUpload() {
 
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
-
       let buffer = '';
 
       while (true) {
@@ -167,16 +172,43 @@ export default function FileUpload() {
     }
   };
 
+  // Modal Handlers
+  const handleCheckQualityClick = () => {
+    setIsCheckSelectorModalOpen(true);
+  };
+
+  const handleSearchTermsClick = () => {
+    console.log('Search terms analysis clicked');
+    // Implement search terms analysis functionality
+  };
+
+  const handleCheckSelection = (checks: string[]) => {
+    setSelectedChecks(checks);
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up any resources if needed
+      if (file) {
+        URL.revokeObjectURL(URL.createObjectURL(file));
+      }
+    };
+  }, [file]);
+
   return (
     <div className="w-full h-full flex flex-col">
+      {/* Header Section */}
       <AnalyzerHeader 
         file={file}
         onUploadClick={() => setIsModalOpen(true)}
-        onAnalyzeClick={handleAnalyze} 
+        onCheckQualityClick={handleCheckQualityClick}
+        onSearchTermsClick={handleSearchTermsClick}
         isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
       />
 
+      {/* Toast Notifications */}
       {uploadStatus.type && (
         <Toast 
           type={uploadStatus.type} 
@@ -185,8 +217,9 @@ export default function FileUpload() {
         />
       )}
 
+      {/* Analysis Results */}
       {analysisResults && (
-        <div className="mt-6 flex-grow overflow-hidden">
+        <div className="flex-grow overflow-hidden">
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}
@@ -195,17 +228,25 @@ export default function FileUpload() {
         </div>
       )}
 
+      {/* Modals */}
       <FileUploadModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onFileSelect={handleFileSelect} 
       />
 
+      <CheckSelectorModal 
+        isOpen={isCheckSelectorModalOpen}
+        onClose={() => setIsCheckSelectorModalOpen(false)}
+        onAnalyze={handleAnalyze}
+        onSelectionChange={handleCheckSelection}
+        isAnalyzing={isLoading}
+      />
+
       <ProgressModal 
         isOpen={isProgressModalOpen}
         processedProducts={processedProducts}
-        status={processingStatus.status}
-        statusMessage={processingStatus.message}
+        status={progressStatus}
       />
     </div>
   );

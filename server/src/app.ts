@@ -52,21 +52,18 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     });
   }
 });
-
 app.post('/api/analyze', async (req, res) => {
-  const { fileName } = req.body;
-  console.log('Analyze request received for file:', fileName); // Added logging
+  const { fileName, enabledChecks } = req.body;
+  console.log('Analyze request received for file:', fileName, 'with checks:', enabledChecks); 
 
   if (!fileName) {
-    console.log('No filename provided in request body:', req.body); // Added logging
     return res.status(400).json({ error: 'No file name provided' });
   }
 
   const filePath = FileHandler.getProcessedFilePath(fileName);
-  console.log('Retrieved file path:', filePath); // Added logging
+  console.log('Retrieved file path:', filePath);
 
   if (!filePath || !fs.existsSync(filePath)) {
-    console.log('File not found at path:', filePath); // Added logging
     return res.status(404).json({ error: 'File not found' });
   }
 
@@ -87,7 +84,7 @@ app.post('/api/analyze', async (req, res) => {
 
     const results = await analyzer.analyzeStream(fileStream, (processed: number) => {
       sendUpdate({ processed });
-    });
+    }, enabledChecks); // Pass enabledChecks here
 
     sendUpdate({ results, completed: true });
     res.end();

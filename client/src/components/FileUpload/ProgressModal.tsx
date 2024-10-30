@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileArchive, FileText, Loader, Upload } from 'lucide-react';
+import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react';
 
 interface ProgressModalProps {
   isOpen: boolean;
@@ -47,9 +47,15 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
       case 'analyzing':
         return (
           <div className="flex flex-col items-center">
-            <Loader className="w-16 h-16 text-blue-500 mb-2 animate-spin" />
-            <p className="text-lg mb-4">Analyzing Feed File</p>
-            <p className="text-lg">{processedProducts.toLocaleString()} SKUs checked</p>
+            <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
+            <p className="text-lg mb-4">Running Quality Checks</p>
+            <div className="mb-4">
+              <p className="text-3xl font-bold text-blue-600">
+                {processedProducts.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">SKUs checked</p>
+            </div>
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         );
 
@@ -63,13 +69,28 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
     }
   };
 
+  const getTitle = () => {
+    switch (status) {
+      case 'uploading':
+        return 'Processing Feed File';
+      case 'extracting':
+        return 'Extracting ZIP File';
+      case 'extracted':
+        return 'File Ready';
+      case 'analyzing':
+        return 'Running Quality Checks';
+      default:
+        return 'Processing Feed File';
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-center">
-        <h2 className="text-2xl font-bold mb-4">Processing Feed File</h2>
+      <div className="bg-white p-8 rounded-lg shadow-lg w-96 text-center">
+        <h2 className="text-2xl font-bold mb-6">{getTitle()}</h2>
         {getContent()}
         {statusMessage && (
-          <p className="text-sm text-gray-600 mt-2">{statusMessage}</p>
+          <p className="text-sm text-gray-600 mt-4">{statusMessage}</p>
         )}
       </div>
     </div>

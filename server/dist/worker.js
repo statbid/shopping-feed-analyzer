@@ -23,80 +23,88 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+// worker.ts
 const worker_threads_1 = require("worker_threads");
 const errorCheckers = __importStar(require("./errorCheckers"));
-const allChecks = [
-    errorCheckers.checkTitleSize,
-    errorCheckers.checkTitleColor,
-    errorCheckers.checkTitleDuplicateWords,
-    errorCheckers.checkTitleSpecialCharacters,
-    errorCheckers.checkTitleBadAbbreviations,
-    errorCheckers.checkTitleBrand,
-    errorCheckers.checkDescriptionMissingSpaces,
-    errorCheckers.checkDescriptionRepeatedDashes,
-    errorCheckers.checkGoogleProductCategory,
-    errorCheckers.checkApparelAttributes,
-    errorCheckers.checkProductType,
-    errorCheckers.checkTitleMaterial,
-    errorCheckers.checkTitleWhitespace,
-    errorCheckers.checkTitleRepeatedWhitespace,
-    errorCheckers.checkTitleRepeatedDashes,
-    errorCheckers.checkTitleRepeatedCommas,
-    errorCheckers.checkTitlePunctuation,
-    errorCheckers.checkTitleHtml,
-    errorCheckers.checkTitleHtmlEntities,
-    errorCheckers.checkTitlePromotionalWords,
-    // errorCheckers.checkTitleSpacing, 
-    errorCheckers.checkTitleNonBreakingSpaces,
-    errorCheckers.checkDescriptionWhitespace,
-    errorCheckers.checkDescriptionRepeatedWhitespace,
-    errorCheckers.checkDescriptionRepeatedCommas,
-    errorCheckers.checkDescriptionHtml,
-    errorCheckers.checkDescriptionHtmlEntities,
-    errorCheckers.checkDescriptionLength,
-    errorCheckers.checkDescriptionNonBreakingSpaces,
-    errorCheckers.checkIdLength,
-    errorCheckers.checkIdIsSet,
-    errorCheckers.checkImageLink,
-    errorCheckers.checkAvailability,
-    errorCheckers.checkPrice,
-    errorCheckers.checkLinkIsSet,
-    errorCheckers.checkPrice,
-    errorCheckers.checkMPN,
-    errorCheckers.checkCondition,
-    errorCheckers.checkBrand,
-    errorCheckers.checkImageLinkCommas,
-    errorCheckers.checkProductTypePromotionalWords,
-    errorCheckers.checkProductTypeCommas,
-    errorCheckers.checkProductTypeRepeatedTiers,
-    errorCheckers.checkProductTypeWhitespace,
-    errorCheckers.checkProductTypeRepeatedWhitespace,
-    errorCheckers.checkProductTypeAngleBrackets,
-    errorCheckers.checkGTINLength,
-    errorCheckers.checkShippingWeight,
-    errorCheckers.checkMonitoredPharmacyWords,
-    errorCheckers.checkGenderMismatch,
-    errorCheckers.checkAgeGroupMismatch,
-];
-function processItem(item) {
-    const errors = [];
-    for (const check of allChecks) {
-        const result = check(item);
-        if (result) {
-            // If result is an array, spread it; if single error, add it
-            errors.push(...(Array.isArray(result) ? result : [result]));
+const SpellChecker_1 = require("./errorCheckers/SpellChecker");
+// Map to track duplicate IDs across the batch
+const idCountsMap = new Map();
+function findCheckerFunction(name) {
+    // Handle special cases first
+    if (name === 'checkDuplicateIds') {
+        return (item) => { var _a; return (_a = errorCheckers.checkDuplicateIds) === null || _a === void 0 ? void 0 : _a.call(errorCheckers, item, idCountsMap); };
+    }
+    // Handle spell checking
+    if (name === 'checkSpelling') {
+        return SpellChecker_1.checkSpelling;
+    }
+    // Check for direct function export
+    if (typeof errorCheckers[name] === 'function') {
+        return errorCheckers[name];
+    }
+    // Search in checker arrays
+    for (const [key, value] of Object.entries(errorCheckers)) {
+        if (Array.isArray(value)) {
+            const checker = value.find(fn => fn.name === name);
+            if (checker) {
+                return checker;
+            }
         }
     }
-    return errors;
+    // If checker not found, log warning and return undefined
+    console.warn(`Checker function "${name}" not found`);
+    return undefined;
 }
 if (worker_threads_1.parentPort) {
-    const { batch } = worker_threads_1.workerData;
-    const errors = [];
-    for (const item of batch) {
-        const itemErrors = processItem(item);
-        errors.push(...itemErrors);
-        // console.log(`Processed item ${item.id}, found ${itemErrors.length} errors`);
+    try {
+        const { batch, enabledChecks } = worker_threads_1.workerData;
+        const errors = [];
+        // Get all checker functions up front
+        const checkerFunctions = enabledChecks
+            .map(name => ({
+            name,
+            fn: findCheckerFunction(name)
+        }))
+            .filter((checker) => {
+            if (!checker.fn) {
+                console.warn(`Skipping missing checker: ${checker.name}`);
+                return false;
+            }
+            return true;
+        });
+        // Process each item in the batch
+        for (const item of batch) {
+            // Run each enabled checker
+            for (const checker of checkerFunctions) {
+                try {
+                    const result = checker.fn(item);
+                    if (result) {
+                        // Handle both single results and arrays of results
+                        if (Array.isArray(result)) {
+                            errors.push(...result);
+                        }
+                        else {
+                            errors.push(result);
+                        }
+                    }
+                }
+                catch (error) {
+                    console.error(`Error in checker ${checker.name}:`, error);
+                    // Continue with other checks even if one fails
+                }
+            }
+        }
+        // Send results back to main thread
+        worker_threads_1.parentPort.postMessage({
+            errors,
+            processedCount: batch.length
+        });
     }
-    //  console.log(`Worker finished processing ${batch.length} items, found ${errors.length} total errors`);
-    worker_threads_1.parentPort.postMessage({ errors, processedCount: batch.length });
+    catch (error) {
+        console.error('Worker error:', error);
+        worker_threads_1.parentPort.postMessage({
+            error: String(error),
+            processedCount: 0
+        });
+    }
 }

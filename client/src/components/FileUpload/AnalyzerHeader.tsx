@@ -1,16 +1,22 @@
 import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Search, CheckCircle } from 'lucide-react';
 
 interface AnalyzerHeaderProps {
   file: File | null;
   onUploadClick: () => void;
-  onAnalyzeClick: () => void;
+  onCheckQualityClick: () => void;
+  onSearchTermsClick: () => void;
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
 }
 
 const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
-  file, onUploadClick, onAnalyzeClick, isAnalyzeDisabled, isLoading
+  file, 
+  onUploadClick, 
+  onCheckQualityClick,
+  onSearchTermsClick,
+  isAnalyzeDisabled, 
+  isLoading
 }) => {
   return (
     <div className="flex items-center mb-6">
@@ -38,11 +44,21 @@ const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
         </button>
 
         <button
-          onClick={onAnalyzeClick}
+          onClick={onCheckQualityClick}
           disabled={isAnalyzeDisabled}
-          className={`ml-3 px-6 py-4 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg`}
+          className={`ml-3 px-6 py-4 flex items-center bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg`}
         >
-          {isLoading ? 'Analyzing...' : 'Analyze'}
+          <CheckCircle className="w-5 h-5 mr-2" />
+          {isLoading ? 'Checking...' : 'Check Feed Quality'}
+        </button>
+
+        <button
+          onClick={onSearchTermsClick}
+          disabled={isAnalyzeDisabled}
+          className={`ml-3 px-6 py-4 flex items-center bg-green-600 text-white rounded-full hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg`}
+        >
+          <Search className="w-5 h-5 mr-2" />
+          Search Terms Analysis
         </button>
       </div>
     </div>

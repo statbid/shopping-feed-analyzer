@@ -22,13 +22,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeedAnalyzer = void 0;
 const csv_parse_1 = require("csv-parse");
 const stream_1 = require("stream");
+const worker_threads_1 = require("worker_threads");
 const os_1 = require("os");
+const path_1 = __importDefault(require("path"));
 const errorCheckers = __importStar(require("./errorCheckers"));
-const SpellChecker_1 = require("./errorCheckers/SpellChecker");
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -38,61 +42,83 @@ class FeedAnalyzer {
         };
         this.idCounts = new Map();
         this.numWorkers = Math.max(1, (0, os_1.cpus)().length - 1);
-        this.activeWorkers = 0;
+        this.enabledChecks = [];
     }
-    async processBatch(batch) {
-        for (const item of batch) {
-            this.result.totalProducts++;
-            await this.checkAllErrors(item);
+    getBatchSize(enabledChecks) {
+        const hasSpellCheck = enabledChecks.some(check => check.toLowerCase().includes('spell') ||
+            check.toLowerCase().includes('spelling'));
+        const hasOnlySimpleChecks = enabledChecks.every(check => check.startsWith('checkDescription') ||
+            check.startsWith('checkTitle') ||
+            check.startsWith('checkProduct'));
+        if (hasSpellCheck) {
+            return 1000;
+        }
+        else if (hasOnlySimpleChecks) {
+            return 10000;
+        }
+        else {
+            return 5000;
         }
     }
-    async checkAllErrors(item) {
-        try {
-            // Check for duplicate IDs
-            this.checkDuplicateId(item);
-            // Run all error checks from errorCheckers
-            for (const checker of Object.values(errorCheckers)) {
-                try {
-                    if (typeof checker === 'function') {
-                        // Handle both async and sync functions
-                        const result = checker.constructor.name === 'AsyncFunction'
-                            ? await checker(item)
-                            : checker(item);
-                        if (result) {
-                            this.addErrors(Array.isArray(result) ? result : [result]);
-                        }
-                    }
-                    else if (Array.isArray(checker)) {
-                        for (const subChecker of checker) {
-                            if (typeof subChecker === 'function') {
-                                // Handle both async and sync functions
-                                const result = subChecker.constructor.name === 'AsyncFunction'
-                                    ? await subChecker(item)
-                                    : subChecker(item);
-                                if (result) {
-                                    this.addErrors(Array.isArray(result) ? result : [result]);
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (err) {
-                    console.error('Error in error checker:', err);
-                }
-            }
-            // Run spell checks
+    createWorker(batch, enabledChecks) {
+        return new Promise((resolve, reject) => {
             try {
-                const spellErrors = (0, SpellChecker_1.checkSpelling)(item);
-                if (spellErrors && spellErrors.length > 0) {
-                    this.addErrors(spellErrors);
+                const workerPath = path_1.default.resolve(__dirname, '../src/worker.ts');
+                const worker = new worker_threads_1.Worker(workerPath, {
+                    workerData: { batch, enabledChecks },
+                    execArgv: ['--require', 'ts-node/register']
+                });
+                worker.on('message', (message) => {
+                    if (message.error) {
+                        console.error('Worker error:', message.error);
+                        reject(new Error(message.error));
+                        return;
+                    }
+                    if (message.errors) {
+                        this.addErrors(message.errors);
+                    }
+                    if (message.processedCount) {
+                        this.result.totalProducts += message.processedCount;
+                        if (this.progressCallback) {
+                            this.progressCallback(this.result.totalProducts);
+                        }
+                    }
+                });
+                worker.on('error', (error) => {
+                    console.error('Worker error:', error);
+                    reject(error);
+                });
+                worker.on('exit', (code) => {
+                    if (code === 0) {
+                        resolve();
+                    }
+                    else {
+                        reject(new Error(`Worker stopped with exit code ${code}`));
+                    }
+                });
+            }
+            catch (error) {
+                console.error('Error creating worker:', error);
+                reject(error);
+            }
+        });
+    }
+    addErrors(errors) {
+        for (const error of errors) {
+            if (error.errorType === 'Duplicate Id') {
+                const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
+                if (existingError) {
+                    existingError.details = error.details;
+                }
+                else {
+                    this.result.errors.push(error);
                 }
             }
-            catch (err) {
-                console.error('Error in spell checker:', err);
+            else {
+                this.result.errors.push(error);
             }
-        }
-        catch (err) {
-            console.error('Error checking item:', err);
+            this.result.errorCounts[error.errorType] =
+                (this.result.errorCounts[error.errorType] || 0) + 1;
         }
     }
     checkDuplicateId(item) {
@@ -111,102 +137,99 @@ class FeedAnalyzer {
             }
         }
     }
-    analyzeStream(fileStream, progressCallback) {
+    async analyzeStream(fileStream, progressCallback, enabledChecks = []) {
+        this.progressCallback = progressCallback;
+        this.enabledChecks = enabledChecks;
+        this.resetAnalysis();
+        const batchSize = this.getBatchSize(enabledChecks);
+        console.log(`Using batch size: ${batchSize} for enabled checks:`, enabledChecks);
         return new Promise((resolve, reject) => {
-            const parser = (0, csv_parse_1.parse)({
-                columns: (header) => header.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()),
+            const parserOptions = {
+                columns: (headers) => headers.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()),
                 skip_empty_lines: true,
                 delimiter: '\t',
-                relax_column_count: true,
-            });
-            const batchSize = 1000;
+                relaxColumnCount: true, // This is the correct option name
+                skipRecordsWithError: true,
+                trim: true
+            };
+            const parser = (0, csv_parse_1.parse)(parserOptions);
             let batch = [];
-            let totalProcessed = 0;
-            let spellCheckPerformed = false;
+            let activeWorkers = 0;
+            const maxConcurrentWorkers = this.numWorkers;
+            let parseError = null;
+            let isStreamEnded = false;
+            const processBatch = async (items) => {
+                activeWorkers++;
+                try {
+                    await this.createWorker(items, this.enabledChecks);
+                }
+                finally {
+                    activeWorkers--;
+                    if (isStreamEnded && activeWorkers === 0) {
+                        finishProcessing();
+                    }
+                }
+            };
+            const finishProcessing = () => {
+                if (parseError) {
+                    reject(parseError);
+                }
+                else {
+                    resolve(this.result);
+                }
+            };
             const transformer = new stream_1.Transform({
                 objectMode: true,
                 transform: async (item, _, callback) => {
                     try {
                         batch.push(item);
-                        if (batch.length >= batchSize) {
-                            await this.processBatch(batch);
-                            totalProcessed += batch.length;
-                            spellCheckPerformed = true;
-                            if (progressCallback) {
-                                progressCallback(totalProcessed);
-                            }
+                        if (batch.length >= batchSize && activeWorkers < maxConcurrentWorkers) {
+                            const itemsToProcess = [...batch];
                             batch = [];
+                            await processBatch(itemsToProcess);
                         }
                         callback();
                     }
                     catch (err) {
-                        console.error('Error processing batch:', err);
                         callback(err instanceof Error ? err : new Error(String(err)));
                     }
                 },
                 flush: async (callback) => {
                     try {
                         if (batch.length > 0) {
-                            await this.processBatch(batch);
-                            totalProcessed += batch.length;
-                            spellCheckPerformed = true;
-                            if (progressCallback) {
-                                progressCallback(totalProcessed);
-                            }
+                            await processBatch([...batch]);
                         }
-                        if (spellCheckPerformed) {
-                            console.log('Saving spell checker cache after analysis completion...');
-                            SpellChecker_1.spellChecker.saveCache();
+                        isStreamEnded = true;
+                        if (activeWorkers === 0) {
+                            finishProcessing();
                         }
                         callback();
                     }
                     catch (err) {
-                        console.error('Error in flush:', err);
                         callback(err instanceof Error ? err : new Error(String(err)));
                     }
                 }
             });
-            // Add error handlers for better debugging
             parser.on('error', (error) => {
                 console.error('Parser error:', error);
+                parseError = error;
             });
             transformer.on('error', (error) => {
                 console.error('Transformer error:', error);
+                parseError = error;
             });
             fileStream.on('error', (error) => {
                 console.error('File stream error:', error);
+                parseError = error;
             });
             fileStream
                 .pipe(parser)
                 .pipe(transformer)
-                .on('finish', () => {
-                resolve(this.result);
-            })
                 .on('error', (err) => {
-                console.error('Error parsing file:', err);
+                console.error('Stream error:', err);
                 reject(new Error('Error parsing file. Please ensure it is a valid TSV file.'));
             });
         });
-    }
-    addErrors(errors) {
-        for (const error of errors) {
-            if (error.errorType === 'Duplicate Id') {
-                const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
-                if (existingError) {
-                    existingError.details = error.details;
-                }
-                else {
-                    this.result.errors.push(error);
-                }
-            }
-            else {
-                this.result.errors.push(error);
-            }
-            this.result.errorCounts[error.errorType] = (this.result.errorCounts[error.errorType] || 0) + 1;
-        }
-    }
-    getResults() {
-        return this.result;
     }
     resetAnalysis() {
         this.result = {
@@ -216,14 +239,19 @@ class FeedAnalyzer {
         };
         this.idCounts.clear();
     }
-    countTotalProducts(fileStream) {
+    getResults() {
+        return this.result;
+    }
+    async countTotalProducts(fileStream) {
         return new Promise((resolve, reject) => {
             let count = 0;
-            const parser = (0, csv_parse_1.parse)({
+            const parserOptions = {
                 columns: true,
                 skip_empty_lines: true,
                 delimiter: '\t',
-            });
+                relaxColumnCount: true // This is the correct option name
+            };
+            const parser = (0, csv_parse_1.parse)(parserOptions);
             fileStream
                 .pipe(parser)
                 .on('data', () => {
@@ -236,6 +264,34 @@ class FeedAnalyzer {
                 reject(err);
             });
         });
+    }
+    validateChecker(checkerName) {
+        console.log(`Validating checker: ${checkerName}`);
+        let found = false;
+        for (const [key, value] of Object.entries(errorCheckers)) {
+            if (Array.isArray(value)) {
+                if (value.some(fn => fn.name === checkerName)) {
+                    console.log(`Found ${checkerName} in ${key} array`);
+                    found = true;
+                    break;
+                }
+            }
+            else if (typeof value === 'function' && value.name === checkerName) {
+                console.log(`Found ${checkerName} as direct function`);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            console.warn(`Checker "${checkerName}" not found in error checkers`);
+        }
+        return found;
+    }
+    validateEnabledChecks(checks) {
+        console.log('Validating checks:', checks);
+        const validChecks = checks.filter(check => this.validateChecker(check));
+        console.log('Valid checks:', validChecks);
+        return validChecks;
     }
 }
 exports.FeedAnalyzer = FeedAnalyzer;

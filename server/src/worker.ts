@@ -1,85 +1,100 @@
+// worker.ts
 import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from './types';
 import * as errorCheckers from './errorCheckers';
-import { error } from 'console';
+import { checkSpelling } from './errorCheckers/SpellChecker';
 
+interface WorkerData {
+  batch: FeedItem[];
+  enabledChecks: string[];
+}
 
-const allChecks = [
-  errorCheckers.checkTitleSize,
-  errorCheckers.checkTitleColor,
-  errorCheckers.checkTitleDuplicateWords,
-  errorCheckers.checkTitleSpecialCharacters,
-  errorCheckers.checkTitleBadAbbreviations,
-  errorCheckers.checkTitleBrand,
-  errorCheckers.checkDescriptionMissingSpaces,
-  errorCheckers.checkDescriptionRepeatedDashes,
-  errorCheckers.checkGoogleProductCategory,
-  errorCheckers.checkApparelAttributes,
-  errorCheckers.checkProductType,
-  errorCheckers.checkTitleMaterial,
-  errorCheckers.checkTitleWhitespace,
-  errorCheckers.checkTitleRepeatedWhitespace,
-  errorCheckers.checkTitleRepeatedDashes,
-  errorCheckers.checkTitleRepeatedCommas,
-  errorCheckers.checkTitlePunctuation,
-  errorCheckers.checkTitleHtml,
-  errorCheckers.checkTitleHtmlEntities,
-  errorCheckers.checkTitlePromotionalWords,
- // errorCheckers.checkTitleSpacing, 
-  errorCheckers.checkTitleNonBreakingSpaces,
-  errorCheckers.checkDescriptionWhitespace,
-  errorCheckers.checkDescriptionRepeatedWhitespace,
-  errorCheckers.checkDescriptionRepeatedCommas,
-  errorCheckers.checkDescriptionHtml,
-  errorCheckers.checkDescriptionHtmlEntities,
-  errorCheckers.checkDescriptionLength,
-  errorCheckers.checkDescriptionNonBreakingSpaces,
-  errorCheckers.checkIdLength,
-  errorCheckers.checkIdIsSet,
-  errorCheckers.checkImageLink,
-  errorCheckers.checkAvailability,
-  errorCheckers.checkPrice,
-  errorCheckers.checkLinkIsSet,
-  errorCheckers.checkPrice,
-  errorCheckers.checkMPN,
-  errorCheckers.checkCondition,
-  errorCheckers.checkBrand,
-  errorCheckers.checkImageLinkCommas,
-errorCheckers.checkProductTypePromotionalWords,
-errorCheckers.checkProductTypeCommas,
-errorCheckers.checkProductTypeRepeatedTiers,
-errorCheckers.checkProductTypeWhitespace,
-errorCheckers.checkProductTypeRepeatedWhitespace,
-errorCheckers.checkProductTypeAngleBrackets,
-errorCheckers.checkGTINLength,
-errorCheckers.checkShippingWeight,
-errorCheckers.checkMonitoredPharmacyWords,
-errorCheckers.checkGenderMismatch,
-errorCheckers.checkAgeGroupMismatch,
-];
+// Map to track duplicate IDs across the batch
+const idCountsMap = new Map<string, number>();
 
+function findCheckerFunction(name: string): Function | undefined {
+  // Handle special cases first
+  if (name === 'checkDuplicateIds') {
+    return (item: FeedItem) => errorCheckers.checkDuplicateIds?.(item, idCountsMap);
+  }
 
+  // Handle spell checking
+  if (name === 'checkSpelling') {
+    return checkSpelling;
+  }
 
-function processItem(item: FeedItem): ErrorResult[] {
-  const errors: ErrorResult[] = [];
-  for (const check of allChecks) {
-    const result = check(item);
-    if (result) {
-      // If result is an array, spread it; if single error, add it
-      errors.push(...(Array.isArray(result) ? result : [result]));
+  // Check for direct function export
+  if (typeof errorCheckers[name as keyof typeof errorCheckers] === 'function') {
+    return errorCheckers[name as keyof typeof errorCheckers] as Function;
+  }
+
+  // Search in checker arrays
+  for (const [key, value] of Object.entries(errorCheckers)) {
+    if (Array.isArray(value)) {
+      const checker = value.find(fn => fn.name === name);
+      if (checker) {
+        return checker;
+      }
     }
   }
-  return errors;
+
+  // If checker not found, log warning and return undefined
+  console.warn(`Checker function "${name}" not found`);
+  return undefined;
 }
 
 if (parentPort) {
-  const { batch } = workerData as { batch: FeedItem[] };
-  const errors: ErrorResult[] = [];
-  for (const item of batch) {
-    const itemErrors = processItem(item);
-    errors.push(...itemErrors);
-   // console.log(`Processed item ${item.id}, found ${itemErrors.length} errors`);
+  try {
+    const { batch, enabledChecks } = workerData as WorkerData;
+    const errors: ErrorResult[] = [];
+
+    // Get all checker functions up front
+    const checkerFunctions = enabledChecks
+      .map(name => ({
+        name,
+        fn: findCheckerFunction(name)
+      }))
+      .filter((checker): checker is { name: string; fn: Function } => {
+        if (!checker.fn) {
+          console.warn(`Skipping missing checker: ${checker.name}`);
+          return false;
+        }
+        return true;
+      });
+
+    // Process each item in the batch
+    for (const item of batch) {
+      // Run each enabled checker
+      for (const checker of checkerFunctions) {
+        try {
+          const result = checker.fn(item);
+          if (result) {
+            // Handle both single results and arrays of results
+            if (Array.isArray(result)) {
+              errors.push(...result);
+            } else {
+              errors.push(result);
+            }
+          }
+        } catch (error) {
+          console.error(`Error in checker ${checker.name}:`, error);
+          // Continue with other checks even if one fails
+        }
+      }
+    }
+
+    // Send results back to main thread
+    parentPort.postMessage({
+      errors,
+      processedCount: batch.length
+    });
+  } catch (error) {
+    console.error('Worker error:', error);
+    parentPort.postMessage({
+      error: String(error),
+      processedCount: 0
+    });
   }
-//  console.log(`Worker finished processing ${batch.length} items, found ${errors.length} total errors`);
-  parentPort.postMessage({ errors, processedCount: batch.length });
 }
+
+export {};

@@ -371,5 +371,25 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
   return errors;
 }
 
+export function checkTitleSpelling(item: FeedItem): ErrorResult[] {
+  if (!item.title) return [];
+  return checkSpelling(item).filter(error => 
+    error.errorType === 'Spelling Mistake in Title'
+  );
+}
+
+export function checkDescriptionSpelling(item: FeedItem): ErrorResult[] {
+  if (!item.description) return [];
+  return checkSpelling(item).filter(error => 
+    error.errorType === 'Spelling Mistake in Description'
+  );
+}
+
+// Export these along with the original spellChecks
+export const spellingChecks = [
+  checkTitleSpelling,
+  checkDescriptionSpelling
+];
+
 export const spellChecks = [checkSpelling];
 export { spellChecker };

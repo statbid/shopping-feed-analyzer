@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.idChecks = void 0;
 exports.checkIdLength = checkIdLength;
 exports.checkIdIsSet = checkIdIsSet;
+exports.checkDuplicateIds = checkDuplicateIds;
 const constants_1 = require("../utils/constants");
 function checkIdLength(item) {
     if (item.id && item.id.length > constants_1.MAX_ID_LENGTH) {
@@ -28,7 +29,25 @@ function checkIdIsSet(item) {
     }
     return null;
 }
+function checkDuplicateIds(item, idCounts) {
+    if (item.id) {
+        const count = (idCounts.get(item.id) || 0) + 1;
+        idCounts.set(item.id, count);
+        if (count > 1) {
+            return {
+                id: item.id,
+                errorType: 'Duplicate Id',
+                details: `This id appears ${count} times in the feed`,
+                affectedField: 'id',
+                value: item.id
+            };
+        }
+    }
+    return null;
+}
+// Export all id checks together
 exports.idChecks = [
+    checkDuplicateIds,
     checkIdLength,
     checkIdIsSet
 ];

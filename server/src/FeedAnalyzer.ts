@@ -1,88 +1,119 @@
-import { parse } from 'csv-parse';
-import { Transform } from 'stream';
+import { parse, Parser, Options as ParseOptions } from 'csv-parse';
+import { Transform, TransformCallback } from 'stream';
 import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import path from 'path';
 import { FeedItem, ErrorResult, AnalysisResult } from './types';
 import * as errorCheckers from './errorCheckers';
-import { spellChecker, checkSpelling, ISpellChecker } from './errorCheckers/SpellChecker';
-
+import { spellChecker } from './errorCheckers/SpellChecker';
 
 export class FeedAnalyzer {
-  private result: AnalysisResult = {
-    totalProducts: 0,
-    errorCounts: {},
-    errors: []
-  };
-  private idCounts: Map<string, number> = new Map();
+  private result: AnalysisResult;
+  private idCounts: Map<string, number>;
+  private numWorkers: number;
+  private progressCallback?: (progress: number) => void;
+  private enabledChecks: string[];
 
-  private numWorkers = Math.max(1, cpus().length - 1);
-  private activeWorkers = 0;
+  constructor() {
+    this.result = {
+      totalProducts: 0,
+      errorCounts: {},
+      errors: []
+    };
+    this.idCounts = new Map();
+    this.numWorkers = Math.max(1, cpus().length - 1);
+    this.enabledChecks = [];
+  }
 
-  private async processBatch(batch: FeedItem[]) {
-    for (const item of batch) {
-      this.result.totalProducts++;
-      await this.checkAllErrors(item);
+  private getBatchSize(enabledChecks: string[]): number {
+    const hasSpellCheck = enabledChecks.some(check => 
+      check.toLowerCase().includes('spell') || 
+      check.toLowerCase().includes('spelling')
+    );
+
+    const hasOnlySimpleChecks = enabledChecks.every(check =>
+      check.startsWith('checkDescription') ||
+      check.startsWith('checkTitle') ||
+      check.startsWith('checkProduct')
+    );
+
+    if (hasSpellCheck) {
+      return 1000;
+    } else if (hasOnlySimpleChecks) {
+      return 10000;
+    } else {
+      return 5000;
     }
   }
 
-  private async checkAllErrors(item: FeedItem) {
-    try {
-      // Check for duplicate IDs
-      this.checkDuplicateId(item);
+  private createWorker(batch: FeedItem[], enabledChecks: string[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      try {
+        const workerPath = path.resolve(__dirname, '../src/worker.ts');
+        
+        const worker = new Worker(workerPath, {
+          workerData: { batch, enabledChecks },
+          execArgv: ['--require', 'ts-node/register']
+        });
 
-      // Run all error checks from errorCheckers
-      for (const checker of Object.values(errorCheckers)) {
-        try {
-          if (typeof checker === 'function') {
-            // Handle both async and sync functions
-            const result = checker.constructor.name === 'AsyncFunction' 
-              ? await checker(item)
-              : checker(item);
-              
-            if (result) {
-              this.addErrors(Array.isArray(result) ? result : [result]);
-            }
-          } else if (Array.isArray(checker)) {
-            for (const subChecker of checker) {
-              if (typeof subChecker === 'function') {
-                // Handle both async and sync functions
-                const result = subChecker.constructor.name === 'AsyncFunction'
-                  ? await subChecker(item)
-                  : subChecker(item);
-                  
-                if (result) {
-                  this.addErrors(Array.isArray(result) ? result : [result]);
-                }
-              }
+        worker.on('message', (message: { error?: string; errors?: ErrorResult[]; processedCount?: number }) => {
+          if (message.error) {
+            console.error('Worker error:', message.error);
+            reject(new Error(message.error));
+            return;
+          }
+
+          if (message.errors) {
+            this.addErrors(message.errors);
+          }
+          
+          if (message.processedCount) {
+            this.result.totalProducts += message.processedCount;
+            if (this.progressCallback) {
+              this.progressCallback(this.result.totalProducts);
             }
           }
-        } catch (err) {
-          console.error('Error in error checker:', err);
-        }
-      }
+        });
 
-      // Run spell checks
-      try {
-        
-        const spellErrors = checkSpelling(item);
-        if (spellErrors && spellErrors.length > 0) {
-         
-          this.addErrors(spellErrors);
-        }
-      } catch (err) {
-        console.error('Error in spell checker:', err);
-      }
+        worker.on('error', (error) => {
+          console.error('Worker error:', error);
+          reject(error);
+        });
 
-    } catch (err) {
-      console.error('Error checking item:', err);
+        worker.on('exit', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Worker stopped with exit code ${code}`));
+          }
+        });
+      } catch (error) {
+        console.error('Error creating worker:', error);
+        reject(error);
+      }
+    });
+  }
+
+  private addErrors(errors: ErrorResult[]): void {
+    for (const error of errors) {
+      if (error.errorType === 'Duplicate Id') {
+        const existingError = this.result.errors.find(
+          e => e.errorType === 'Duplicate Id' && e.id === error.id
+        );
+        if (existingError) {
+          existingError.details = error.details;
+        } else {
+          this.result.errors.push(error);
+        }
+      } else {
+        this.result.errors.push(error);
+      }
+      this.result.errorCounts[error.errorType] = 
+        (this.result.errorCounts[error.errorType] || 0) + 1;
     }
   }
 
-
-
-
-  private checkDuplicateId(item: FeedItem) {
+  private checkDuplicateId(item: FeedItem): void {
     if (item.id) {
       const count = (this.idCounts.get(item.id) || 0) + 1;
       this.idCounts.set(item.id, count);
@@ -100,115 +131,115 @@ export class FeedAnalyzer {
     }
   }
 
-  analyzeStream(fileStream: NodeJS.ReadableStream, progressCallback?: (progress: number) => void): Promise<AnalysisResult> {
+  public async analyzeStream(
+    fileStream: NodeJS.ReadableStream,
+    progressCallback?: (progress: number) => void,
+    enabledChecks: string[] = []
+  ): Promise<AnalysisResult> {
+    this.progressCallback = progressCallback;
+    this.enabledChecks = enabledChecks;
+    this.resetAnalysis();
+
+    const batchSize = this.getBatchSize(enabledChecks);
+    console.log(`Using batch size: ${batchSize} for enabled checks:`, enabledChecks);
+
     return new Promise((resolve, reject) => {
-      const parser = parse({
-        columns: (header: string[]) => header.map((h: string) => h.trim().replace(/\s+/g, '_').toLowerCase()),
+      const parserOptions: ParseOptions = {
+        columns: (headers: string[]): string[] => 
+          headers.map((h: string) => h.trim().replace(/\s+/g, '_').toLowerCase()),
         skip_empty_lines: true,
         delimiter: '\t',
-        relax_column_count: true,
-      });
+        relaxColumnCount: true,  // This is the correct option name
+        skipRecordsWithError: true,
+        trim: true
+      };
 
-      const batchSize = 1000;
+      const parser = parse(parserOptions);
+
       let batch: FeedItem[] = [];
-      let totalProcessed = 0;
-      let spellCheckPerformed = false;
+      let activeWorkers = 0;
+      const maxConcurrentWorkers = this.numWorkers;
+      let parseError: Error | null = null;
+      let isStreamEnded = false;
+
+      const processBatch = async (items: FeedItem[]): Promise<void> => {
+        activeWorkers++;
+        try {
+          await this.createWorker(items, this.enabledChecks);
+        } finally {
+          activeWorkers--;
+          if (isStreamEnded && activeWorkers === 0) {
+            finishProcessing();
+          }
+        }
+      };
+
+      const finishProcessing = () => {
+        if (parseError) {
+          reject(parseError);
+        } else {
+          resolve(this.result);
+        }
+      };
 
       const transformer = new Transform({
         objectMode: true,
-        transform: async (item: FeedItem, _, callback) => {
+        transform: async (item: FeedItem, _: BufferEncoding, callback: TransformCallback): Promise<void> => {
           try {
             batch.push(item);
-
-            if (batch.length >= batchSize) {
-              await this.processBatch(batch);
-              totalProcessed += batch.length;
-              spellCheckPerformed = true;
-              if (progressCallback) {
-                progressCallback(totalProcessed);
-              }
+            
+            if (batch.length >= batchSize && activeWorkers < maxConcurrentWorkers) {
+              const itemsToProcess = [...batch];
               batch = [];
+              await processBatch(itemsToProcess);
             }
             callback();
           } catch (err) {
-            console.error('Error processing batch:', err);
             callback(err instanceof Error ? err : new Error(String(err)));
           }
         },
-        flush: async (callback) => {
+        flush: async (callback: TransformCallback): Promise<void> => {
           try {
             if (batch.length > 0) {
-              await this.processBatch(batch);
-              totalProcessed += batch.length;
-              spellCheckPerformed = true;
-              if (progressCallback) {
-                progressCallback(totalProcessed);
-              }
+              await processBatch([...batch]);
             }
-
-            if (spellCheckPerformed) {
-             
-              console.log('Saving spell checker cache after analysis completion...');
-              spellChecker.saveCache();
+            isStreamEnded = true;
+            if (activeWorkers === 0) {
+              finishProcessing();
             }
-
             callback();
           } catch (err) {
-            console.error('Error in flush:', err);
             callback(err instanceof Error ? err : new Error(String(err)));
           }
         }
       });
 
-
-
-      // Add error handlers for better debugging
       parser.on('error', (error) => {
         console.error('Parser error:', error);
+        parseError = error;
       });
 
       transformer.on('error', (error) => {
         console.error('Transformer error:', error);
+        parseError = error;
       });
 
       fileStream.on('error', (error) => {
         console.error('File stream error:', error);
+        parseError = error;
       });
 
       fileStream
         .pipe(parser)
         .pipe(transformer)
-        .on('finish', () => {
-          resolve(this.result);
-        })
         .on('error', (err) => {
-          console.error('Error parsing file:', err);
+          console.error('Stream error:', err);
           reject(new Error('Error parsing file. Please ensure it is a valid TSV file.'));
         });
     });
   }
 
-  private addErrors(errors: ErrorResult[]) {
-    for (const error of errors) {
-      if (error.errorType === 'Duplicate Id') {
-        const existingError = this.result.errors.find(e => e.errorType === 'Duplicate Id' && e.id === error.id);
-        if (existingError) {
-          existingError.details = error.details;
-        } else {
-          this.result.errors.push(error);
-        }
-      } else {
-        this.result.errors.push(error);
-      }
-      this.result.errorCounts[error.errorType] = (this.result.errorCounts[error.errorType] || 0) + 1;
-    }
-  }
-
-  getResults(): AnalysisResult {
-    return this.result;
-  }
-
-  resetAnalysis() {
+  public resetAnalysis(): void {
     this.result = {
       totalProducts: 0,
       errorCounts: {},
@@ -217,14 +248,21 @@ export class FeedAnalyzer {
     this.idCounts.clear();
   }
 
-  countTotalProducts(fileStream: NodeJS.ReadableStream): Promise<number> {
+  public getResults(): AnalysisResult {
+    return this.result;
+  }
+
+  public async countTotalProducts(fileStream: NodeJS.ReadableStream): Promise<number> {
     return new Promise((resolve, reject) => {
       let count = 0;
-      const parser = parse({
+      const parserOptions: ParseOptions = {
         columns: true,
         skip_empty_lines: true,
         delimiter: '\t',
-      });
+        relaxColumnCount: true  // This is the correct option name
+      };
+
+      const parser = parse(parserOptions);
 
       fileStream
         .pipe(parser)
@@ -238,5 +276,36 @@ export class FeedAnalyzer {
           reject(err);
         });
     });
+  }
+
+  private validateChecker(checkerName: string): boolean {
+    console.log(`Validating checker: ${checkerName}`);
+    
+    let found = false;
+    for (const [key, value] of Object.entries(errorCheckers)) {
+      if (Array.isArray(value)) {
+        if (value.some(fn => fn.name === checkerName)) {
+          console.log(`Found ${checkerName} in ${key} array`);
+          found = true;
+          break;
+        }
+      } else if (typeof value === 'function' && value.name === checkerName) {
+        console.log(`Found ${checkerName} as direct function`);
+        found = true;
+        break;
+      }
+    }
+    
+    if (!found) {
+      console.warn(`Checker "${checkerName}" not found in error checkers`);
+    }
+    return found;
+  }
+
+  public validateEnabledChecks(checks: string[]): string[] {
+    console.log('Validating checks:', checks);
+    const validChecks = checks.filter(check => this.validateChecker(check));
+    console.log('Valid checks:', validChecks);
+    return validChecks;
   }
 }

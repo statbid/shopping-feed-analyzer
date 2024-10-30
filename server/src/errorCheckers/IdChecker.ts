@@ -32,7 +32,27 @@ export function checkIdIsSet(item: FeedItem): ErrorResult | null {
   return null;
 }
 
+export function checkDuplicateIds(item: FeedItem, idCounts: Map<string, number>): ErrorResult | null {
+  if (item.id) {
+    const count = (idCounts.get(item.id) || 0) + 1;
+    idCounts.set(item.id, count);
+
+    if (count > 1) {
+      return {
+        id: item.id,
+        errorType: 'Duplicate Id',
+        details: `This id appears ${count} times in the feed`,
+        affectedField: 'id',
+        value: item.id
+      };
+    }
+  }
+  return null;
+}
+
+// Export all id checks together
 export const idChecks = [
+  checkDuplicateIds,
   checkIdLength,
   checkIdIsSet
 ];
