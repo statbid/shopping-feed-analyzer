@@ -81,19 +81,6 @@ If no .env file is present, the application will use these defaults:
 - MAX_FILE_SIZE=500mb
 
 
-### Server Configuration
-
-- **Default port**: 3001 (configurable in `server/src/app.ts`)
-- **Upload directory**: `server/uploads/`
-- **Cache directory**: `server/.cache/`
-
-### Client Configuration
-
-- **Default port**: 3000
-- **API endpoint**: `http://localhost:3001` (configurable in environment variables)
-
-
-
 
 ## Running the Application
 
