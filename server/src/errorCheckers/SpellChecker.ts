@@ -1,6 +1,8 @@
 import { FeedItem, ErrorResult } from '../types';
 import nspell from 'nspell';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
+import environment from '../config/environment';
+
 
 import path from 'path';
 
@@ -34,19 +36,19 @@ class SpellChecker implements ISpellChecker {
     this.correctionCache = new Map();
     this.validationCache = new Map();
     this.ready = false;
-    this.cacheDir = path.resolve(__dirname, '../.cache');
+    this.cacheDir = environment.storage.cacheDir;
     this.cachePath = path.resolve(this.cacheDir, 'spell-checker-cache.json');
     this.spell = this.initializeSpellChecker();
   }
 
   private initializeSpellChecker(): ReturnType<typeof nspell> {
-    console.log('Initializing spell checker...');
+   
     const startTime = Date.now();
 
     try {
       this.loadCache();
-      const aff = readFileSync(path.resolve(__dirname, '../dictionaries/en_US.aff'));
-      const dic = readFileSync(path.resolve(__dirname, '../dictionaries/en_US.dic'));
+      const aff = readFileSync(path.resolve(environment.storage.dictionariesDir, 'en_US.aff'));
+      const dic = readFileSync(path.resolve(environment.storage.dictionariesDir, 'en_US.dic'));
       const spell = nspell(aff, dic);
 
       if (this.correctionCache.size === 0) {
@@ -55,7 +57,7 @@ class SpellChecker implements ISpellChecker {
       }
 
       const endTime = Date.now();
-      console.log(`Spell checker initialized in ${endTime - startTime}ms`);
+      
       this.ready = true;
       return spell;
     } catch (error) {

@@ -1,6 +1,8 @@
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import path from 'path';
+import environment from '../config/environment';
+
 
 interface FileHandlerResult {
   filePath: string;
@@ -10,9 +12,36 @@ interface FileHandlerResult {
 }
 
 export class FileHandler {
-  private static readonly ALLOWED_EXTENSIONS = new Set(['.csv', '.tsv']);
-  private static readonly UPLOADS_DIR = 'uploads';
-  private static fileRegistry = new Map<string, string>();  // Map original file names to processed paths
+  private static readonly ALLOWED_EXTENSIONS = new Set(['.csv', '.tsv', '.zip']);
+  private static readonly UPLOADS_DIR = environment.storage.uploadsDir;
+  private static fileRegistry = new Map<string, string>();
+
+  
+  public static cleanupUploadsDirectory(): void {
+    const uploadsPath = FileHandler.UPLOADS_DIR;
+    
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+      return;
+    }
+
+    try {
+      const files = fs.readdirSync(uploadsPath);
+      for (const file of files) {
+        const filePath = path.join(uploadsPath, file);
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`Cleaned up file: ${filePath}`);
+        } catch (error) {
+          console.error(`Error deleting file ${filePath}:`, error);
+        }
+      }
+      FileHandler.fileRegistry.clear();
+      console.log('Upload directory cleaned');
+    } catch (error) {
+      console.error('Error cleaning upload directory:', error);
+    }
+  }
 
   private static sanitizeFileName(fileName: string): string {
     return fileName
@@ -34,14 +63,13 @@ export class FileHandler {
 
       const fileExt = path.extname(file.originalname).toLowerCase();
 
-      if (fileExt === '.zip') {
+          if (fileExt === '.zip') {
         const result = await FileHandler.handleZipFile(file);
         FileHandler.fileRegistry.set(file.originalname, result.filePath);
         return result;
       }
 
       if (FileHandler.ALLOWED_EXTENSIONS.has(fileExt)) {
-        // For non-ZIP files, store the mapping and return
         FileHandler.fileRegistry.set(file.originalname, file.path);
         return {
           filePath: file.path,
