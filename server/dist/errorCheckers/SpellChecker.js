@@ -25,7 +25,6 @@ class SpellChecker {
         this.spell = this.initializeSpellChecker();
     }
     initializeSpellChecker() {
-        console.log('Initializing spell checker...');
         const startTime = Date.now();
         try {
             this.loadCache();
@@ -37,7 +36,6 @@ class SpellChecker {
                 this.saveCache();
             }
             const endTime = Date.now();
-            console.log(`Spell checker initialized in ${endTime - startTime}ms`);
             this.ready = true;
             return spell;
         }

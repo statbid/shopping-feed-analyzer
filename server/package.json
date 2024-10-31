@@ -40,6 +40,7 @@
     "@types/node": "^20.9.0",
     "@types/nspell": "^2.1.6",
     "cpy-cli": "^5.0.0",
+    "env-cmd": "^10.1.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
     "rimraf": "^5.0.5",
