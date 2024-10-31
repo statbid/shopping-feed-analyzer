@@ -73,6 +73,14 @@ Ensure that you have these installed before proceeding.
 
 ## Configuration
 
+
+## Default Values
+If no .env file is present, the application will use these defaults:
+- PORT=3001
+- HOST=localhost
+- MAX_FILE_SIZE=500mb
+
+
 ### Server Configuration
 
 - **Default port**: 3001 (configurable in `server/src/app.ts`)
@@ -83,6 +91,9 @@ Ensure that you have these installed before proceeding.
 
 - **Default port**: 3000
 - **API endpoint**: `http://localhost:3001` (configurable in environment variables)
+
+
+
 
 ## Running the Application
 
@@ -100,7 +111,7 @@ cd client
 npm start
 ```
 
-Access the application at `http://localhost:3000`.
+Access the application at `http://localhost:3000`. **
 
 ## Usage
 

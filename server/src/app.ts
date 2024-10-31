@@ -5,12 +5,16 @@ import './worker';
 import fs from 'fs';
 import { FeedAnalyzer } from './FeedAnalyzer';
 import { FileHandler } from './utils/FileHandler';
+import environment from './config/environment';
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = environment.server.port;
 
 app.use(cors());
+
 app.use(express.json());
+
+FileHandler.cleanupUploadsDirectory();
 
 const upload = multer({ dest: 'uploads/' });
 

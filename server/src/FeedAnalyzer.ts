@@ -6,6 +6,8 @@ import path from 'path';
 import { FeedItem, ErrorResult, AnalysisResult } from './types';
 import * as errorCheckers from './errorCheckers';
 import { spellChecker } from './errorCheckers/SpellChecker';
+import environment from './config/environment';
+
 
 export class FeedAnalyzer {
   private result: AnalysisResult;
@@ -21,7 +23,10 @@ export class FeedAnalyzer {
       errors: []
     };
     this.idCounts = new Map();
-    this.numWorkers = Math.max(1, cpus().length - 1);
+    this.numWorkers = environment.worker.maxWorkers === 'auto' 
+    ? Math.max(1, cpus().length - 1)
+    : parseInt(environment.worker.maxWorkers);
+    
     this.enabledChecks = [];
   }
 
@@ -149,7 +154,7 @@ export class FeedAnalyzer {
           headers.map((h: string) => h.trim().replace(/\s+/g, '_').toLowerCase()),
         skip_empty_lines: true,
         delimiter: '\t',
-        relaxColumnCount: true,  // This is the correct option name
+        relaxColumnCount: true,  
         skipRecordsWithError: true,
         trim: true
       };
@@ -259,7 +264,7 @@ export class FeedAnalyzer {
         columns: true,
         skip_empty_lines: true,
         delimiter: '\t',
-        relaxColumnCount: true  // This is the correct option name
+        relaxColumnCount: true  
       };
 
       const parser = parse(parserOptions);

@@ -7,7 +7,33 @@ exports.FileHandler = void 0;
 const adm_zip_1 = __importDefault(require("adm-zip"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const environment_1 = __importDefault(require("../config/environment"));
 class FileHandler {
+    static cleanupUploadsDirectory() {
+        const uploadsPath = FileHandler.UPLOADS_DIR;
+        if (!fs_1.default.existsSync(uploadsPath)) {
+            fs_1.default.mkdirSync(uploadsPath, { recursive: true });
+            return;
+        }
+        try {
+            const files = fs_1.default.readdirSync(uploadsPath);
+            for (const file of files) {
+                const filePath = path_1.default.join(uploadsPath, file);
+                try {
+                    fs_1.default.unlinkSync(filePath);
+                    console.log(`Cleaned up file: ${filePath}`);
+                }
+                catch (error) {
+                    console.error(`Error deleting file ${filePath}:`, error);
+                }
+            }
+            FileHandler.fileRegistry.clear();
+            console.log('Upload directory cleaned');
+        }
+        catch (error) {
+            console.error('Error cleaning upload directory:', error);
+        }
+    }
     static sanitizeFileName(fileName) {
         return fileName
             .replace(/[<>:"/\\|?*]/g, '_')
@@ -30,7 +56,6 @@ class FileHandler {
                 return result;
             }
             if (FileHandler.ALLOWED_EXTENSIONS.has(fileExt)) {
-                // For non-ZIP files, store the mapping and return
                 FileHandler.fileRegistry.set(file.originalname, file.path);
                 return {
                     filePath: file.path,
@@ -104,6 +129,6 @@ class FileHandler {
     }
 }
 exports.FileHandler = FileHandler;
-FileHandler.ALLOWED_EXTENSIONS = new Set(['.csv', '.tsv']);
-FileHandler.UPLOADS_DIR = 'uploads';
-FileHandler.fileRegistry = new Map(); // Map original file names to processed paths
+FileHandler.ALLOWED_EXTENSIONS = new Set(['.csv', '.tsv', '.zip']);
+FileHandler.UPLOADS_DIR = environment_1.default.storage.uploadsDir;
+FileHandler.fileRegistry = new Map();

@@ -9,6 +9,7 @@ exports.checkTitleSpelling = checkTitleSpelling;
 exports.checkDescriptionSpelling = checkDescriptionSpelling;
 const nspell_1 = __importDefault(require("nspell"));
 const fs_1 = require("fs");
+const environment_1 = __importDefault(require("../config/environment"));
 const path_1 = __importDefault(require("path"));
 // Singleton class for spell checker management
 class SpellChecker {
@@ -19,7 +20,7 @@ class SpellChecker {
         this.correctionCache = new Map();
         this.validationCache = new Map();
         this.ready = false;
-        this.cacheDir = path_1.default.resolve(__dirname, '../.cache');
+        this.cacheDir = environment_1.default.storage.cacheDir;
         this.cachePath = path_1.default.resolve(this.cacheDir, 'spell-checker-cache.json');
         this.spell = this.initializeSpellChecker();
     }
@@ -28,8 +29,8 @@ class SpellChecker {
         const startTime = Date.now();
         try {
             this.loadCache();
-            const aff = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.aff'));
-            const dic = (0, fs_1.readFileSync)(path_1.default.resolve(__dirname, '../dictionaries/en_US.dic'));
+            const aff = (0, fs_1.readFileSync)(path_1.default.resolve(environment_1.default.storage.dictionariesDir, 'en_US.aff'));
+            const dic = (0, fs_1.readFileSync)(path_1.default.resolve(environment_1.default.storage.dictionariesDir, 'en_US.dic'));
             const spell = (0, nspell_1.default)(aff, dic);
             if (this.correctionCache.size === 0) {
                 this.preloadCommonWords(spell);

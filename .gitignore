@@ -1,5 +1,16 @@
 # Ignore node_modules in client and server
 client/node_modules
 server/node_modules
+node_modules
 # Ignore uploads folder
 server/uploads/*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+
+# Build directories
+client/build/
+server/dist/

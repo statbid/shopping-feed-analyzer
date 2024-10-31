@@ -12,12 +12,11 @@
     "paths": {
       "*": ["*", "FeedAnalyzer/*"]
     },
-    "allowJs": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.spec.ts", "dist"]
+  "exclude": ["node_modules", "**/*.spec.ts"],
+  "copy": ["src/dictionaries"]
 }

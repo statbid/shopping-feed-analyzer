@@ -6,6 +6,7 @@ import ProgressModal from './ProgressModal';
 import Toast from './Toast';
 import CheckSelectorModal from './CheckSelectorModal';
 import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
+import environment from '../../config/environment';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -51,7 +52,7 @@ export default function FileUpload() {
     formData.append('file', selectedFile);
 
     try {
-      const response = await fetch('http://localhost:3001/api/upload', {
+      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.upload}`, {
         method: 'POST',
         body: formData,
       });
@@ -94,7 +95,7 @@ export default function FileUpload() {
     setIsCheckSelectorModalOpen(false);
 
     try {
-      const response = await fetch('http://localhost:3001/api/analyze', {
+      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.analyze}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

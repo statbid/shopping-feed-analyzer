@@ -33,6 +33,7 @@ const worker_threads_1 = require("worker_threads");
 const os_1 = require("os");
 const path_1 = __importDefault(require("path"));
 const errorCheckers = __importStar(require("./errorCheckers"));
+const environment_1 = __importDefault(require("./config/environment"));
 class FeedAnalyzer {
     constructor() {
         this.result = {
@@ -41,7 +42,9 @@ class FeedAnalyzer {
             errors: []
         };
         this.idCounts = new Map();
-        this.numWorkers = Math.max(1, (0, os_1.cpus)().length - 1);
+        this.numWorkers = environment_1.default.worker.maxWorkers === 'auto'
+            ? Math.max(1, (0, os_1.cpus)().length - 1)
+            : parseInt(environment_1.default.worker.maxWorkers);
         this.enabledChecks = [];
     }
     getBatchSize(enabledChecks) {
@@ -148,7 +151,7 @@ class FeedAnalyzer {
                 columns: (headers) => headers.map((h) => h.trim().replace(/\s+/g, '_').toLowerCase()),
                 skip_empty_lines: true,
                 delimiter: '\t',
-                relaxColumnCount: true, // This is the correct option name
+                relaxColumnCount: true,
                 skipRecordsWithError: true,
                 trim: true
             };
@@ -249,7 +252,7 @@ class FeedAnalyzer {
                 columns: true,
                 skip_empty_lines: true,
                 delimiter: '\t',
-                relaxColumnCount: true // This is the correct option name
+                relaxColumnCount: true
             };
             const parser = (0, csv_parse_1.parse)(parserOptions);
             fileStream

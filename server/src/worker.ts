@@ -3,6 +3,8 @@ import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from './types';
 import * as errorCheckers from './errorCheckers';
 import { checkSpelling } from './errorCheckers/SpellChecker';
+import environment from './config/environment';
+
 
 interface WorkerData {
   batch: FeedItem[];

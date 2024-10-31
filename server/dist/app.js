@@ -10,10 +10,12 @@ require("./worker");
 const fs_1 = __importDefault(require("fs"));
 const FeedAnalyzer_1 = require("./FeedAnalyzer");
 const FileHandler_1 = require("./utils/FileHandler");
+const environment_1 = __importDefault(require("./config/environment"));
 const app = (0, express_1.default)();
-const port = process.env.PORT || 3001;
+const port = environment_1.default.server.port;
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+FileHandler_1.FileHandler.cleanupUploadsDirectory();
 const upload = (0, multer_1.default)({ dest: 'uploads/' });
 const safeStringify = (obj) => {
     try {
