@@ -7,11 +7,13 @@ import Toast from './Toast';
 import CheckSelectorModal from './CheckSelectorModal';
 import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
 import environment from '../../config/environment';
+import SearchTermsResults from '../SearchTermsAnalyzer/SearchTermsResults';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
   message: string;
 }
+
 
 interface ErrorResult {
   id: string;
@@ -27,6 +29,17 @@ interface AnalysisResults {
   errors: ErrorResult[];
 }
 
+
+interface SearchTerm {
+  id: string;
+  productName: string;
+  searchTerm: string;
+  pattern: string;
+  estimatedVolume: number;
+}
+
+
+
 export default function FileUpload() {
   // State Management
   const [file, setFile] = useState<File | null>(null);
@@ -41,6 +54,8 @@ export default function FileUpload() {
     checkCategories.flatMap(cat => cat.checks.map(check => check.id))
   );
   const [progressStatus, setProgressStatus] = useState<'uploading' | 'extracting' | 'extracted' | 'analyzing'>('uploading');
+  const [searchTermsResults, setSearchTermsResults] = useState<SearchTerm[] | null>(null);
+  
 
   // File Upload Handler
   const handleFileSelect = async (selectedFile: File) => {
@@ -175,13 +190,96 @@ export default function FileUpload() {
 
   // Modal Handlers
   const handleCheckQualityClick = () => {
+    setSearchTermsResults(null);
     setIsCheckSelectorModalOpen(true);
   };
 
-  const handleSearchTermsClick = () => {
-    console.log('Search terms analysis clicked');
-    // Implement search terms analysis functionality
+
+  const handleSearchTermsClick = async () => {
+    if (!file) return;
+    
+    setAnalysisResults(null);
+  setIsLoading(true);
+  setIsProgressModalOpen(true);
+  setProcessedProducts(0);
+  setProgressStatus('analyzing');
+
+  
+    try {
+      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.searchTerms}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fileName: file.name }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+  
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+  
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+  
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.error) {
+                console.error('Server error:', data.error, data.details);
+                setUploadStatus({ 
+                  type: 'error', 
+                  message: `Error analyzing search terms: ${data.details || data.error}` 
+                });
+                return;
+              }
+  
+              if (data.status === 'processing' || data.status === 'analyzing') {
+                setProcessedProducts(data.processed);
+                setProgressStatus(data.status);
+              }
+  
+              if (data.status === 'complete') {
+                setSearchTermsResults(data.results);
+                setUploadStatus({ 
+                  type: 'success', 
+                  message: 'Search terms analysis completed successfully!' 
+                });
+              }
+            } catch (jsonError) {
+              console.error('Error parsing JSON:', jsonError);
+              setUploadStatus({ 
+                type: 'error', 
+                message: 'Error parsing server response' 
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing search terms:', error);
+      setUploadStatus({ 
+        type: 'error', 
+        message: `Error analyzing search terms: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setIsLoading(false);
+      setIsProgressModalOpen(false);
+    }
   };
+
+
+
 
   const handleCheckSelection = (checks: string[]) => {
     setSelectedChecks(checks);
@@ -208,7 +306,7 @@ export default function FileUpload() {
         isAnalyzeDisabled={!file || isLoading}
         isLoading={isLoading}
       />
-
+  
       {/* Toast Notifications */}
       {uploadStatus.type && (
         <Toast 
@@ -217,25 +315,30 @@ export default function FileUpload() {
           onClose={() => setUploadStatus({ type: '', message: '' })}
         />
       )}
-
-      {/* Analysis Results */}
-      {analysisResults && (
-        <div className="flex-grow overflow-hidden">
+  
+      {/* Results Section */}
+      <div className="flex-grow overflow-hidden">
+        {searchTermsResults && searchTermsResults.length > 0 ? (
+          <SearchTermsResults 
+            results={searchTermsResults}
+            fileName={file?.name || ''}
+          />
+        ) : analysisResults ? (
           <AnalysisResults 
             results={analysisResults}
             fileName={file?.name || ''}
             isLoading={isLoading}
           />
-        </div>
-      )}
-
+        ) : null}
+      </div>
+  
       {/* Modals */}
       <FileUploadModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         onFileSelect={handleFileSelect} 
       />
-
+  
       <CheckSelectorModal 
         isOpen={isCheckSelectorModalOpen}
         onClose={() => setIsCheckSelectorModalOpen(false)}
@@ -243,7 +346,7 @@ export default function FileUpload() {
         onSelectionChange={handleCheckSelection}
         isAnalyzing={isLoading}
       />
-
+  
       <ProgressModal 
         isOpen={isProgressModalOpen}
         processedProducts={processedProducts}
@@ -251,4 +354,5 @@ export default function FileUpload() {
       />
     </div>
   );
+
 }

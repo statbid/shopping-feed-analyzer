@@ -1,12 +1,15 @@
+
 interface Environment {
   api: {
     baseUrl: string;
     endpoints: {
       upload: string;
       analyze: string;
+      searchTerms: string;  
     };
   };
 }
+
 
 // Ensure the base URL is properly formatted
 const baseUrl = process.env.REACT_APP_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:3001';
@@ -19,12 +22,14 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
+
 const environment: Environment = {
   api: {
-    baseUrl,
+    baseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001',
     endpoints: {
       upload: '/api/upload',
-      analyze: '/api/analyze'
+      analyze: '/api/analyze',
+      searchTerms: '/api/search-terms'  // Add this line
     }
   }
 };

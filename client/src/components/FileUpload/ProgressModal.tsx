@@ -4,15 +4,15 @@ import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react
 interface ProgressModalProps {
   isOpen: boolean;
   processedProducts: number;
-  status?: 'uploading' | 'extracting' | 'extracted' | 'analyzing';
+  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
   statusMessage?: string;
 }
 
-const ProgressModal: React.FC<ProgressModalProps> = ({ 
-  isOpen, 
-  processedProducts, 
-  status = 'uploading',
-  statusMessage 
+const ProgressModal: React.FC<ProgressModalProps> = ({
+  isOpen,
+  processedProducts,
+  status,
+  statusMessage
 }) => {
   if (!isOpen) return null;
 
@@ -44,22 +44,37 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
           </div>
         );
 
-      case 'analyzing':
-        return (
-          <div className="flex flex-col items-center">
-            <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
-            <p className="text-lg mb-4">Running Quality Checks</p>
-            <div className="mb-4">
-              <p className="text-3xl font-bold text-blue-600">
-                {processedProducts.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">SKUs checked</p>
+        case 'processing':
+          return (
+            <div className="flex flex-col items-center">
+              <FileText className="w-16 h-16 text-blue-500 mb-2" />
+              <p className="text-lg mb-4">Processing Feed Data</p>
+              <div className="mb-4">
+                <p className="text-3xl font-bold text-blue-600">
+                  {processedProducts.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600">Products processed</p>
+              </div>
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        );
-
-      default:
+          );
+  
+        case 'analyzing':
+          return (
+            <div className="flex flex-col items-center">
+              <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
+              <p className="text-lg mb-4">Generating Search Terms</p>
+              <div className="mb-4">
+                <p className="text-3xl font-bold text-blue-600">
+                  {processedProducts.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600">Products analyzed</p>
+              </div>
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          );
+  
+        default:
         return (
           <div className="flex flex-col items-center">
             <Loader className="w-16 h-16 text-blue-500 mb-2 animate-spin" />
