@@ -79,6 +79,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   const [processedProducts, setProcessedProducts] = useState(0);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [previousLoadingState, setPreviousLoadingState] = useState(isLoading);
+  const [falsePositives, setFalsePositives] = useState<Set<string>>(new Set());
+
 
   // Reset page when analysis completes
   useEffect(() => {
@@ -134,31 +136,51 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     setIsInfoModalOpen(true);
   };
 
+  const handleFalsePositiveChange = (errorId: string, isFalsePositive: boolean) => {
+    setFalsePositives(prev => {
+      const newSet = new Set(prev);
+      if (isFalsePositive) {
+        newSet.add(errorId);
+      } else {
+        newSet.delete(errorId);
+      }
+      return newSet;
+    });
+  };
+
+
   const handleCloseInfoModal = () => {
     setIsInfoModalOpen(false);
   };
 
   const handleDownloadDetails = (errorType: string) => {
-    const filteredErrors = results.errors.filter(error => error.errorType === errorType);
-    const csvContent = CSVExporter.exportErrors(filteredErrors);
-    CSVExporter.downloadCSV(
-      csvContent,
-      `${fileName.split('.')[0]}_${errorType.replace(/[^\w\s-]/g, '_')}_errors.csv`
-    );
-  };
+  const filteredErrors = results.errors
+    .filter(error => error.errorType === errorType && !falsePositives.has(error.id));
+  const csvContent = CSVExporter.exportErrors(filteredErrors);
+  CSVExporter.downloadCSV(
+    csvContent,
+    `${fileName.split('.')[0]}_${errorType.replace(/[^\w\s-]/g, '_')}_errors.csv`
+  );
+};
 
-  const handleDownloadReport = () => {
-    const csvContent = CSVExporter.exportSummaryReport(
-      fileName,
-      results.totalProducts,
-      results.errorCounts,
-      results.errors
-    );
-    CSVExporter.downloadCSV(
-      csvContent,
-      `${fileName.split('.')[0]}_analysis_report.csv`
-    );
-  };
+const handleDownloadReport = () => {
+  const filteredErrors = results.errors.filter(error => !falsePositives.has(error.id));
+  const errorCounts = filteredErrors.reduce((acc, error) => {
+    acc[error.errorType] = (acc[error.errorType] || 0) + 1;
+    return acc;
+  }, {} as { [key: string]: number });
+  
+  const csvContent = CSVExporter.exportSummaryReport(
+    fileName,
+    results.totalProducts,
+    errorCounts,
+    filteredErrors
+  );
+  CSVExporter.downloadCSV(
+    csvContent,
+    `${fileName.split('.')[0]}_analysis_report.csv`
+  );
+};
 
   useEffect(() => {
     if (isLoading) {
@@ -324,11 +346,17 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
       </div>
 
       <ErrorDetailsModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        errorType={selectedErrorType || ''}
-        errors={selectedErrorType ? results.errors.filter((error) => error.errorType === selectedErrorType) : []}
-      />
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          errorType={selectedErrorType || ''}
+          errors={selectedErrorType ? results.errors.filter((error) => error.errorType === selectedErrorType) : []}
+          onFalsePositiveChange={handleFalsePositiveChange}
+          falsePositives={falsePositives}
+        />
+
+
+
+
       <InfoModal isOpen={isInfoModalOpen} onClose={handleCloseInfoModal} />
     </div>
   );
