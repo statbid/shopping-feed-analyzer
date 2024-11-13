@@ -29,7 +29,11 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
 
+  
+
+
   const filteredResults = useMemo(() => {
+    console.log('Filtering results:', results.length);
     return results.filter(term => {
       return filters.every(filter => {
         const value = term[filter.column];
@@ -165,6 +169,12 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           <div className="p-3 rounded-lg">
             <p className="text-4xl font-bold text-[#17235E]">{filteredResults.length}</p>
             <p className="font-bold text-xl mt-2">Total Search Terms</p>
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-lg">
+            <p className="font-bold text-lg">Breakdown:</p>
+            <p>Attribute-based: {results.filter(r => r.pattern.includes('Attribute-based')).length}</p>
+            <p>Description-based: {results.filter(r => r.pattern.includes('Description-based')).length}</p>
           </div>
 
           <div className="p-3 bg-blue-50 rounded-lg">

@@ -9,13 +9,16 @@ interface CheckSelectorModalProps {
   onAnalyze: () => void;
   onSelectionChange: (selectedChecks: string[]) => void;
   isAnalyzing: boolean;
+  selectedChecks: string[]; // Add this prop
 }
+
 const CheckSelectorModal: React.FC<CheckSelectorModalProps> = ({
   isOpen,
   onClose,
   onAnalyze,
   onSelectionChange,
-  isAnalyzing
+  isAnalyzing,
+  selectedChecks  // Add this prop
 }) => {
   if (!isOpen) return null;
 
@@ -52,6 +55,7 @@ const CheckSelectorModal: React.FC<CheckSelectorModalProps> = ({
               categories={checkCategories}
               onSelectionChange={onSelectionChange}
               hideHeader={true}
+              selectedChecks={selectedChecks}
             />
           </div>
         </div>
@@ -84,4 +88,5 @@ const CheckSelectorModal: React.FC<CheckSelectorModalProps> = ({
     </div>
   );
 };
+
 export default CheckSelectorModal;

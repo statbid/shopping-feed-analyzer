@@ -1,12 +1,14 @@
 import React from 'react';
 import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react';
 
+
 interface ProgressModalProps {
   isOpen: boolean;
   processedProducts: number;
   status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
   statusMessage?: string;
 }
+
 
 const ProgressModal: React.FC<ProgressModalProps> = ({
   isOpen,

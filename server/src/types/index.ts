@@ -32,3 +32,22 @@ export interface FeedItem {
     errorCounts: { [key: string]: number };
     errors: ErrorResult[];
   }
+
+
+  export interface SearchTerm {
+    id: string;
+    productName: string;
+    searchTerm: string;
+    pattern: string;
+    estimatedVolume: number;
+  }
+  
+  export interface KeywordScore {
+    term: string;
+    score: number;
+  }
+  
+  export interface SearchTermMatch {
+    items: FeedItem[];
+    pattern: string;
+  }

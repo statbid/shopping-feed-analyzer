@@ -3,6 +3,7 @@ import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
+import Settings from './Settings';  
 import Toast from './Toast';
 import CheckSelectorModal from './CheckSelectorModal';
 import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
@@ -38,10 +39,13 @@ interface SearchTerm {
   estimatedVolume: number;
 }
 
+type ProgressStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
 
 
 export default function FileUpload() {
-  // State Management
+
+
+  
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +57,10 @@ export default function FileUpload() {
   const [selectedChecks, setSelectedChecks] = useState<string[]>(
     checkCategories.flatMap(cat => cat.checks.map(check => check.id))
   );
-  const [progressStatus, setProgressStatus] = useState<'uploading' | 'extracting' | 'extracted' | 'analyzing'>('uploading');
+  
+  const [progressStatus, setProgressStatus] = useState<ProgressStatus>('uploading');
   const [searchTermsResults, setSearchTermsResults] = useState<SearchTerm[] | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
 
   // File Upload Handler
@@ -191,7 +197,11 @@ export default function FileUpload() {
   // Modal Handlers
   const handleCheckQualityClick = () => {
     setSearchTermsResults(null);
-    setIsCheckSelectorModalOpen(true);
+    handleAnalyze();
+  };
+  
+  const handleSettingsClick = () => {
+    setIsSettingsOpen(true);
   };
 
 
@@ -298,14 +308,15 @@ export default function FileUpload() {
   return (
     <div className="w-full h-full flex flex-col">
       {/* Header Section */}
-      <AnalyzerHeader 
-        file={file}
-        onUploadClick={() => setIsModalOpen(true)}
-        onCheckQualityClick={handleCheckQualityClick}
-        onSearchTermsClick={handleSearchTermsClick}
-        isAnalyzeDisabled={!file || isLoading}
-        isLoading={isLoading}
-      />
+     <AnalyzerHeader 
+      file={file}
+      onUploadClick={() => setIsModalOpen(true)}
+      onCheckQualityClick={handleCheckQualityClick}
+      onSearchTermsClick={handleSearchTermsClick}
+      onSettingsClick={handleSettingsClick}
+      isAnalyzeDisabled={!file || isLoading}
+      isLoading={isLoading}
+    />
   
       {/* Toast Notifications */}
       {uploadStatus.type && (
@@ -339,13 +350,22 @@ export default function FileUpload() {
         onFileSelect={handleFileSelect} 
       />
   
-      <CheckSelectorModal 
-        isOpen={isCheckSelectorModalOpen}
-        onClose={() => setIsCheckSelectorModalOpen(false)}
-        onAnalyze={handleAnalyze}
-        onSelectionChange={handleCheckSelection}
-        isAnalyzing={isLoading}
-      />
+  <CheckSelectorModal 
+  isOpen={isCheckSelectorModalOpen}
+  onClose={() => setIsCheckSelectorModalOpen(false)}
+  onAnalyze={handleAnalyze}
+  onSelectionChange={handleCheckSelection}
+  isAnalyzing={isLoading}
+  selectedChecks={selectedChecks}  
+/>
+
+<Settings 
+      isOpen={isSettingsOpen}
+      onClose={() => setIsSettingsOpen(false)}
+      selectedChecks={selectedChecks}
+      onSelectionChange={setSelectedChecks}
+    />
+  
   
       <ProgressModal 
         isOpen={isProgressModalOpen}

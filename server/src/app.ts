@@ -6,7 +6,7 @@ import fs from 'fs';
 import { FeedItem } from './types';
 import { parse } from 'csv-parse';
 import { FeedAnalyzer } from './FeedAnalyzer';
-import { SearchTermsAnalyzer } from './SearchTermsAnalyzer';
+import { SearchTermsAnalyzer } from './searchTerms/SearchTermsAnalyzer';
 import { FileHandler } from './utils/FileHandler';
 import environment from './config/environment';
 
@@ -113,7 +113,6 @@ app.listen(port, () => {
 
 
 
-
 app.post('/api/search-terms', async (req, res) => {
   const { fileName } = req.body;
   const filePath = FileHandler.getProcessedFilePath(fileName);
@@ -151,23 +150,39 @@ app.post('/api/search-terms', async (req, res) => {
         .on('data', (item: FeedItem) => {
           items.push(item);
           processedCount++;
-          if (processedCount % 1000 === 0) { // Send update every 1000 items
-            sendUpdate({ status: 'processing', processed: processedCount });
+          if (processedCount % 1000 === 0) {
+            sendUpdate({ 
+              status: 'processing', 
+              processed: processedCount,
+              message: 'Reading feed data...'
+            });
           }
         })
         .on('end', resolve)
         .on('error', reject);
     });
 
-    sendUpdate({ status: 'analyzing', processed: processedCount });
+    sendUpdate({ 
+      status: 'analyzing', 
+      processed: processedCount,
+      message: 'Generating search terms...'
+    });
     
     const analyzer = new SearchTermsAnalyzer();
-    const searchTerms = analyzer.analyzeSearchTerms(items);
+    const searchTerms = await analyzer.analyzeSearchTerms(items);
     
+    // Log the results for debugging
+    console.log(`Generated search terms breakdown:
+      Total terms: ${searchTerms.length}
+      Attribute-based: ${searchTerms.filter(t => t.pattern.includes('Attribute-based')).length}
+      Description-based: ${searchTerms.filter(t => t.pattern.includes('Description-based')).length}
+    `);
+
     sendUpdate({ 
       status: 'complete',
       results: searchTerms,
-      totalProcessed: processedCount 
+      totalProcessed: processedCount,
+      totalTerms: searchTerms.length
     });
     
     res.end();

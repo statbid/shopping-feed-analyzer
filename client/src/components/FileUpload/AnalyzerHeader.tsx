@@ -1,11 +1,12 @@
 import React from 'react';
-import { ChevronDown, Search, CheckCircle } from 'lucide-react';
+import { ChevronDown, Search, CheckCircle, Settings as SettingsIcon } from 'lucide-react';
 
 interface AnalyzerHeaderProps {
   file: File | null;
   onUploadClick: () => void;
   onCheckQualityClick: () => void;
   onSearchTermsClick: () => void;
+  onSettingsClick: () => void;
   isAnalyzeDisabled: boolean;
   isLoading: boolean;
 }
@@ -15,6 +16,7 @@ const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
   onUploadClick, 
   onCheckQualityClick,
   onSearchTermsClick,
+  onSettingsClick,
   isAnalyzeDisabled, 
   isLoading
 }) => {
@@ -59,6 +61,14 @@ const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
         >
           <Search className="w-5 h-5 mr-2" />
           Search Terms Analysis
+        </button>
+
+        <button
+          onClick={onSettingsClick}
+          className="ml-3 p-4 text-gray-600 hover:text-gray-800 rounded-full hover:bg-gray-100"
+          title="Analysis Settings"
+        >
+          <SettingsIcon className="w-6 h-6" />
         </button>
       </div>
     </div>

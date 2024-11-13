@@ -2,7 +2,7 @@ import { FeedItem, ErrorResult } from '../types';
 import nspell from 'nspell';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import environment from '../config/environment';
-
+import { shouldSpellCheck } from '../utils/constants';
 
 import path from 'path';
 
@@ -228,12 +228,24 @@ const ignoreWords = new Set([
   'no', 'no.', 'vs', 'vs.', 'etc', 'etc.',
   'qty', 'ref', 'upc', 'sku', 'isbn', 'eol', 'msrp',
   'usb', 'hdmi', 'lcd', 'led', 'ac', 'dc', '3d', '4k',
-  'uk', 'us', 'eu', 'ce', 'ul', 'iso', 'din', 'en'
+  'uk', 'us', 'eu', 'ce', 'ul', 'iso', 'din', 'en',
+  'PC'  
 ]);
 
 const numberPattern = /^(\d+\.?\d*|\d{4}|\d+["']?[DWHLdwhl]?)(%)?$/;
 const properNounPattern = /^[A-Z][a-z]+$/;
 const specialCharPattern = /[''\-™®©]/;
+const fractionPattern = /^\d+\/\d+$/;
+const measurementPattern = /^\d+([\/\-]?\d*)?(cm|mm|m|in|ft|oz|lb|kg|g|ml|l)$/i;
+
+
+
+function isLikelyProperNoun(word: string): boolean {
+  return properNounPattern.test(word) || word.split(/[\s-]/).every(part => 
+    properNounPattern.test(part) || part.toUpperCase() === part
+  );
+}
+
 
 function escapeRegExp(string: string): string {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -275,16 +287,40 @@ interface FieldData {
   }>;
 }
 
+
+function shouldCheckWord(word: string, brand?: string): boolean {
+  const cleanWord = word.trim();
+  
+  // Skip empty words and short words
+  if (!cleanWord || cleanWord.length <= 2) return false;
+  
+  // Skip ignored words
+  if (ignoreWords.has(cleanWord) || ignoreWords.has(cleanWord.toLowerCase())) return false;
+  
+  // Skip fractions (e.g., "3/4")
+  if (fractionPattern.test(cleanWord)) return false;
+  
+  // Skip measurements with units
+  if (measurementPattern.test(cleanWord)) return false;
+  
+  // Skip numbers and percentages
+  if (numberPattern.test(cleanWord)) return false;
+  
+  // Skip brand words
+  if (brand && isBrandWord(cleanWord, brand)) return false;
+  
+  // Skip special characters
+  if (specialCharPattern.test(cleanWord)) return false;
+
+  return true;
+}
+
+
 export function checkSpelling(item: FeedItem): ErrorResult[] {
- 
   if (!spellChecker.isReady()) {
     console.warn('Spell checker not ready');
     return [];
   }
-
-  const isLikelyProperNoun = (word: string): boolean => 
-  properNounPattern.test(word);
-
 
   const errors: ErrorResult[] = [];
   const processedWords = new Map<string, FieldData>();
@@ -303,19 +339,19 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
 
     const fieldData = processedWords.get(fieldName)!;
 
-    // Find all word positions
     let position = 0;
     const words = content.split(/\s+/);
     
     for (const word of words) {
       const cleanWord = word.replace(/^[^\w]+|[^\w]+$/g, '');
       
-      if (!cleanWord || 
-          cleanWord.length <= 2 || 
-          ignoreWords.has(cleanWord.toLowerCase()) ||
-          numberPattern.test(cleanWord) ||
-          specialCharPattern.test(cleanWord) ||
-          isBrandWord(cleanWord, item.brand || '')) {
+      if (!shouldCheckWord(cleanWord, item.brand)) {
+        position = content.indexOf(word, position) + word.length;
+        continue;
+      }
+
+      // Special case for PC uppercase
+      if (cleanWord === 'PC') {
         position = content.indexOf(word, position) + word.length;
         continue;
       }
@@ -336,7 +372,6 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
       position = content.indexOf(word, position) + word.length;
     }
 
-    // Sort contexts by position
     fieldData.contexts.sort((a, b) => a.position - b.position);
   }
 
@@ -349,7 +384,6 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
 
     const formattedContexts = contexts.map((ctx, index) => {
       const truncatedContext = truncateContext(ctx.context, ctx.word);
-      // Only underline the current word
       const highlightedContext = truncatedContext.replace(
         new RegExp(`\\b${escapeRegExp(ctx.word)}\\b`),
         `{${ctx.word}}`
@@ -372,6 +406,10 @@ export function checkSpelling(item: FeedItem): ErrorResult[] {
 
   return errors;
 }
+
+
+
+
 
 export function checkTitleSpelling(item: FeedItem): ErrorResult[] {
   if (!item.title) return [];
