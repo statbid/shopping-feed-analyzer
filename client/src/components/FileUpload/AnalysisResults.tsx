@@ -182,7 +182,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     <div className="font-sans grid grid-cols-12 gap-6 h-full">
       {/* Left Panel - Stats */}
       <div className="col-span-3 bg-[#FCFCFC] rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
-        <div className="overflow-y-auto flex-grow p-6 space-y-6">
+        {/* Header */}
+        <div className="bg-gray-200 p-4 border-b border-[#E6EAEE]">
+          <h2 className="text-2xl font-bold text-[#232323]">Results</h2>
+        </div>
+
+        {/* Content */}
+        <div className="flex-grow overflow-y-auto p-6 space-y-6">
           <div className="space-y-6">
             <div className="p-3 rounded-lg">
               <p className="text-4xl font-bold text-[#17235E]">{totalErrors}</p>
@@ -199,11 +205,11 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
               <p className="text-xl mt-2">Failed Checks</p>
             </div>
 
-            <div 
-              className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200" 
-              onClick={handleDownloadReport}
-            >
-              <button className="w-full flex items-center bg-transparent rounded-lg font-bold text-xl">
+            <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200">
+              <button 
+                className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
+                onClick={handleDownloadReport}
+              >
                 <span>Download the report</span>
                 <Download className="w-5 h-5" />
               </button>
@@ -217,6 +223,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
                 Learn more about the Shopping Feed Analyzer →
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Footer - matches right panel height */}
+        <div className="border-t border-gray-200 p-8 bg-gray-200">
+          <div className="text-sm text-[#17235E] text-center">
+           
           </div>
         </div>
       </div>
