@@ -274,7 +274,7 @@ export function checkDescriptionPromotionalWords(item: FeedItem): ErrorResult | 
 }
 
 export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult | null {
-  if (item.description && nonBreakingSpaceRegex.test(item.description)) {
+  /*if (item.description && nonBreakingSpaceRegex.test(item.description)) {
     const matches = getMatches(nonBreakingSpaceRegex, item.description);
     const examples = matches.map((match, index) => {
       const context = getContext(item.description!, match.index!, match[0].length);
@@ -291,7 +291,7 @@ export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult |
       affectedField: 'description',
       value: examples.join('; ')
     };
-  }
+  }*/
   return null;
 }
 
