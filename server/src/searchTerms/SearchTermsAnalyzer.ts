@@ -1,14 +1,41 @@
-import { FeedItem, SearchTerm, Product} from '../types';
+import { FeedItem, SearchTerm, Product } from '../types';
+import { DescriptionExtractor } from './DescriptionTerms';
 
 interface AttributeMatch {
   items: FeedItem[];
   pattern: string;
 }
 
+interface AttributeConfig {
+  type: string;
+  priority: number;
+}
 
 export class SearchTermsAnalyzer {
-
+  private readonly descriptionExtractor: DescriptionExtractor;
   private readonly REQUIRED_MATCH_COUNT = 5;
+
+  private static readonly ATTRIBUTE_CONFIGS: AttributeConfig[] = [
+    // Descriptive attributes first
+    { type: 'Condition', priority: 1 },
+    { type: 'Color', priority: 2 },
+    { type: 'Size', priority: 3 },
+    { type: 'Material', priority: 4 },
+    { type: 'Pattern', priority: 5 },
+    
+    // Identity attributes next
+    { type: 'Gender', priority: 6 },
+    { type: 'Age Group', priority: 7 },
+    
+    // Core product attributes last
+    { type: 'Brand', priority: 8 },
+    { type: 'Product Type', priority: 9 },
+    { type: 'Category', priority: 10 }
+  ];
+
+  constructor(progressCallback?: (status: string, count: number) => void) {
+    this.descriptionExtractor = new DescriptionExtractor(progressCallback);
+  }
 
   private cleanValue(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -100,26 +127,35 @@ export class SearchTermsAnalyzer {
     return [...combosWithoutFirst, ...combosWithFirst];
   }
 
+  private createSearchTerm(attrs: Array<{ type: string; value: string }>): string {
+    // Sort attributes by priority defined in ATTRIBUTE_CONFIGS
+    return attrs
+      .sort((a, b) => {
+        const priorityA = SearchTermsAnalyzer.ATTRIBUTE_CONFIGS.find(c => c.type === a.type)?.priority || 999;
+        const priorityB = SearchTermsAnalyzer.ATTRIBUTE_CONFIGS.find(c => c.type === b.type)?.priority || 999;
+        return priorityA - priorityB;
+      })
+      .map(attr => attr.value)
+      .join(' ');
+  }
+
   private getAttributeCombinations(items: FeedItem[]): Map<string, AttributeMatch> {
     const combinations = new Map<string, AttributeMatch>();
 
     items.forEach(item => {
       const attributes = [
-        // High priority attributes
-        { value: this.cleanValue(item.brand), type: 'Brand', priority: 1 },
-        { value: this.cleanValue(item.product_type?.split('>').pop()), type: 'Product Type', priority: 1 },
-        { value: this.cleanValue(item.google_product_category?.split('>').pop()), type: 'Category', priority: 1 },
-        // Medium priority attributes
-        { value: this.cleanValue(item.material), type: 'Material', priority: 2 },
-        { value: this.cleanValue(item.pattern), type: 'Pattern', priority: 2 },
-        // Lower priority attributes
-        { value: this.cleanValue(item.color), type: 'Color', priority: 3 },
-        { value: this.cleanValue(item.size), type: 'Size', priority: 3 },
-        { value: this.cleanValue(item.gender), type: 'Gender', priority: 3 },
-        { value: this.cleanValue(item.age_group), type: 'Age Group', priority: 3 },
-        { value: this.cleanValue(item.condition), type: 'Condition', priority: 3 },
-        { value: this.cleanValue(item.mpn), type: 'MPN', priority: 3 }
-      ].filter((attr): attr is { value: string; type: string; priority: number } => 
+        // Map directly to attribute configs with consistent priorities
+        { value: this.cleanValue(item.brand), type: 'Brand' },
+        { value: this.cleanValue(item.product_type?.split('>').pop()), type: 'Product Type' },
+        { value: this.cleanValue(item.google_product_category?.split('>').pop()), type: 'Category' },
+        { value: this.cleanValue(item.material), type: 'Material' },
+        { value: this.cleanValue(item.pattern), type: 'Pattern' },
+        { value: this.cleanValue(item.color), type: 'Color' },
+        { value: this.cleanValue(item.size), type: 'Size' },
+        { value: this.cleanValue(item.gender), type: 'Gender' },
+        { value: this.cleanValue(item.age_group), type: 'Age Group' },
+        { value: this.cleanValue(item.condition), type: 'Condition' }
+      ].filter((attr): attr is { value: string; type: string } => 
         attr.value !== undefined && attr.value.length > 1
       );
 
@@ -145,37 +181,42 @@ export class SearchTermsAnalyzer {
     );
   }
 
-  private createSearchTerm(attrs: Array<{ value: string; priority: number }>): string {
-    return attrs
-      .sort((a, b) => a.priority - b.priority)
-      .map(attr => attr.value)
-      .join(' ');
-  }
-
-  public analyzeSearchTerms(items: FeedItem[]): SearchTerm[] {
-    const attributeCombinations = this.getAttributeCombinations(items);
+  public async analyzeSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
+    // Get attribute-based terms
+    const attributeResults = this.getAttributeCombinations(items);
     const results: SearchTerm[] = [];
 
-    attributeCombinations.forEach((data, combination) => {
-      // Get representative product
-      const representativeProduct = data.items[0];
-      
-      // Create matching products array
-      const matchingProducts: Product[] = data.items.map(item => ({
+    // Convert attribute combinations to search terms
+    attributeResults.forEach((data, combination) => {
+      const matchingProducts = data.items.map(item => ({
         id: item.id,
         productName: item.title || ''
       }));
 
       results.push({
-        id: representativeProduct.id,
-        productName: representativeProduct.title || '',
+        id: matchingProducts[0].id,
+        productName: matchingProducts[0].productName,
         searchTerm: combination,
-        pattern: `Attribute-based: ${data.pattern} (${matchingProducts.length} products)`,
+        pattern: `Attribute-based: ${data.pattern}`,
         estimatedVolume: 1,
         matchingProducts
       });
     });
 
-    return results;
+    // Get description-based terms
+    const descriptionTerms = await this.descriptionExtractor.extractSearchTerms(items);
+    results.push(...descriptionTerms);
+
+    // Remove duplicates by search term
+    const uniqueTerms = new Map<string, SearchTerm>();
+    results.forEach(term => {
+      const key = term.searchTerm.toLowerCase();
+      if (!uniqueTerms.has(key) || 
+          uniqueTerms.get(key)!.matchingProducts.length < term.matchingProducts.length) {
+        uniqueTerms.set(key, term);
+      }
+    });
+
+    return Array.from(uniqueTerms.values());
   }
 }
