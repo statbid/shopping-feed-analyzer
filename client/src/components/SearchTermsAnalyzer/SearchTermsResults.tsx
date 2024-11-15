@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter, X, Eye } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Filter, X, Eye } from 'lucide-react';
 import { CSVExporter } from '../utils/CSVExporter';
-import ProductsModal from './SearchTermsDetailsModal'
+import ProductsModal from './SearchTermsDetailsModal';
 import { SearchTerm, SearchTermsResultsProps } from '../../types';
-
 
 interface Filter {
   column: keyof SearchTerm;
@@ -13,17 +12,45 @@ interface Filter {
 
 const ITEMS_PER_PAGE = 10;
 
+// Helper function to format column names
+const formatColumnName = (column: string): string => {
+  switch (column) {
+    case 'id':
+      return 'Product ID';
+    case 'productName':
+      return 'Product Name';
+    case 'searchTerm':
+      return 'Search Term';
+    case 'pattern':
+      return 'Pattern';
+    case 'estimatedVolume':
+      return 'Est. Volume';
+    default:
+      return column;
+  }
+};
+
+const formatFilterType = (type: string): string => {
+  switch (type) {
+    case 'greaterThan':
+      return 'greater than';
+    case 'lessThan':
+      return 'less than';
+    case 'notContains':
+      return 'does not contain';
+    default:
+      return type;
+  }
+};
+
 const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileName }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
   const [selectedTerm, setSelectedTerm] = useState<SearchTerm | null>(null);
-  
-
 
   const filteredResults = useMemo(() => {
-    console.log('Filtering results:', results.length);
     return results.filter(term => {
       return filters.every(filter => {
         const value = term[filter.column];
@@ -78,85 +105,98 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
     setFilters(filters.filter((_, i) => i !== index));
   };
 
-  const FilterModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-lg w-96">
-        <h3 className="text-xl font-bold mb-4">Add Filter</h3>
-        <div className="space-y-4">
-          <select 
-            className="w-full p-2 border rounded"
-            value={activeFilter?.column || ''}
-            onChange={(e) => setActiveFilter({
-              ...activeFilter as Filter,
-              column: e.target.value as keyof SearchTerm
-            })}
-          >
-            <option value="">Select Column</option>
-            <option value="id">Product ID</option>
-            <option value="productName">Product Name</option>
-            <option value="searchTerm">Search Term</option>
-            <option value="pattern">Pattern</option>
-            <option value="estimatedVolume">Est. Volume</option>
-          </select>
+  const FilterModal = () => {
+    const columnOptions = [
+      { value: 'id', label: 'Product ID' },
+      { value: 'productName', label: 'Product Name' },
+      { value: 'searchTerm', label: 'Search Term' },
+      { value: 'pattern', label: 'Pattern' },
+      { value: 'estimatedVolume', label: 'Est. Volume' }
+    ];
 
-          <select 
-            className="w-full p-2 border rounded"
-            value={activeFilter?.type || ''}
-            onChange={(e) => setActiveFilter({
-              ...activeFilter as Filter,
-              type: e.target.value as Filter['type']
-            })}
-          >
-            <option value="">Select Filter Type</option>
-            {activeFilter?.column === 'estimatedVolume' ? (
-              <>
-                <option value="greaterThan">Greater Than</option>
-                <option value="lessThan">Less Than</option>
-              </>
-            ) : (
-              <>
-                <option value="contains">Contains</option>
-                <option value="notContains">Not Contains</option>
-              </>
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg w-96">
+          <h3 className="text-xl font-bold mb-4">Add Filter</h3>
+          <div className="space-y-4">
+            <select 
+              className="w-full p-2 border rounded"
+              value={activeFilter?.column || ''}
+              onChange={e => setActiveFilter({
+                column: e.target.value as keyof SearchTerm,
+                type: 'contains',
+                value: ''
+              })}
+            >
+              <option value="">Select Column</option>
+              {columnOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            {activeFilter?.column && (
+              <select 
+                className="w-full p-2 border rounded"
+                value={activeFilter.type}
+                onChange={e => setActiveFilter({
+                  ...activeFilter,
+                  type: e.target.value as Filter['type']
+                })}
+              >
+                <option value="">Select Filter Type</option>
+                {activeFilter.column === 'estimatedVolume' ? (
+                  <>
+                    <option value="greaterThan">Greater Than</option>
+                    <option value="lessThan">Less Than</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="contains">Contains</option>
+                    <option value="notContains">Does Not Contain</option>
+                  </>
+                )}
+              </select>
             )}
-          </select>
 
-          <input
-            type={activeFilter?.column === 'estimatedVolume' ? 'number' : 'text'}
-            className="w-full p-2 border rounded"
-            placeholder="Filter Value"
-            value={activeFilter?.value || ''}
-            onChange={(e) => setActiveFilter({
-              ...activeFilter as Filter,
-              value: e.target.value
-            })}
-          />
+            {activeFilter?.type && (
+              <input
+                type={activeFilter.column === 'estimatedVolume' ? 'number' : 'text'}
+                className="w-full p-2 border rounded"
+                placeholder="Enter filter value..."
+                value={activeFilter.value}
+                onChange={e => setActiveFilter({
+                  ...activeFilter,
+                  value: e.target.value
+                })}
+              />
+            )}
 
-          <div className="flex justify-end space-x-2">
-            <button
-              onClick={() => setShowFilterModal(false)}
-              className="px-4 py-2 bg-gray-200 rounded"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={addFilter}
-              disabled={!activeFilter?.column || !activeFilter?.type || !activeFilter?.value}
-              className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400"
-            >
-              Add Filter
-            </button>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowFilterModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={addFilter}
+                disabled={!activeFilter?.column || !activeFilter?.type || !activeFilter?.value}
+                className="px-4 py-2 bg-blue-600 text-white rounded disabled:bg-gray-400 hover:bg-blue-700"
+              >
+                Add Filter
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-
-  
   return (
     <div className="grid grid-cols-12 gap-6 h-full">
-      {/* Left panel - keep as is */}
+      {/* Left panel */}
       <div className="col-span-3 bg-[#FCFCFC] rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="p-6 space-y-6">
           <div className="p-3 rounded-lg">
@@ -187,7 +227,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
                 {filters.map((filter, index) => (
                   <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
                     <span className="text-sm">
-                      {filter.column} {filter.type} "{filter.value}"
+                      {formatColumnName(filter.column)} {formatFilterType(filter.type)} "{filter.value}"
                     </span>
                     <button
                       onClick={() => removeFilter(index)}
@@ -213,8 +253,8 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
         </div>
       </div>
   
-       {/* Right panel with updated term display */}
-       <div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
+      {/* Right panel */}
+      <div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-lg font-bold bg-gray-200 border-b border-[#E6EAEE]">
           <div className="p-4">Product ID</div>
           <div className="p-4">Product Name</div>
@@ -253,7 +293,6 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           ))}
         </div>
 
-        {/* Pagination section stays the same */}
         {totalPages > 1 && (
           <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200">
             <button
@@ -281,17 +320,16 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
         )}
       </div>
   
-      {/* Modals - add at bottom of component */}
+      {/* Modals */}
       {showFilterModal && <FilterModal />}
       {selectedTerm && (
-  <ProductsModal
-    isOpen={!!selectedTerm}
-    onClose={() => setSelectedTerm(null)}
-    searchTerm={selectedTerm.searchTerm}
-    products={selectedTerm.matchingProducts}
-  />
-)}
-
+        <ProductsModal
+          isOpen={!!selectedTerm}
+          onClose={() => setSelectedTerm(null)}
+          searchTerm={selectedTerm.searchTerm}
+          products={selectedTerm.matchingProducts}
+        />
+      )}
     </div>
   );
 };
