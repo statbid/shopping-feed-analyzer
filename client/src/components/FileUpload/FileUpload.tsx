@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
+import { SearchTerm, AnalysisResult } from '../../types';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
 import Settings from './Settings';  
@@ -10,11 +11,11 @@ import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
 import environment from '../../config/environment';
 import SearchTermsResults from '../SearchTermsAnalyzer/SearchTermsResults';
 
+
 interface UploadStatus {
   type: 'success' | 'error' | '';
   message: string;
 }
-
 
 interface ErrorResult {
   id: string;
@@ -24,20 +25,6 @@ interface ErrorResult {
   value: string;
 }
 
-interface AnalysisResults {
-  totalProducts: number;
-  errorCounts: { [key: string]: number };
-  errors: ErrorResult[];
-}
-
-
-interface SearchTerm {
-  id: string;
-  productName: string;
-  searchTerm: string;
-  pattern: string;
-  estimatedVolume: number;
-}
 
 type ProgressStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
 
@@ -49,7 +36,7 @@ export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ type: '', message: '' });
   const [isLoading, setIsLoading] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [processedProducts, setProcessedProducts] = useState(0);
@@ -60,7 +47,9 @@ export default function FileUpload() {
   
   const [progressStatus, setProgressStatus] = useState<ProgressStatus>('uploading');
   const [searchTermsResults, setSearchTermsResults] = useState<SearchTerm[] | null>(null);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
   
 
   // File Upload Handler
@@ -205,16 +194,15 @@ export default function FileUpload() {
   };
 
 
-  const handleSearchTermsClick = async () => {
+const handleSearchTermsClick = async () => {
     if (!file) return;
     
     setAnalysisResults(null);
-  setIsLoading(true);
-  setIsProgressModalOpen(true);
-  setProcessedProducts(0);
-  setProgressStatus('analyzing');
+    setIsLoading(true);
+    setIsProgressModalOpen(true);
+    setProcessedProducts(0);
+    setProgressStatus('analyzing');
 
-  
     try {
       const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.searchTerms}`, {
         method: 'POST',
@@ -260,7 +248,7 @@ export default function FileUpload() {
               }
   
               if (data.status === 'complete') {
-                setSearchTermsResults(data.results);
+                setSearchTermsResults(data.results as SearchTerm[]);
                 setUploadStatus({ 
                   type: 'success', 
                   message: 'Search terms analysis completed successfully!' 

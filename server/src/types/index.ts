@@ -19,6 +19,14 @@ export interface FeedItem {
     shipping_weight?: string;
     [key: string]: string | undefined;
   }
+
+  
+  export interface Product {
+    id: string;
+    productName: string;
+  }
+
+  
   export interface ErrorResult {
     id: string;
     errorType: string;
@@ -33,21 +41,37 @@ export interface FeedItem {
     errors: ErrorResult[];
   }
 
-
   export interface SearchTerm {
     id: string;
     productName: string;
     searchTerm: string;
     pattern: string;
     estimatedVolume: number;
+    matchingProducts: Product[];
   }
+
   
-  export interface KeywordScore {
-    term: string;
-    score: number;
-  }
+export interface SearchTermResult {
+  searchTerm: string;
+  pattern: string;
+  estimatedVolume: number;
+  matchingProducts: Array<{
+    id: string;
+    productName: string;
+  }>;
+}
+
   
-  export interface SearchTermMatch {
-    items: FeedItem[];
-    pattern: string;
+
+  export interface SearchTermsResultsProps {
+    results: SearchTerm[];
+    fileName: string;
   }
+
+  export interface ProductsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    searchTerm: string;
+    products: Product[];
+  }
+

@@ -1,34 +1,14 @@
-import { FeedItem, SearchTerm, SearchTermMatch } from '../types';
-import { WordTokenizer, TfIdf } from 'natural';
-import * as stopword from 'stopword';
+import { FeedItem, SearchTerm, Product} from '../types';
 
-interface KeywordScore {
-  term: string;
-  score: number;
+interface AttributeMatch {
+  items: FeedItem[];
+  pattern: string;
 }
 
-export class SearchTermsAnalyzer {
-  private readonly tokenizer: WordTokenizer;
-  private readonly tfidf: TfIdf;
-  private customStopwords: Set<string>;
-  
-  constructor() {
-    this.tokenizer = new WordTokenizer();
-    this.tfidf = new TfIdf();
-    this.customStopwords = new Set(stopword.eng);
-    
-    this.addCustomStopwords([
-      'product', 'item', 'feature', 'features', 'include', 'includes',
-      'including', 'new', 'quality', 'set', 'use', 'using', 'used',
-      'made', 'design', 'designed', 'perfect', 'great', 'best',
-      'available', 'shipping', 'warranty', 'the', 'and', 'or', 'with',
-      'without', 'this', 'that', 'these', 'those', 'our', 'your'
-    ]);
-  }
 
-  private addCustomStopwords(words: string[]): void {
-    words.forEach(word => this.customStopwords.add(word.toLowerCase()));
-  }
+export class SearchTermsAnalyzer {
+
+  private readonly REQUIRED_MATCH_COUNT = 5;
 
   private cleanValue(value: string | undefined): string | undefined {
     if (!value) return undefined;
@@ -39,271 +19,163 @@ export class SearchTermsAnalyzer {
       .trim();
   }
 
-  private isQualitySearchPhrase(phrase: string): boolean {
-    const stopWords = new Set([
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to',
-      'for', 'of', 'with', 'by', 'from', 'this', 'that', 'these', 'those'
+  private isValidAttributePair(type1: string, type2: string): boolean {
+    const invalidPairs = new Set([
+      'Color-Size',
+      'Condition-Color',
+      'Condition-Size',
+      'Product Type-Category'
     ]);
 
-    const words = phrase.split(' ');
-    if (stopWords.has(words[0]) || stopWords.has(words[words.length - 1])) {
-      return false;
-    }
-
-    const genericPhrases = new Set([
-      'high quality', 'best quality', 'great quality',
-      'free shipping', 'fast shipping', 'available in',
-      'made with', 'made from', 'designed for',
-      'perfect for', 'ideal for', 'great for',
-      'easy to', 'ready to'
-    ]);
-
-    if (genericPhrases.has(phrase)) {
-      return false;
-    }
-
-    const descriptiveWords = new Set([
-      'premium', 'luxury', 'professional', 'adjustable', 'wireless',
-      'waterproof', 'durable', 'portable', 'lightweight', 'ergonomic',
-      'innovative', 'advanced', 'modern', 'classic', 'authentic',
-      'genuine', 'custom', 'exclusive', 'elite', 'compact',
-      'digital', 'automatic', 'manual', 'electric', 'smart',
-      'traditional', 'contemporary', 'efficient', 'versatile'
-    ]);
-
-    const hasDescriptiveWord = words.some(word => descriptiveWords.has(word));
-    const categoryWords = new Set([
-      'shoes', 'clothing', 'apparel', 'accessories', 'equipment',
-      'gear', 'tools', 'devices', 'furniture', 'electronics',
-      'supplies', 'parts', 'components', 'system', 'kit'
-    ]);
-
-    const hasCategoryWord = words.some(word => categoryWords.has(word));
-    const containsNumber = /\d+/.test(phrase);
-    const containsSize = /\b(small|medium|large|xl|xxl)\b/i.test(phrase);
-    const containsMeasurement = /\b(inch|cm|mm|ft|meter)\b/i.test(phrase);
-
-    return (hasDescriptiveWord || hasCategoryWord || containsNumber || 
-            containsSize || containsMeasurement) && words.length >= 2;
+    const pair = [type1, type2].sort().join('-');
+    return !invalidPairs.has(pair);
   }
 
-  private preprocessText(text: string): string[] {
-    if (!text) return [];
+  private isLogicalCombination(attrs: Array<{ type: string; value: string }>): boolean {
+    // Check for invalid pairs
+    for (let i = 0; i < attrs.length; i++) {
+      for (let j = i + 1; j < attrs.length; j++) {
+        if (!this.isValidAttributePair(attrs[i].type, attrs[j].type)) {
+          return false;
+        }
+      }
+    }
 
-    const cleaned = text.toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    // Check for invalid combinations
+    const hasCondition = attrs.some(a => a.type === 'Condition');
+    const hasColor = attrs.some(a => a.type === 'Color');
+    const hasSize = attrs.some(a => a.type === 'Size');
 
-    const segments = cleaned.split(/[.!?;,]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 5);
+    if (hasCondition && (hasColor || hasSize)) {
+      return false;
+    }
 
-    const phrases = new Set<string>();
+    if (hasCondition && hasColor && hasSize) {
+      return false;
+    }
+
+    // Check for at least one high-value attribute in larger combinations
+    const hasHighValueAttr = attrs.some(a => 
+      ['Brand', 'Product Type', 'Category'].includes(a.type)
+    );
+
+    if (attrs.length >= 3 && !hasHighValueAttr) {
+      return false;
+    }
+
+    // Calculate value score
+    const valueScore = attrs.reduce((score, attr) => {
+      switch (attr.type) {
+        case 'Brand':
+        case 'Product Type':
+        case 'Category':
+          return score + 3;
+        case 'Material':
+        case 'Pattern':
+          return score + 2;
+        default:
+          return score + 1;
+      }
+    }, 0);
+
+    // Ensure reasonable value scores for different combination sizes
+    if (attrs.length === 2) return valueScore >= 2;
+    if (attrs.length === 3) return valueScore >= 4;
+    if (attrs.length === 4) return valueScore >= 6;
+
+    return true;
+  }
+
+  private generateCombinations<T>(items: T[], size: number): T[][] {
+    if (size === 0) return [[]];
+    if (items.length === 0) return [];
     
-    segments.forEach(segment => {
-      const words = segment.split(/\s+/)
-        .filter(w => w.length > 2)
-        .filter(w => !this.customStopwords.has(w));
-
-      for (let len = 2; len <= 4; len++) {
-        for (let i = 0; i <= words.length - len; i++) {
-          const phrase = words.slice(i, i + len).join(' ');
-          if (phrase && !this.customStopwords.has(phrase)) {
-            phrases.add(phrase);
-          }
-        }
-      }
-    });
-
-    return Array.from(phrases);
+    const first = items[0];
+    const rest = items.slice(1);
+    
+    const combosWithoutFirst = this.generateCombinations(rest, size);
+    const combosWithFirst = this.generateCombinations(rest, size - 1)
+      .map(combo => [first, ...combo]);
+    
+    return [...combosWithoutFirst, ...combosWithFirst];
   }
 
-  private clearTfIdf(): void {
-    while (this.tfidf.documents.length > 0) {
-      this.tfidf.documents.pop();
-    }
-  }
-
-  private async extractDescriptionKeywords(items: FeedItem[]): Promise<Map<string, FeedItem[]>> {
-    this.clearTfIdf();
-    const keywordMap = new Map<string, FeedItem[]>();
-    console.log('Processing descriptions for keyword extraction...');
-
-    let validDocuments = 0;
-    items.forEach(item => {
-      if (!item.description) return;
-      
-      const cleanText = item.description
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      if (cleanText) {
-        this.tfidf.addDocument(cleanText);
-        validDocuments++;
-      }
-    });
-
-    console.log(`Processing ${validDocuments} valid documents for phrase extraction...`);
-
-    const phraseProducts = new Map<string, Set<FeedItem>>();
-
-    items.forEach((item, docIndex) => {
-      if (!item.description) return;
-
-      const description = item.description.toLowerCase();
-      const segments = description
-        .split(/[.!?;,]/)
-        .map(s => s.trim())
-        .filter(s => s.length > 5);
-
-      segments.forEach(segment => {
-        const words = segment
-          .split(/\s+/)
-          .filter(w => w.length > 2)
-          .filter(w => !/^\d+$/.test(w));
-
-        for (let len = 2; len <= 4; len++) {
-          for (let i = 0; i <= words.length - len; i++) {
-            const phrase = words.slice(i, i + len).join(' ');
-            if (phrase.length < 5) continue;
-
-            const score = this.tfidf.tfidf(phrase, docIndex);
-            
-            if (score > 0.3) {
-              if (!phraseProducts.has(phrase)) {
-                phraseProducts.set(phrase, new Set());
-              }
-              phraseProducts.get(phrase)!.add(item);
-            }
-          }
-        }
-      });
-    });
-
-    phraseProducts.forEach((products, phrase) => {
-      if (products.size >= 5 && this.isQualitySearchPhrase(phrase)) {
-        keywordMap.set(phrase, Array.from(products));
-      }
-    });
-
-    console.log(`Found ${keywordMap.size} potential description-based keywords`);
-    return keywordMap;
-  }
-
-  private getAttributeCombinations(items: FeedItem[]): Map<string, SearchTermMatch> {
-    const combinations = new Map<string, SearchTermMatch>();
-    console.log(`Processing ${items.length} items for attribute combinations...`);
+  private getAttributeCombinations(items: FeedItem[]): Map<string, AttributeMatch> {
+    const combinations = new Map<string, AttributeMatch>();
 
     items.forEach(item => {
       const attributes = [
-        { value: this.cleanValue(item.brand), type: 'Brand' },
-        { value: this.cleanValue(item.color), type: 'Color' },
-        { value: this.cleanValue(item.gender), type: 'Gender' },
-        { value: this.cleanValue(item.age_group), type: 'Age Group' },
-        { value: this.cleanValue(item.size), type: 'Size' },
-        { value: this.cleanValue(item.material), type: 'Material' },
-        { value: this.cleanValue(item.pattern), type: 'Pattern' },
-        { value: this.cleanValue(item.product_type?.split('>').pop()), type: 'Product Type' },
-        { value: this.cleanValue(item.google_product_category?.split('>').pop()), type: 'Category' }
-      ].filter((attr): attr is { value: string; type: string } => attr.value !== undefined);
+        // High priority attributes
+        { value: this.cleanValue(item.brand), type: 'Brand', priority: 1 },
+        { value: this.cleanValue(item.product_type?.split('>').pop()), type: 'Product Type', priority: 1 },
+        { value: this.cleanValue(item.google_product_category?.split('>').pop()), type: 'Category', priority: 1 },
+        // Medium priority attributes
+        { value: this.cleanValue(item.material), type: 'Material', priority: 2 },
+        { value: this.cleanValue(item.pattern), type: 'Pattern', priority: 2 },
+        // Lower priority attributes
+        { value: this.cleanValue(item.color), type: 'Color', priority: 3 },
+        { value: this.cleanValue(item.size), type: 'Size', priority: 3 },
+        { value: this.cleanValue(item.gender), type: 'Gender', priority: 3 },
+        { value: this.cleanValue(item.age_group), type: 'Age Group', priority: 3 },
+        { value: this.cleanValue(item.condition), type: 'Condition', priority: 3 },
+        { value: this.cleanValue(item.mpn), type: 'MPN', priority: 3 }
+      ].filter((attr): attr is { value: string; type: string; priority: number } => 
+        attr.value !== undefined && attr.value.length > 1
+      );
 
-      this.generateCombinations(attributes).forEach(combination => {
-        const searchTerm = this.createSearchTerm(combination);
-        const pattern = combination.map(c => c.type).join(' + ');
-
-        if (!combinations.has(searchTerm)) {
-          combinations.set(searchTerm, { items: [], pattern });
-        }
-        combinations.get(searchTerm)!.items.push(item);
-      });
-    });
-
-    const filteredCombinations = new Map(
-      Array.from(combinations.entries())
-        .filter(([_, data]) => data.items.length >= 5)
-    );
-
-    console.log(`Generated ${filteredCombinations.size} valid attribute combinations`);
-    return filteredCombinations;
-  }
-
-  private createSearchTerm(combination: Array<{ value: string; type: string }>): string {
-    const order = ['Brand', 'Color', 'Material', 'Pattern', 'Size', 'Gender', 'Age Group', 'Product Type', 'Category'];
-    const sorted = [...combination].sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
-    return sorted.map(attr => attr.value).join(' ');
-  }
-
-  private generateCombinations(attributes: Array<{ value: string; type: string }>): Array<Array<{ value: string; type: string }>> {
-    const combinations: Array<Array<{ value: string; type: string }>> = [];
-    const makesCombination = (attrs: Array<{ value: string; type: string }>) => {
-      return attrs.some(attr => ['Brand', 'Product Type', 'Category'].includes(attr.type));
-    };
-
-    for (let i = 0; i < attributes.length; i++) {
-      for (let j = i + 1; j < attributes.length; j++) {
-        const combo = [attributes[i], attributes[j]];
-        if (makesCombination(combo)) combinations.push(combo);
-      }
-    }
-
-    for (let i = 0; i < attributes.length; i++) {
-      for (let j = i + 1; j < attributes.length; j++) {
-        for (let k = j + 1; k < attributes.length; k++) {
-          const combo = [attributes[i], attributes[j], attributes[k]];
-          if (makesCombination(combo)) combinations.push(combo);
-        }
-      }
-    }
-    return combinations;
-  }
-
-  private calculateEstimatedVolume(matchCount: number, isDescriptionBased: boolean = false): number {
-    const baseVolume = isDescriptionBased ? matchCount * 8 : matchCount * 10;
-    const multiplier = Math.log10(matchCount + 1);
-    return Math.round(baseVolume * multiplier);
-  }
-
-  public async analyzeSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
-    console.log(`Starting search term analysis for ${items.length} items...`);
-    
-    const searchTerms: SearchTerm[] = [];
-    const existingTerms = new Set<string>();
-
-    const attributeCombinations = this.getAttributeCombinations(items);
-    attributeCombinations.forEach((data, combination) => {
-      const sampleItem = data.items[0];
-      const term: SearchTerm = {
-        id: sampleItem.id,
-        productName: sampleItem.title || '',
-        searchTerm: combination,
-        pattern: `Attribute-based: ${data.pattern}`,
-        estimatedVolume: this.calculateEstimatedVolume(data.items.length)
-      };
-      searchTerms.push(term);
-      existingTerms.add(combination.toLowerCase());
-    });
-
-    console.log(`Generated ${searchTerms.length} attribute-based search terms`);
-
-    const descriptionKeywords = await this.extractDescriptionKeywords(items);
-    descriptionKeywords.forEach((matchedItems, keyword) => {
-      if (!existingTerms.has(keyword.toLowerCase())) {
-        const sampleItem = matchedItems[0];
-        searchTerms.push({
-          id: sampleItem.id,
-          productName: sampleItem.title || '',
-          searchTerm: keyword,
-          pattern: `Description-based (${matchedItems.length} products)`,
-          estimatedVolume: this.calculateEstimatedVolume(matchedItems.length, true)
+      // Generate combinations of 2-4 attributes
+      for (let size = 2; size <= 4; size++) {
+        this.generateCombinations(attributes, size).forEach(combo => {
+          if (this.isLogicalCombination(combo)) {
+            const searchTerm = this.createSearchTerm(combo);
+            const pattern = combo.map(attr => attr.type).join(' + ');
+            
+            if (!combinations.has(searchTerm)) {
+              combinations.set(searchTerm, { items: [], pattern });
+            }
+            combinations.get(searchTerm)!.items.push(item);
+          }
         });
       }
     });
 
-    console.log(`Total search terms generated: ${searchTerms.length}`);
-    
-    return searchTerms.sort((a, b) => b.estimatedVolume - a.estimatedVolume);
+    return new Map(
+      Array.from(combinations.entries())
+        .filter(([_, data]) => data.items.length >= this.REQUIRED_MATCH_COUNT)
+    );
+  }
+
+  private createSearchTerm(attrs: Array<{ value: string; priority: number }>): string {
+    return attrs
+      .sort((a, b) => a.priority - b.priority)
+      .map(attr => attr.value)
+      .join(' ');
+  }
+
+  public analyzeSearchTerms(items: FeedItem[]): SearchTerm[] {
+    const attributeCombinations = this.getAttributeCombinations(items);
+    const results: SearchTerm[] = [];
+
+    attributeCombinations.forEach((data, combination) => {
+      // Get representative product
+      const representativeProduct = data.items[0];
+      
+      // Create matching products array
+      const matchingProducts: Product[] = data.items.map(item => ({
+        id: item.id,
+        productName: item.title || ''
+      }));
+
+      results.push({
+        id: representativeProduct.id,
+        productName: representativeProduct.title || '',
+        searchTerm: combination,
+        pattern: `Attribute-based: ${data.pattern} (${matchingProducts.length} products)`,
+        estimatedVolume: 1,
+        matchingProducts
+      });
+    });
+
+    return results;
   }
 }

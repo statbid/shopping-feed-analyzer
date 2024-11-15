@@ -1,19 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Filter, X, Eye } from 'lucide-react'
 import { CSVExporter } from '../utils/CSVExporter';
+import ProductsModal from './SearchTermsDetailsModal'
+import { SearchTerm, SearchTermsResultsProps } from '../../types';
 
-interface SearchTerm {
-  id: string;
-  productName: string;
-  searchTerm: string;
-  pattern: string;
-  estimatedVolume: number;
-}
-
-interface SearchTermsResultsProps {
-  results: SearchTerm[];
-  fileName: string;
-}
 
 interface Filter {
   column: keyof SearchTerm;
@@ -28,7 +18,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const [filters, setFilters] = useState<Filter[]>([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
-
+  const [selectedTerm, setSelectedTerm] = useState<SearchTerm | null>(null);
   
 
 
@@ -162,21 +152,24 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
     </div>
   );
 
+
+  
   return (
     <div className="grid grid-cols-12 gap-6 h-full">
+      {/* Left panel - keep as is */}
       <div className="col-span-3 bg-[#FCFCFC] rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="p-6 space-y-6">
           <div className="p-3 rounded-lg">
             <p className="text-4xl font-bold text-[#17235E]">{filteredResults.length}</p>
             <p className="font-bold text-xl mt-2">Total Search Terms</p>
           </div>
-
+  
           <div className="p-3 bg-gray-50 rounded-lg">
             <p className="font-bold text-lg">Breakdown:</p>
             <p>Attribute-based: {results.filter(r => r.pattern.includes('Attribute-based')).length}</p>
             <p>Description-based: {results.filter(r => r.pattern.includes('Description-based')).length}</p>
           </div>
-
+  
           <div className="p-3 bg-blue-50 rounded-lg">
             <button 
               onClick={() => setShowFilterModal(true)}
@@ -186,7 +179,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
               <Filter className="w-5 h-5" />
             </button>
           </div>
-
+  
           {filters.length > 0 && (
             <div className="p-3 bg-gray-50 rounded-lg">
               <p className="font-bold text-lg mb-2">Active Filters:</p>
@@ -207,7 +200,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
               </div>
             </div>
           )}
-
+  
           <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200">
             <button 
               className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
@@ -219,8 +212,9 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           </div>
         </div>
       </div>
-
-      <div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
+  
+       {/* Right panel with updated term display */}
+       <div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-lg font-bold bg-gray-200 border-b border-[#E6EAEE]">
           <div className="p-4">Product ID</div>
           <div className="p-4">Product Name</div>
@@ -232,13 +226,24 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
         <div className="overflow-y-auto flex-grow">
           {currentPageData.map((term) => (
             <div
-              key={`${term.id}-${term.searchTerm}`}
+              key={term.searchTerm}
               className="grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-base bg-[#FCFCFC] hover:bg-gray-100 transition-colors border-b border-gray-200"
             >
               <div className="p-4 break-words whitespace-normal">{term.id}</div>
               <div className="p-4 break-words whitespace-normal">{term.productName}</div>
               <div className="p-4 break-words whitespace-normal">{term.searchTerm}</div>
-              <div className="p-4 break-words whitespace-normal">{term.pattern}</div>
+              <div className="p-4 break-words whitespace-normal flex items-center">
+                <span>{term.pattern}</span>
+                {term.matchingProducts?.length > 1 && (
+                  <button
+                    onClick={() => setSelectedTerm(term)}
+                    className="ml-2 text-blue-600 hover:text-blue-800"
+                    title={`View all ${term.matchingProducts.length} products`}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               <div className="p-4">
                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                   {term.estimatedVolume}
@@ -248,6 +253,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           ))}
         </div>
 
+        {/* Pagination section stays the same */}
         {totalPages > 1 && (
           <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200">
             <button
@@ -257,13 +263,13 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
             >
               <ChevronLeft className="w-4 h-4 mr-1" /> Previous
             </button>
-
+  
             <div className="text-sm text-[#17235E]">
               <span>Showing {startIndex + 1}-{endIndex} of {filteredResults.length} terms</span>
               <span className="mx-2">•</span>
               <span>Page {currentPage} of {totalPages}</span>
             </div>
-
+  
             <button
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
@@ -274,8 +280,18 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           </div>
         )}
       </div>
-
+  
+      {/* Modals - add at bottom of component */}
       {showFilterModal && <FilterModal />}
+      {selectedTerm && (
+  <ProductsModal
+    isOpen={!!selectedTerm}
+    onClose={() => setSelectedTerm(null)}
+    searchTerm={selectedTerm.searchTerm}
+    products={selectedTerm.matchingProducts}
+  />
+)}
+
     </div>
   );
 };
