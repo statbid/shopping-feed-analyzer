@@ -1,15 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter, X, Eye, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown } from 'lucide-react';
 
 import { CSVExporter } from '../utils/CSVExporter';
 import ProductsModal from './SearchTermsDetailsModal';
 import { SearchTerm, SearchTermsResultsProps } from '../../types';
-
-interface Filter {
-  column: keyof SearchTerm;
-  type: 'contains' | 'notContains' | 'greaterThan' | 'lessThan';
-  value: string;
-}
+import FilterModal, { Filter, columnDisplayNames, filterTypeDisplayNames } from './FilterModal';
 
 // Available page sizes
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -21,6 +16,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Filter | null>(null);
   const [selectedTerm, setSelectedTerm] = useState<SearchTerm | null>(null);
+
 
   const filteredResults = useMemo(() => {
     return results.filter(term => {
@@ -44,6 +40,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
       });
     });
   }, [results, filters]);
+
 
   const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -99,30 +96,30 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
         className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
       >
         <span>Add Filter</span>
-        <Filter className="w-5 h-5" />
+        <FilterIcon className="w-5 h-5" />
       </button>
     </div>
 
     {filters.length > 0 && (
-      <div className="p-3 bg-gray-50 rounded-lg">
-        <p className="font-bold text-lg mb-2">Active Filters:</p>
-        <div className="space-y-2">
-          {filters.map((filter, index) => (
-            <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
-              <span className="text-sm">
-                {filter.column} {filter.type} "{filter.value}"
-              </span>
-              <button
-                onClick={() => setFilters(filters.filter((_, i) => i !== index))}
-                className="text-red-500 hover:text-red-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+  <div className="p-3 bg-gray-50 rounded-lg">
+    <p className="font-bold text-lg mb-2">Active Filters:</p>
+    <div className="space-y-2">
+      {filters.map((filter, index) => (
+        <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
+          <span className="text-sm">
+            {columnDisplayNames[filter.column]} {filterTypeDisplayNames[filter.type]} "{filter.value}"
+          </span>
+          <button
+            onClick={() => setFilters(filters.filter((_, i) => i !== index))}
+            className="text-red-500 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-      </div>
-    )}
+      ))}
+    </div>
+  </div>
+)}
 
     <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200">
       <button 
@@ -229,14 +226,18 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
       </div>
 
       {/* Modals */}
+
       {showFilterModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h3 className="text-xl font-bold mb-4">Add Filter</h3>
-            {/* Filter modal content */}
-          </div>
-        </div>
-      )}
+          <FilterModal
+            isOpen={showFilterModal}
+            onClose={() => setShowFilterModal(false)}
+            onAddFilter={(newFilter: Filter) => {
+              setFilters([...filters, newFilter]);
+              setShowFilterModal(false);
+            }}
+            currentFilters={filters}
+          />
+        )}
 
       {selectedTerm && (
         <ProductsModal
