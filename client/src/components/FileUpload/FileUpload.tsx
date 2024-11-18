@@ -49,6 +49,9 @@ export default function FileUpload() {
   const [searchTermsResults, setSearchTermsResults] = useState<SearchTerm[] | null>(null);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [analysisType, setAnalysisType] = useState<'feed' | 'search'>('feed');
+
+
   
   
 
@@ -184,8 +187,11 @@ export default function FileUpload() {
   };
 
   // Modal Handlers
+
+
   const handleCheckQualityClick = () => {
     setSearchTermsResults(null);
+    setAnalysisType('feed');
     handleAnalyze();
   };
   
@@ -195,13 +201,14 @@ export default function FileUpload() {
 
 
 const handleSearchTermsClick = async () => {
-    if (!file) return;
+  if (!file) return;
     
-    setAnalysisResults(null);
-    setIsLoading(true);
-    setIsProgressModalOpen(true);
-    setProcessedProducts(0);
-    setProgressStatus('analyzing');
+  setAnalysisResults(null);
+  setIsLoading(true);
+  setIsProgressModalOpen(true);
+  setProcessedProducts(0);
+  setProgressStatus('analyzing');
+  setAnalysisType('search');
 
     try {
       const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.searchTerms}`, {
@@ -355,11 +362,14 @@ const handleSearchTermsClick = async () => {
     />
   
   
-      <ProgressModal 
-        isOpen={isProgressModalOpen}
-        processedProducts={processedProducts}
-        status={progressStatus}
-      />
+  <ProgressModal 
+  isOpen={isProgressModalOpen}
+  processedProducts={processedProducts}
+  status={progressStatus}
+  analysisType={analysisType}
+/>
+
+
     </div>
   );
 

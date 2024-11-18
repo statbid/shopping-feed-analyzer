@@ -14,23 +14,20 @@ interface AttributeConfig {
 export class SearchTermsAnalyzer {
   private readonly descriptionExtractor: DescriptionExtractor;
   private readonly REQUIRED_MATCH_COUNT = 5;
+  private readonly MIN_COMBINATION_SIZE = 2;
+  private readonly MAX_COMBINATION_SIZE = 4;
 
   private static readonly ATTRIBUTE_CONFIGS: AttributeConfig[] = [
-    // Descriptive attributes first
-    { type: 'Condition', priority: 1 },
-    { type: 'Color', priority: 2 },
-    { type: 'Size', priority: 3 },
-    { type: 'Material', priority: 4 },
-    { type: 'Pattern', priority: 5 },
-    
-    // Identity attributes next
-    { type: 'Gender', priority: 6 },
-    { type: 'Age Group', priority: 7 },
-    
-    // Core product attributes last
-    { type: 'Brand', priority: 8 },
-    { type: 'Product Type', priority: 9 },
-    { type: 'Category', priority: 10 }
+    { type: 'Brand', priority: 1 },
+    { type: 'Product Type', priority: 2 },
+    { type: 'Category', priority: 3 },
+    { type: 'Color', priority: 4 },
+    { type: 'Size', priority: 5 },
+    { type: 'Material', priority: 6 },
+    { type: 'Pattern', priority: 7 },
+    { type: 'Gender', priority: 8 },
+    { type: 'Age Group', priority: 9 },
+    { type: 'Condition', priority: 10 }
   ];
 
   constructor(progressCallback?: (status: string, count: number) => void) {
@@ -46,12 +43,21 @@ export class SearchTermsAnalyzer {
       .trim();
   }
 
+  private getLastSegment(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    const segments = value.split('>');
+    return this.cleanValue(segments[segments.length - 1]);
+  }
+
   private isValidAttributePair(type1: string, type2: string): boolean {
     const invalidPairs = new Set([
       'Color-Size',
       'Condition-Color',
       'Condition-Size',
-      'Product Type-Category'
+      'Product Type-Category',
+      'Brand-Condition',
+      'Gender-Condition',
+      'Age Group-Condition'
     ]);
 
     const pair = [type1, type2].sort().join('-');
@@ -59,7 +65,7 @@ export class SearchTermsAnalyzer {
   }
 
   private isLogicalCombination(attrs: Array<{ type: string; value: string }>): boolean {
-    // Check for invalid pairs
+    // Check pairs within the combination
     for (let i = 0; i < attrs.length; i++) {
       for (let j = i + 1; j < attrs.length; j++) {
         if (!this.isValidAttributePair(attrs[i].type, attrs[j].type)) {
@@ -68,49 +74,53 @@ export class SearchTermsAnalyzer {
       }
     }
 
-    // Check for invalid combinations
-    const hasCondition = attrs.some(a => a.type === 'Condition');
-    const hasColor = attrs.some(a => a.type === 'Color');
-    const hasSize = attrs.some(a => a.type === 'Size');
+    const types = attrs.map(a => a.type);
+    const unique = new Set(types);
+    if (unique.size !== types.length) {
+      return false; // Prevent duplicate attribute types
+    }
+
+    // Special rules for condition
+    const hasCondition = types.includes('Condition');
+    const hasColor = types.includes('Color');
+    const hasSize = types.includes('Size');
 
     if (hasCondition && (hasColor || hasSize)) {
       return false;
     }
 
-    if (hasCondition && hasColor && hasSize) {
-      return false;
+    // Rules for different combination sizes
+    switch (attrs.length) {
+      case 2:
+        // Allow most 2-attribute combinations that passed the pair check
+        return true;
+      
+      case 3:
+        // Must include at least one primary identifier
+        return attrs.some(a => ['Brand', 'Product Type', 'Category'].includes(a.type));
+      
+      case 4:
+        // Must include at least one primary identifier and make logical sense
+        const hasPrimaryIdentifier = attrs.some(a => 
+          ['Brand', 'Product Type', 'Category'].includes(a.type)
+        );
+        
+        const complementaryGroups = [
+          ['Color', 'Size', 'Material'],
+          ['Gender', 'Age Group'],
+          ['Brand', 'Product Type', 'Category']
+        ];
+
+        // Check if the combination includes complementary attributes
+        const hasComplementaryGroup = complementaryGroups.some(group => 
+          group.filter(attr => types.includes(attr)).length >= 2
+        );
+
+        return hasPrimaryIdentifier && hasComplementaryGroup;
+
+      default:
+        return false;
     }
-
-    // Check for at least one high-value attribute in larger combinations
-    const hasHighValueAttr = attrs.some(a => 
-      ['Brand', 'Product Type', 'Category'].includes(a.type)
-    );
-
-    if (attrs.length >= 3 && !hasHighValueAttr) {
-      return false;
-    }
-
-    // Calculate value score
-    const valueScore = attrs.reduce((score, attr) => {
-      switch (attr.type) {
-        case 'Brand':
-        case 'Product Type':
-        case 'Category':
-          return score + 3;
-        case 'Material':
-        case 'Pattern':
-          return score + 2;
-        default:
-          return score + 1;
-      }
-    }, 0);
-
-    // Ensure reasonable value scores for different combination sizes
-    if (attrs.length === 2) return valueScore >= 2;
-    if (attrs.length === 3) return valueScore >= 4;
-    if (attrs.length === 4) return valueScore >= 6;
-
-    return true;
   }
 
   private generateCombinations<T>(items: T[], size: number): T[][] {
@@ -127,8 +137,26 @@ export class SearchTermsAnalyzer {
     return [...combosWithoutFirst, ...combosWithFirst];
   }
 
+  private getAttributesFromItem(item: FeedItem): Array<{ type: string; value: string }> {
+    const attributes = [
+      { value: this.cleanValue(item.brand), type: 'Brand' },
+      { value: this.getLastSegment(item.product_type), type: 'Product Type' },
+      { value: this.getLastSegment(item.google_product_category), type: 'Category' },
+      { value: this.cleanValue(item.material), type: 'Material' },
+      { value: this.cleanValue(item.pattern), type: 'Pattern' },
+      { value: this.cleanValue(item.color), type: 'Color' },
+      { value: this.cleanValue(item.size), type: 'Size' },
+      { value: this.cleanValue(item.gender), type: 'Gender' },
+      { value: this.cleanValue(item.age_group), type: 'Age Group' },
+      { value: this.cleanValue(item.condition), type: 'Condition' }
+    ].filter((attr): attr is { value: string; type: string } => 
+      attr.value !== undefined && attr.value.length > 1
+    );
+
+    return attributes;
+  }
+
   private createSearchTerm(attrs: Array<{ type: string; value: string }>): string {
-    // Sort attributes by priority defined in ATTRIBUTE_CONFIGS
     return attrs
       .sort((a, b) => {
         const priorityA = SearchTermsAnalyzer.ATTRIBUTE_CONFIGS.find(c => c.type === a.type)?.priority || 999;
@@ -141,27 +169,17 @@ export class SearchTermsAnalyzer {
 
   private getAttributeCombinations(items: FeedItem[]): Map<string, AttributeMatch> {
     const combinations = new Map<string, AttributeMatch>();
+    let processed = 0;
+    const total = items.length;
 
     items.forEach(item => {
-      const attributes = [
-        // Map directly to attribute configs with consistent priorities
-        { value: this.cleanValue(item.brand), type: 'Brand' },
-        { value: this.cleanValue(item.product_type?.split('>').pop()), type: 'Product Type' },
-        { value: this.cleanValue(item.google_product_category?.split('>').pop()), type: 'Category' },
-        { value: this.cleanValue(item.material), type: 'Material' },
-        { value: this.cleanValue(item.pattern), type: 'Pattern' },
-        { value: this.cleanValue(item.color), type: 'Color' },
-        { value: this.cleanValue(item.size), type: 'Size' },
-        { value: this.cleanValue(item.gender), type: 'Gender' },
-        { value: this.cleanValue(item.age_group), type: 'Age Group' },
-        { value: this.cleanValue(item.condition), type: 'Condition' }
-      ].filter((attr): attr is { value: string; type: string } => 
-        attr.value !== undefined && attr.value.length > 1
-      );
-
-      // Generate combinations of 2-4 attributes
-      for (let size = 2; size <= 4; size++) {
-        this.generateCombinations(attributes, size).forEach(combo => {
+      const attributes = this.getAttributesFromItem(item);
+      
+      // Generate combinations for each size from MIN to MAX
+      for (let size = this.MIN_COMBINATION_SIZE; size <= this.MAX_COMBINATION_SIZE; size++) {
+        const combos = this.generateCombinations(attributes, size);
+        
+        combos.forEach(combo => {
           if (this.isLogicalCombination(combo)) {
             const searchTerm = this.createSearchTerm(combo);
             const pattern = combo.map(attr => attr.type).join(' + ');
@@ -173,19 +191,46 @@ export class SearchTermsAnalyzer {
           }
         });
       }
+
+      processed++;
+      if (processed % 100 === 0) {
+        console.log(`Processed ${processed}/${total} items for attribute combinations`);
+      }
     });
 
-    return new Map(
+    console.log('Filtering combinations by match count...');
+    // Filter and log statistics about combinations
+    const filteredCombinations = new Map(
       Array.from(combinations.entries())
         .filter(([_, data]) => data.items.length >= this.REQUIRED_MATCH_COUNT)
     );
+
+    console.log(`Generated ${combinations.size} total combinations`);
+    console.log(`Filtered to ${filteredCombinations.size} combinations with ${this.REQUIRED_MATCH_COUNT}+ matches`);
+    
+    // Log statistics about combination sizes
+    const sizeStats = new Map<number, number>();
+    filteredCombinations.forEach((data, term) => {
+      const size = term.split(' ').length;
+      sizeStats.set(size, (sizeStats.get(size) || 0) + 1);
+    });
+
+    console.log('Combination size distribution:');
+    sizeStats.forEach((count, size) => {
+      console.log(`${size} attributes: ${count} combinations`);
+    });
+
+    return filteredCombinations;
   }
 
   public async analyzeSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
-    // Get attribute-based terms
-    const attributeResults = this.getAttributeCombinations(items);
+    console.log('Starting search terms analysis...');
     const results: SearchTerm[] = [];
 
+    // Get attribute-based terms
+    console.log('Generating attribute combinations...');
+    const attributeResults = this.getAttributeCombinations(items);
+    
     // Convert attribute combinations to search terms
     attributeResults.forEach((data, combination) => {
       const matchingProducts = data.items.map(item => ({
@@ -197,17 +242,25 @@ export class SearchTermsAnalyzer {
         id: matchingProducts[0].id,
         productName: matchingProducts[0].productName,
         searchTerm: combination,
-        pattern: `Attribute-based: ${data.pattern}`,
+        pattern: `Attribute-based: ${data.pattern} (${matchingProducts.length} products)`,
         estimatedVolume: 1,
         matchingProducts
       });
     });
 
     // Get description-based terms
+    console.log('Extracting description-based terms...');
     const descriptionTerms = await this.descriptionExtractor.extractSearchTerms(items);
-    results.push(...descriptionTerms);
+    
+    descriptionTerms.forEach(term => {
+      results.push({
+        ...term,
+        pattern: `${term.pattern} (${term.matchingProducts.length} products)`
+      });
+    });
 
-    // Remove duplicates by search term
+    // Remove duplicates
+    console.log('Removing duplicates...');
     const uniqueTerms = new Map<string, SearchTerm>();
     results.forEach(term => {
       const key = term.searchTerm.toLowerCase();
@@ -217,6 +270,9 @@ export class SearchTermsAnalyzer {
       }
     });
 
-    return Array.from(uniqueTerms.values());
+    const finalResults = Array.from(uniqueTerms.values());
+    console.log(`Analysis complete. Generated ${finalResults.length} unique search terms`);
+    
+    return finalResults;
   }
 }

@@ -1,19 +1,19 @@
 import React from 'react';
 import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react';
 
-
 interface ProgressModalProps {
   isOpen: boolean;
   processedProducts: number;
   status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
+  analysisType?: 'feed' | 'search';
   statusMessage?: string;
 }
-
 
 const ProgressModal: React.FC<ProgressModalProps> = ({
   isOpen,
   processedProducts,
   status,
+  analysisType,
   statusMessage
 }) => {
   if (!isOpen) return null;
@@ -46,37 +46,25 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
           </div>
         );
 
-        case 'processing':
-          return (
-            <div className="flex flex-col items-center">
-              <FileText className="w-16 h-16 text-blue-500 mb-2" />
-              <p className="text-lg mb-4">Processing Feed Data</p>
-              <div className="mb-4">
-                <p className="text-3xl font-bold text-blue-600">
-                  {processedProducts.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">Products processed</p>
-              </div>
-              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      case 'processing':
+      case 'analyzing':
+        return (
+          <div className="flex flex-col items-center">
+            <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
+            <p className="text-lg mb-4">
+              {analysisType === 'search' ? 'Generating Search Terms' : 'Checking Feed Quality'}
+            </p>
+            <div className="mb-4">
+              <p className="text-3xl font-bold text-blue-600">
+                {processedProducts.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600">Products processed</p>
             </div>
-          );
-  
-        case 'analyzing':
-          return (
-            <div className="flex flex-col items-center">
-              <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
-              <p className="text-lg mb-4">Generating Search Terms</p>
-              <div className="mb-4">
-                <p className="text-3xl font-bold text-blue-600">
-                  {processedProducts.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">Products analyzed</p>
-              </div>
-              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          );
-  
-        default:
+            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        );
+
+      default:
         return (
           <div className="flex flex-col items-center">
             <Loader className="w-16 h-16 text-blue-500 mb-2 animate-spin" />
@@ -95,7 +83,8 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
       case 'extracted':
         return 'File Ready';
       case 'analyzing':
-        return 'Running Quality Checks';
+      case 'processing':
+        return analysisType === 'search' ? 'Search Terms Analysis' : 'Feed Quality Analysis';
       default:
         return 'Processing Feed File';
     }
