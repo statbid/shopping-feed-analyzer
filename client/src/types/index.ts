@@ -37,3 +37,10 @@ export interface AnalysisResult {
   errorCounts: { [key: string]: number };
   errors: ErrorResult[];
 }
+
+
+export interface SearchTermsResultsProps {
+  results: SearchTerm[];
+  fileName: string;
+  useSearchVolumes: boolean;  // Added this line
+}

@@ -10,9 +10,10 @@ require("./worker");
 const fs_1 = __importDefault(require("fs"));
 const csv_parse_1 = require("csv-parse");
 const FeedAnalyzer_1 = require("./FeedAnalyzer");
-const SearchTermsAnalyzer_1 = require("./SearchTermsAnalyzer");
+const SearchTermsAnalyzer_1 = require("./searchTerms/SearchTermsAnalyzer");
 const FileHandler_1 = require("./utils/FileHandler");
 const environment_1 = __importDefault(require("./config/environment"));
+const GoogleAdsService_1 = require("./services/GoogleAdsService");
 const app = (0, express_1.default)();
 const port = environment_1.default.server.port;
 app.use((0, cors_1.default)());
@@ -28,7 +29,6 @@ const safeStringify = (obj) => {
         return JSON.stringify({ error: 'Error stringifying response' });
     }
 };
-// In app.ts
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
@@ -97,6 +97,24 @@ app.post('/api/analyze', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
+app.get('/api/test-google-ads', async (req, res) => {
+    try {
+        console.log('Starting Google Ads test...');
+        new GoogleAdsService_1.GoogleAdsService({
+            clientId: process.env.GOOGLE_ADS_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
+            developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+            refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN,
+            customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID
+        });
+        res.json({ message: 'Test initiated, check server logs' });
+    }
+    catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error occurred';
+        console.error('Test endpoint error:', error);
+        res.status(500).json({ error: 'Test failed', details: message });
+    }
+});
 app.post('/api/search-terms', async (req, res) => {
     const { fileName } = req.body;
     const filePath = FileHandler_1.FileHandler.getProcessedFilePath(fileName);
@@ -127,20 +145,35 @@ app.post('/api/search-terms', async (req, res) => {
                 .on('data', (item) => {
                 items.push(item);
                 processedCount++;
-                if (processedCount % 1000 === 0) { // Send update every 1000 items
-                    sendUpdate({ status: 'processing', processed: processedCount });
+                if (processedCount % 1000 === 0) {
+                    sendUpdate({
+                        status: 'processing',
+                        processed: processedCount,
+                        message: 'Reading feed data...'
+                    });
                 }
             })
                 .on('end', resolve)
                 .on('error', reject);
         });
-        sendUpdate({ status: 'analyzing', processed: processedCount });
+        sendUpdate({
+            status: 'analyzing',
+            processed: processedCount,
+            message: 'Generating search terms...'
+        });
         const analyzer = new SearchTermsAnalyzer_1.SearchTermsAnalyzer();
-        const searchTerms = analyzer.analyzeSearchTerms(items);
+        const searchTerms = await analyzer.analyzeSearchTerms(items);
+        // Log the results for debugging
+        console.log(`Generated search terms breakdown:
+      Total terms: ${searchTerms.length}
+      Attribute-based: ${searchTerms.filter(t => t.pattern.includes('Attribute-based')).length}
+      Description-based: ${searchTerms.filter(t => t.pattern.includes('Description-based')).length}
+    `);
         sendUpdate({
             status: 'complete',
             results: searchTerms,
-            totalProcessed: processedCount
+            totalProcessed: processedCount,
+            totalTerms: searchTerms.length
         });
         res.end();
     }
