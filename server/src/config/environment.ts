@@ -1,12 +1,13 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { Environment } from '../types/environment';
 
 const envPath = path.resolve(__dirname, '../../../.env');
 dotenv.config({ path: envPath });
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-const environment = {
+const environment: Environment = {
   server: {
     port: process.env.SERVER_PORT || 3001,
     host: process.env.HOST || 'localhost'
@@ -24,6 +25,14 @@ const environment = {
   
   worker: {
     maxWorkers: process.env.MAX_WORKERS || 'auto',
+  },
+
+  googleAds: {
+    clientId: process.env.GOOGLE_ADS_CLIENT_ID || '',
+    clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET || '',
+    developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN || '',
+    refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN || '',
+    customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID || ''
   }
 };
 

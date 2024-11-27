@@ -75,3 +75,22 @@ export interface SearchTermResult {
     products: Product[];
   }
 
+
+
+// Add to your existing types/index.ts
+
+export interface GoogleAdsConfig {
+  clientId: string;
+  clientSecret: string;
+  developerToken: string;
+  refreshToken: string;
+  customerAccountId: string;
+}
+
+export interface SearchVolumeResult {
+  keyword: string;
+  avgMonthlySearches: number;
+  competition?: string;
+  lowTopPageBid?: number;
+  highTopPageBid?: number;
+}

@@ -10,8 +10,6 @@ interface Environment {
   };
 }
 
-
-// Ensure the base URL is properly formatted
 const baseUrl = process.env.REACT_APP_API_BASE_URL?.replace(/\/+$/, '') || 'http://localhost:3001';
 
 // Log environment setup in development
@@ -22,17 +20,18 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-
-const environment: Environment = {
+const environment = {
   api: {
     baseUrl: process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001',
     endpoints: {
       upload: '/api/upload',
       analyze: '/api/analyze',
-      searchTerms: '/api/search-terms'  // Add this line
+      searchTerms: '/api/search-terms',
+      searchVolumes: '/api/search-volumes'  
     }
   }
 };
+
 
 // Log API configuration in development
 if (process.env.NODE_ENV === 'development') {
