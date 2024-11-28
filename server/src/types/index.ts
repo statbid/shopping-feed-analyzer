@@ -76,9 +76,6 @@ export interface SearchTermResult {
   }
 
 
-
-// Add to your existing types/index.ts
-
 export interface GoogleAdsConfig {
   clientId: string;
   clientSecret: string;

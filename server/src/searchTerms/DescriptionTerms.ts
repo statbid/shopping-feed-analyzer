@@ -42,21 +42,20 @@ export class DescriptionExtractor {
 
   private getProductIdentifier(item: FeedItem): string {
     // Try product type first (last segment)
-    if (item.product_type) {
-      const segments = item.product_type.split('>');
+    if (item['product type']) {
+      const segments = item['product type'].split('>');
       const lastSegment = segments[segments.length - 1].trim().toLowerCase();
       if (lastSegment) return lastSegment;
     }
 
     // Try Google category if product type not available
-    if (item.google_product_category) {
-      const segments = item.google_product_category.split('>');
+    if (item['google product category']) {
+      const segments = item['google product category'].split('>');
       const lastSegment = segments[segments.length - 1].trim().toLowerCase();
       if (lastSegment) return lastSegment;
     }
 
-    // Use brand as last resort
-    return item.brand?.toLowerCase() || '';
+    return '';
   }
 
   private isValidPhrase(phrase: string): boolean {
@@ -68,25 +67,13 @@ export class DescriptionExtractor {
     // Check if it's all stopwords
     if (words.every(word => STOPWORDS.has(word))) return false;
 
-    return true;
+    // At least one word should be a substantial word (not just a preposition or article)
+    const hasSubstantialWord = words.some(word => 
+      word.length > 3 && !STOPWORDS.has(word)
+    );
+
+    return hasSubstantialWord;
   }
-
-  private enrichPhrase(phrase: string, productIdentifier: string): string {
-    // If the phrase already contains the product identifier, return as is
-    if (productIdentifier && 
-        (phrase.includes(productIdentifier) || 
-         productIdentifier.includes(phrase))) {
-      return phrase;
-    }
-
-    // Add product identifier if we have one
-    if (productIdentifier) {
-      return `${phrase} ${productIdentifier}`;
-    }
-
-    return phrase;
-  }
-
 
   private cleanPhrase(phrase: string): string {
     return phrase
@@ -103,18 +90,38 @@ export class DescriptionExtractor {
     const phrases = new Set<string>();
     const productIdentifier = this.getProductIdentifier(item);
 
-    // Extract noun phrases and adjective + noun combinations
+    // Comprehensive patterns for natural language analysis
     const patterns = [
-      '#Adjective+ #Noun+',
-      '#Noun+ #Noun+',
-      '(#Adjective|#Noun) (#Preposition|#Determiner)? (#Adjective|#Noun)+'
+      // Basic patterns
+      '#Adjective+ #Noun+',                                    // "soft cotton shirt"
+      '#Noun+ #Noun+',                                        // "tennis shoes"
+      
+      // Complex patterns
+      '(#Adjective|#Noun) (#Preposition|#Determiner)? (#Adjective|#Noun)+', // "shoes for running"
+      '#Noun+ #Preposition #Noun+',                           // "shoes with laces"
+      '#Adjective+ (#Preposition|#Determiner)? #Noun+',       // "comfortable with cushions"
+      '#Noun+ #Adjective+ #Noun+',                           // "cotton blend shirt"
+
+      // Additional patterns for better coverage
+      '(#Adjective|#Noun)+ #Preposition (#Adjective|#Noun)+', // "perfect for running"
+      '#Noun+ (#Conjunction|#Preposition) #Noun+',            // "cotton and polyester"
+      '#Adjective+ #Conjunction #Adjective+ #Noun+'          // "soft and comfortable shoes"
     ];
 
     patterns.forEach(pattern => {
       doc.match(pattern).forEach(match => {
         const phrase = this.cleanPhrase(match.text().toLowerCase());
         if (this.isValidPhrase(phrase)) {
-          phrases.add(this.enrichPhrase(phrase, productIdentifier));
+          // If the phrase contains the product identifier, add it as is
+          if (productIdentifier && phrase.includes(productIdentifier)) {
+            phrases.add(phrase);
+          } else {
+            // Add both with and without product identifier if relevant
+            phrases.add(phrase);
+            if (productIdentifier && this.isRelevantCombination(phrase, productIdentifier)) {
+              phrases.add(`${phrase} ${productIdentifier}`);
+            }
+          }
         }
       });
     });
@@ -122,10 +129,17 @@ export class DescriptionExtractor {
     return phrases;
   }
 
+  private isRelevantCombination(phrase: string, identifier: string): boolean {
+    // Check if combining the phrase with the identifier would make semantic sense
+    const phraseWords = phrase.split(' ');
+    const lastWord = phraseWords[phraseWords.length - 1];
+    
+    // Avoid redundant combinations or nonsensical ones
+    return !identifier.includes(lastWord) && 
+           !lastWord.includes(identifier) &&
+           phraseWords.length + identifier.split(' ').length <= MAX_WORDS_IN_PHRASE;
+  }
 
-
-
-  
   private async processBatch(items: FeedItem[]): Promise<Map<string, Set<string>>> {
     const termToProducts = new Map<string, Set<string>>();
 
@@ -146,18 +160,8 @@ export class DescriptionExtractor {
     return termToProducts;
   }
 
-
-
-
-
-
-
-
-
-
-
-
   public async extractSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
+    console.log('Starting description-based search term extraction...');
     const allTerms = new Map<string, Set<string>>();
     const totalItems = items.length;
     let processedCount = 0;
@@ -177,10 +181,12 @@ export class DescriptionExtractor {
 
       processedCount += batch.length;
       this.progressCallback?.('Processing descriptions', processedCount);
+      console.log(`Processed ${processedCount}/${totalItems} items`);
     }
 
-    // Convert to search terms
+    // Convert to search terms with filtering and add identifier versions
     const searchTerms: SearchTerm[] = [];
+    
     for (const [term, productIds] of allTerms) {
       if (productIds.size >= this.MIN_PRODUCTS) {
         const matchingProducts = items
@@ -190,6 +196,7 @@ export class DescriptionExtractor {
             productName: item.title || ''
           }));
 
+        // Add original term
         searchTerms.push({
           id: matchingProducts[0].id,
           productName: matchingProducts[0].productName,
@@ -198,9 +205,46 @@ export class DescriptionExtractor {
           estimatedVolume: 1,
           matchingProducts
         });
+
+        // Get identifiers from the first matching product
+        const firstProduct = items.find(item => item.id === matchingProducts[0].id);
+        if (firstProduct) {
+          const brand = firstProduct.brand?.toLowerCase().trim();
+          const productType = this.getProductIdentifier(firstProduct);
+
+          // Add version with brand if it doesn't already contain it
+          if (brand && !term.includes(brand) && 
+              brand.length > 1 && // Avoid single-letter brands
+              !brand.split(' ').some(word => STOPWORDS.has(word))) {
+            searchTerms.push({
+              id: matchingProducts[0].id,
+              productName: matchingProducts[0].productName,
+              searchTerm: `${brand} ${term}`,
+              pattern: `Description-based with brand: ${matchingProducts.length} products`,
+              estimatedVolume: 1,
+              matchingProducts
+            });
+          }
+
+          // Add version with product type if it doesn't already contain it
+          if (productType && !term.includes(productType) && 
+              productType !== brand && // Avoid duplication if brand and product type are same
+              productType.length > 1 && // Avoid single-letter product types
+              !productType.split(' ').some(word => STOPWORDS.has(word))) {
+            searchTerms.push({
+              id: matchingProducts[0].id,
+              productName: matchingProducts[0].productName,
+              searchTerm: `${term} ${productType}`,
+              pattern: `Description-based with product type: ${matchingProducts.length} products`,
+              estimatedVolume: 1,
+              matchingProducts
+            });
+          }
+        }
       }
     }
 
+    console.log(`Extracted ${searchTerms.length} description-based search terms (including identifier variations)`);
     return searchTerms;
   }
 }
