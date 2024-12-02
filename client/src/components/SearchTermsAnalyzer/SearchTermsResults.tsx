@@ -1,31 +1,32 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown, Loader } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown, Loader, Activity } from 'lucide-react';
 import { CSVExporter } from '../utils/CSVExporter';
 import ProductsModal from './SearchTermsDetailsModal';
-import { SearchTerm, SearchTermsResultsProps } from '../../types';
+import KeywordMetricsModal from './KeywordMetricsModal';
+import { SearchTerm, SearchTermsResultsProps, KeywordMetrics } from '../../types';
 import FilterModal, { Filter, columnDisplayNames, filterTypeDisplayNames } from './FilterModal';
 import environment from '../../config/environment';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
-const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ 
-  results, 
-  fileName, 
-  useSearchVolumes 
-}) => {
+const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileName }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filters, setFilters] = useState<Filter[]>([]);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedTerm, setSelectedTerm] = useState<SearchTerm | null>(null);
+  const [selectedMetrics, setSelectedMetrics] = useState<{
+    term: string;
+    metrics: KeywordMetrics;
+  } | null>(null);
   const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
   const [searchTerms, setSearchTerms] = useState(results);
 
-  // Fetch search volumes when results or useSearchVolumes change
+  // Effect to fetch search volumes
   useEffect(() => {
     const fetchSearchVolumes = async () => {
-      if (!useSearchVolumes || results.length === 0) return;
-
+      if (results.length === 0) return;
+      
       setIsLoadingVolumes(true);
       try {
         const response = await fetch(`${environment.api.baseUrl}/api/search-volumes`, {
@@ -34,8 +35,8 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            searchTerms: results.map(r => r.searchTerm),
-          }),
+            searchTerms: results.map(r => r.searchTerm)
+          })
         });
 
         if (!response.ok) {
@@ -43,12 +44,12 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
         }
 
         const data = await response.json();
-        const volumes = data.volumes;
-
-        // Update search terms with volumes
+        
+        // Update search terms with metrics
         const updatedTerms = results.map(term => ({
           ...term,
-          estimatedVolume: volumes[term.searchTerm.toLowerCase()] || 1,
+          estimatedVolume: data.metrics[term.searchTerm.toLowerCase()]?.avgMonthlySearches || term.estimatedVolume,
+          keywordMetrics: data.metrics[term.searchTerm.toLowerCase()]
         }));
 
         setSearchTerms(updatedTerms);
@@ -60,22 +61,25 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
     };
 
     fetchSearchVolumes();
-  }, [results, useSearchVolumes]);
+  }, [results]);
 
+  // Filter logic
   const filteredResults = useMemo(() => {
     return searchTerms.filter(term => {
       return filters.every(filter => {
         const value = term[filter.column];
-
+        
         switch (filter.type) {
           case 'contains':
             return String(value).toLowerCase().includes(filter.value.toLowerCase());
           case 'notContains':
             return !String(value).toLowerCase().includes(filter.value.toLowerCase());
           case 'greaterThan':
-            return filter.column === 'estimatedVolume' && Number(value) > Number(filter.value);
+            return filter.column === 'estimatedVolume' && 
+                   Number(value) > Number(filter.value);
           case 'lessThan':
-            return filter.column === 'estimatedVolume' && Number(value) < Number(filter.value);
+            return filter.column === 'estimatedVolume' && 
+                   Number(value) < Number(filter.value);
           default:
             return true;
         }
@@ -95,11 +99,28 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
       term.searchTerm,
       term.pattern,
       term.estimatedVolume,
+      term.keywordMetrics?.competition || 'N/A',
+      term.keywordMetrics?.competitionIndex ? 
+        `${(term.keywordMetrics.competitionIndex * 100).toFixed(1)}%` : 'N/A',
+      term.keywordMetrics?.lowTopPageBid ? 
+        `$${term.keywordMetrics.lowTopPageBid.toFixed(2)}` : 'N/A',
+      term.keywordMetrics?.highTopPageBid ? 
+        `$${term.keywordMetrics.highTopPageBid.toFixed(2)}` : 'N/A'
     ]);
-
-    const headers = ['Product ID', 'Product Name', 'Search Term', 'Pattern', 'Est. Monthly Volume'];
+    
+    const headers = [
+      'Product ID', 
+      'Product Name', 
+      'Search Term', 
+      'Pattern', 
+      'Monthly Volume',
+      'Competition',
+      'Competition Index',
+      'Min Bid',
+      'Max Bid'
+    ];
+    
     const csv = [headers, ...csvContent].map(row => row.join(',')).join('\n');
-
     CSVExporter.downloadCSV(csv, `${fileName.split('.')[0]}_search_terms_filtered.csv`);
   };
 
@@ -110,14 +131,12 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
 
   return (
     <div className="grid grid-cols-12 gap-6 h-full">
-      {/* Left panel */}
+      {/* Left Stats Panel */}
       <div className="col-span-3 bg-[#FCFCFC] rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
-        {/* Header */}
         <div className="bg-gray-200 p-4 border-b border-[#E6EAEE]">
           <h2 className="text-2xl font-bold text-[#232323]">Results</h2>
         </div>
 
-        {/* Content */}
         <div className="flex-grow overflow-y-auto">
           <div className="p-6 space-y-6">
             <div className="p-3 rounded-lg">
@@ -128,18 +147,18 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
             {isLoadingVolumes && (
               <div className="p-3 bg-blue-50 rounded-lg flex items-center justify-center">
                 <Loader className="w-5 h-5 animate-spin mr-2" />
-                <span>Fetching search volumes...</span>
+                <span>Fetching keyword metrics...</span>
               </div>
             )}
 
             <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-bold text-lg">Breakdown:</p>
+              <p className="font-bold text-lg">Pattern Breakdown:</p>
               <p>Attribute-based: {searchTerms.filter(r => r.pattern.includes('Attribute-based')).length}</p>
               <p>Description-based: {searchTerms.filter(r => r.pattern.includes('Description-based')).length}</p>
             </div>
 
             <div className="p-3 bg-blue-50 rounded-lg">
-              <button
+              <button 
                 onClick={() => setShowFilterModal(true)}
                 className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
               >
@@ -170,7 +189,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
             )}
 
             <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200">
-              <button
+              <button 
                 className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
                 onClick={handleDownloadReport}
               >
@@ -181,7 +200,6 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="border-t border-gray-200 p-8 bg-gray-200">
           <div className="text-sm text-[#17235E] text-center">
             {filteredResults.length} terms found
@@ -189,7 +207,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
         </div>
       </div>
 
-      {/* Right panel */}
+      {/* Right Results Panel */}
       <div className="col-span-9 bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
         <div className="grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-lg font-bold bg-gray-200 border-b border-[#E6EAEE]">
           <div className="p-4">Product ID</div>
@@ -220,7 +238,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
                   </button>
                 )}
               </div>
-              <div className="p-4">
+              <div className="p-4 flex items-center justify-between">
                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
                   {isLoadingVolumes ? (
                     <Loader className="w-4 h-4 animate-spin" />
@@ -228,6 +246,18 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
                     term.estimatedVolume.toLocaleString()
                   )}
                 </span>
+                {term.keywordMetrics && (
+                  <button
+                    onClick={() => setSelectedMetrics({ 
+                      term: term.searchTerm, 
+                      metrics: term.keywordMetrics! 
+                    })}
+                    className="ml-2 text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
+                    title="View detailed metrics"
+                  >
+                    <Activity className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -297,6 +327,15 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
           onClose={() => setSelectedTerm(null)}
           searchTerm={selectedTerm.searchTerm}
           products={selectedTerm.matchingProducts}
+        />
+      )}
+
+      {selectedMetrics && (
+        <KeywordMetricsModal
+          isOpen={!!selectedMetrics}
+          onClose={() => setSelectedMetrics(null)}
+          searchTerm={selectedMetrics.term}
+          metrics={selectedMetrics.metrics}
         />
       )}
     </div>
