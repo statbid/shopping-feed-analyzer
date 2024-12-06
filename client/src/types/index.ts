@@ -3,6 +3,14 @@ export interface Product {
   productName: string;
 }
 
+export interface KeywordMetrics {
+  avgMonthlySearches: number;
+  competition: 'HIGH' | 'MEDIUM' | 'LOW';
+  competitionIndex: number;
+  lowTopPageBid?: number;
+  highTopPageBid?: number;
+}
+
 export interface SearchTerm {
   id: string;
   productName: string;
@@ -10,6 +18,7 @@ export interface SearchTerm {
   pattern: string;
   estimatedVolume: number;
   matchingProducts: Product[];
+  keywordMetrics?: KeywordMetrics;  // Add this
 }
 
 export interface SearchTermsResultsProps {

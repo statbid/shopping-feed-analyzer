@@ -14,6 +14,7 @@ const SearchTermsAnalyzer_1 = require("./searchTerms/SearchTermsAnalyzer");
 const FileHandler_1 = require("./utils/FileHandler");
 const environment_1 = __importDefault(require("./config/environment"));
 const GoogleAdsService_1 = require("./services/GoogleAdsService");
+const QuotaService_1 = require("./services/QuotaService");
 const app = (0, express_1.default)();
 const port = environment_1.default.server.port;
 app.use((0, cors_1.default)());
@@ -97,22 +98,103 @@ app.post('/api/analyze', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
-app.get('/api/test-google-ads', async (req, res) => {
+/*
+app.get('/api/debug-ads', async (req, res) => {
+  console.log('=== Starting Google Ads Debug Test ===');
+
+  try {
+    // Log environment variables (masked)
+    console.log('Environment check:', {
+      hasClientId: !!process.env.GOOGLE_ADS_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_ADS_CLIENT_SECRET,
+      hasDeveloperToken: !!process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
+      hasRefreshToken: !!process.env.GOOGLE_ADS_REFRESH_TOKEN,
+      customerId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID
+    });
+
+    const service = new GoogleAdsService({
+      clientId: process.env.GOOGLE_ADS_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
+      developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+      refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN!,
+      customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID!
+    });
+
+    await service.testConnection();
+
+    res.json({
+      status: 'success',
+      message: 'Debug test completed, check server logs for details'
+    });
+  } catch (error) {
+    console.error('Debug test failed:', error);
+    res.status(500).json({
+      error: 'Test failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+*/
+app.post('/api/search-volumes', async (req, res) => {
+    const { searchTerms } = req.body;
+    if (!Array.isArray(searchTerms)) {
+        return res.status(400).json({
+            error: 'searchTerms must be an array'
+        });
+    }
     try {
-        console.log('Starting Google Ads test...');
-        new GoogleAdsService_1.GoogleAdsService({
+        console.log(`Processing ${searchTerms.length} search terms`);
+        const service = new GoogleAdsService_1.GoogleAdsService({
             clientId: process.env.GOOGLE_ADS_CLIENT_ID,
             clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET,
             developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
             refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN,
             customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID
         });
-        res.json({ message: 'Test initiated, check server logs' });
+        // Process in batches of 20 terms
+        const batches = service.batchKeywords(searchTerms);
+        const volumes = new Map();
+        let processedCount = 0;
+        let errorCount = 0;
+        console.log(`Split into ${batches.length} batches of max 20 keywords each`);
+        for (let i = 0; i < batches.length; i++) {
+            const batch = batches[i];
+            console.log(`Processing batch ${i + 1} of ${batches.length} (${batch.length} keywords)`);
+            try {
+                // Add delay between batches to avoid rate limiting
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                const batchVolumes = await service.getSearchVolumes(batch);
+                for (const [term, volume] of batchVolumes.entries()) {
+                    volumes.set(term, volume);
+                }
+                processedCount += batch.length;
+                console.log(`Completed batch ${i + 1}, processed ${processedCount}/${searchTerms.length} terms`);
+            }
+            catch (error) {
+                console.error(`Error processing batch ${i + 1}:`, error instanceof Error ? error.message : 'Unknown error');
+                errorCount++;
+                // Continue with next batch
+            }
+        }
+        res.json({
+            volumes: Object.fromEntries(volumes),
+            stats: {
+                requested: searchTerms.length,
+                processed: processedCount,
+                found: volumes.size,
+                errorBatches: errorCount
+            }
+        });
     }
     catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error occurred';
-        console.error('Test endpoint error:', error);
-        res.status(500).json({ error: 'Test failed', details: message });
+        console.error('Error fetching search volumes:', error instanceof Error ? error.message : 'Unknown error');
+        res.status(500).json({
+            error: 'Failed to fetch search volumes',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 app.post('/api/search-terms', async (req, res) => {
@@ -186,4 +268,16 @@ app.post('/api/search-terms', async (req, res) => {
         });
         res.end();
     }
+});
+app.get('/api/quota-status', (req, res) => {
+    const quotaService = QuotaService_1.QuotaService.getInstance();
+    res.json(quotaService.getStatus());
+});
+app.get('/quota-status', (req, res) => {
+    const quotaService = QuotaService_1.QuotaService.getInstance();
+    const status = quotaService.getStatus();
+    res.json({
+        ...status,
+        limit: process.env.GOOGLE_ADS_DAILY_QUOTA || 15000
+    });
 });

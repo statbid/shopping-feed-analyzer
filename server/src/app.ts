@@ -3,13 +3,15 @@ import cors from 'cors';
 import multer from 'multer';
 import './worker';
 import fs from 'fs';
-import { FeedItem } from './types';
+import { FeedItem, KeywordMetrics } from './types';
 import { parse } from 'csv-parse';
 import { FeedAnalyzer } from './FeedAnalyzer';
 import { SearchTermsAnalyzer } from './searchTerms/SearchTermsAnalyzer';
 import { FileHandler } from './utils/FileHandler';
 import environment from './config/environment';
 import { GoogleAdsService } from './services/GoogleAdsService'
+import { QuotaService } from './services/QuotaService';
+
 
 const app = express();
 const port = environment.server.port;
@@ -151,6 +153,7 @@ app.get('/api/debug-ads', async (req, res) => {
 
 */
 
+
 app.post('/api/search-volumes', async (req, res) => {
   const { searchTerms } = req.body;
   
@@ -173,7 +176,7 @@ app.post('/api/search-volumes', async (req, res) => {
 
     // Process in batches of 20 terms
     const batches = service.batchKeywords(searchTerms);
-    const volumes = new Map<string, number>();
+    const metrics = new Map<string, KeywordMetrics>();
     let processedCount = 0;
     let errorCount = 0;
 
@@ -189,9 +192,9 @@ app.post('/api/search-volumes', async (req, res) => {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
-        const batchVolumes = await service.getSearchVolumes(batch);
-        for (const [term, volume] of batchVolumes.entries()) {
-          volumes.set(term, volume);
+        const batchMetrics = await service.getSearchVolumes(batch);
+        for (const [term, keywordMetrics] of batchMetrics.entries()) {
+          metrics.set(term, keywordMetrics);
         }
         processedCount += batch.length;
         
@@ -204,11 +207,11 @@ app.post('/api/search-volumes', async (req, res) => {
     }
     
     res.json({ 
-      volumes: Object.fromEntries(volumes),
+      metrics: Object.fromEntries(metrics),
       stats: {
         requested: searchTerms.length,
         processed: processedCount,
-        found: volumes.size,
+        found: metrics.size,
         errorBatches: errorCount
       }
     });
@@ -220,6 +223,8 @@ app.post('/api/search-volumes', async (req, res) => {
     });
   }
 });
+
+
 
 app.post('/api/search-terms', async (req, res) => {
   const { fileName } = req.body;
@@ -306,4 +311,22 @@ app.post('/api/search-terms', async (req, res) => {
 });
 
 
+app.get('/api/quota-status', (req, res) => {
+  const quotaService = QuotaService.getInstance();
+  const status = quotaService.getStatus();
+  const limit = Number(process.env.GOOGLE_ADS_DAILY_QUOTA) || 15000;
+  
+  res.json({
+    ...status,
+    limit
+  });
+});
 
+app.get('/quota-status', (req, res) => {
+  const quotaService = QuotaService.getInstance();
+  const status = quotaService.getStatus();
+  res.json({
+    ...status,
+    limit: process.env.GOOGLE_ADS_DAILY_QUOTA || 15000
+  });
+});

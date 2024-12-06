@@ -21,6 +21,7 @@ export interface CustomerConfig {
 }
 
 export interface SearchVolumeResult {
+  keyword_idea_metrics: any;
   text: string;
   avgMonthlySearches?: number;
 }
