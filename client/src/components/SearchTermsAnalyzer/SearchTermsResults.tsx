@@ -93,41 +93,36 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const currentPageData = filteredResults.slice(startIndex, endIndex);
 
   const handleDownloadReport = () => {
-    const csvContent = filteredResults.map(term => [
-      term.id,
-      term.productName,
-      term.searchTerm,
-      term.pattern,
-      term.estimatedVolume,
-      term.keywordMetrics?.competition || 'N/A',
-      term.keywordMetrics?.competitionIndex ? 
-        `${(term.keywordMetrics.competitionIndex * 100).toFixed(1)}%` : 'N/A',
-      term.keywordMetrics?.lowTopPageBid ? 
-        `$${term.keywordMetrics.lowTopPageBid.toFixed(2)}` : 'N/A',
-      term.keywordMetrics?.highTopPageBid ? 
-        `$${term.keywordMetrics.highTopPageBid.toFixed(2)}` : 'N/A'
-    ]);
-    
-    const headers = [
-      'Product ID', 
-      'Product Name', 
-      'Search Term', 
-      'Pattern', 
-      'Monthly Volume',
-      'Competition',
-      'Competition Index',
-      'Min Bid',
-      'Max Bid'
-    ];
-    
-    const csv = [headers, ...csvContent].map(row => row.join(',')).join('\n');
-    CSVExporter.downloadCSV(csv, `${fileName.split('.')[0]}_search_terms_filtered.csv`);
+    // For downloading filtered results only
+    const csvContent = CSVExporter.exportSearchTerms(filteredResults);
+    CSVExporter.downloadCSV(
+      csvContent,
+      `${fileName.split('.')[0]}_search_terms_filtered.csv`
+    );
   };
+  
+  const handleDownloadFullReport = () => {
+    // For downloading complete summary with all results
+    const csvContent = CSVExporter.exportSearchTermsSummary(
+      fileName,
+      searchTerms,
+      filteredResults
+    );
+    CSVExporter.downloadCSV(
+      csvContent,
+      `${fileName.split('.')[0]}_search_terms_full_report.csv`
+    );
+  };
+
+
+
 
   const handlePageSizeChange = (newSize: number) => {
     setItemsPerPage(newSize);
     setCurrentPage(1);
   };
+
+
 
   return (
     <div className="grid grid-cols-12 gap-6 h-full">
@@ -188,15 +183,51 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
               </div>
             )}
 
-            <div className="p-3 bg-blue-50 rounded-lg cursor-pointer hover:bg-gray-200">
-              <button 
-                className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl"
-                onClick={handleDownloadReport}
-              >
-                <span>Download report</span>
-                <Download className="w-5 h-5" />
-              </button>
-            </div>
+<div className="p-3 bg-blue-50 rounded-lg relative group">
+  <div className="relative">
+    <button 
+      className="w-full flex items-center justify-between bg-transparent rounded-lg font-bold text-xl p-2 hover:bg-blue-100"
+      onClick={() => {}} // Empty onClick as we'll use the dropdown
+    >
+      <span>Download Report</span>
+      <div className="flex items-center">
+        <Download className="w-5 h-5 mr-1" />
+        <ChevronDown className="w-4 h-4" />
+      </div>
+    </button>
+    
+    {/* Dropdown Menu */}
+    <div className="hidden group-hover:block absolute left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border z-20">
+      <button
+        onClick={handleDownloadReport}
+        className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b flex items-center"
+      >
+        <Download className="w-4 h-4 mr-2" />
+        <div>
+          <div className="font-medium">Export Filtered Results</div>
+          <div className="text-sm text-gray-500">Current view with applied filters</div>
+        </div>
+      </button>
+      
+      <button
+        onClick={handleDownloadFullReport}
+        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
+      >
+        <Download className="w-4 h-4 mr-2" />
+        <div>
+          <div className="font-medium">Export Full Report</div>
+          <div className="text-sm text-gray-500">Complete analysis with statistics</div>
+        </div>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
           </div>
         </div>
 
