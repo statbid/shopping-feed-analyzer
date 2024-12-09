@@ -1,10 +1,10 @@
 # Google Shopping Feed Analyzer
 
-The **Google Shopping Feed Analyzer** is an open-source tool that we aim to develop to help e-commerce businesses ensure their product data feeds are optimized for Google Shopping campaigns. This tool will provide in-depth analysis of product data, checking for common issues like missing attributes, incorrect formatting, and spelling mistakes. By identifying these issues, we aspire to enable merchants to maintain high-quality feeds, resulting in improved ad performance, increased visibility, and more profitable campaigns.
+The **Google Shopping Feed Analyzer** is an open-source tool designed to help e-commerce businesses optimize their product data feeds for Google Shopping campaigns. This tool performs in-depth analysis of product data, identifying issues like missing attributes, incorrect formatting, and spelling mistakes. With this tool, merchants can improve feed quality, resulting in enhanced ad performance, increased visibility, and more profitable campaigns.
 
 ## About StatBid
 
-Since 2015, StatBid has focused on helping merchants grow their profit through search. We are passionate about building community and fostering peer learning, believing that cooperation and shared growth benefit everyone. By sharing this project publicly, we aim to contribute to the collective knowledge of the industry, reduce wasted ad spend, and improve productivity.
+Since 2015, StatBid has been committed to helping merchants grow their profits through search. We are passionate about building community and fostering peer learning, believing that shared growth benefits everyone. By sharing this project publicly, we aim to contribute to the collective knowledge of the industry, reduce wasted ad spend, and improve productivity.
 
 ## Table of Contents
 
@@ -14,9 +14,10 @@ Since 2015, StatBid has focused on helping merchants grow their profit through s
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
 - [Usage](#usage)
+- [Search Terms Analysis](#search-terms-analysis)
 - [Architecture](#architecture)
 - [File Structure](#file-structure)
-- [Error Checks](#error-checks)
+- [Analysis Features](#analysis-features)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -31,6 +32,12 @@ Since 2015, StatBid has focused on helping merchants grow their profit through s
   - Attribute consistency checks
   - Content compliance monitoring
   - Spelling and grammar validation
+- **Search Terms Analysis**:
+  - Attribute-based term generation
+  - Description-based term extraction
+  - Google Ads search volume estimation
+  - Competition metrics analysis
+  - Batch processing with quota management
 - **Progress Tracking**: Monitor analysis progress with a visual interface.
 - **Detailed Error Reporting**: Get comprehensive reports with specific error details and suggestions.
 - **Export Capabilities**: Download analysis results in CSV format.
@@ -51,8 +58,7 @@ Ensure that you have these installed before proceeding.
 
    ```bash
    git clone https://github.com/statbid/shopping-feed-analyzer
-
-
+   ```
 
 2. **Install dependencies**:
 
@@ -70,35 +76,48 @@ Ensure that you have these installed before proceeding.
    npm install
    ```
 
-
 ## Configuration
 
+### Default Values
 
-## Default Values
-If no .env file is present, the application will use these defaults:
-- PORT=3001
-- HOST=localhost
-- MAX_FILE_SIZE=500mb
+If no `.env` file is present, the application will use these defaults:
 
+   ```bash
+   PORT=3001
+   HOST=localhost
+   MAX_FILE_SIZE=500mb
+   ```
 
+### Google Ads API Configuration
+
+For search volume estimation features, configure the following environment variables in your `.env` file:
+
+   ```bash
+   GOOGLE_ADS_CLIENT_ID=your_client_id
+   GOOGLE_ADS_CLIENT_SECRET=your_client_secret
+   GOOGLE_ADS_DEVELOPER_TOKEN=your_developer_token
+   GOOGLE_ADS_REFRESH_TOKEN=your_refresh_token
+   GOOGLE_ADS_CUSTOMER_ACCOUNT_ID=your_account_id
+   GOOGLE_ADS_DAILY_QUOTA=10000  # Optional, defaults to 10000
+   ```
 
 ## Running the Application
 
 To start the server:
 
-```bash
-cd server
-npm run dev
-```
+   ```bash
+   cd server
+   npm run dev
+   ```
 
 To start the client:
 
-```bash
-cd client
-npm start
-```
+   ```bash
+   cd client
+   npm start
+   ```
 
-Access the application at `http://localhost:3000`. **
+Access the application at `http://localhost:3000`.
 
 ## Usage
 
@@ -124,6 +143,37 @@ Access the application at `http://localhost:3000`. **
    - Download full analysis report.
    - Export specific error types in CSV format.
 
+## Search Terms Analysis
+
+The Search Terms Analyzer helps discover potential search terms from your product data:
+
+1. **Generate Search Terms**:
+   - Click "Search Terms Analysis" after uploading your feed.
+   - Terms are generated using two methods:
+     - Attribute-based: Combines product attributes intelligently.
+     - Description-based: Extracts relevant phrases from descriptions.
+
+2. **Search Volume Estimation**:
+   - Enable search volume estimation in settings.
+   - Monitor API quota usage.
+   - View monthly search volume estimates.
+   - Access competition metrics and bid ranges.
+   - Track daily API usage with quota management.
+
+3. **Filter and Analyze**:
+   - Filter terms by volume, pattern, or text.
+   - View matching products for each term.
+   - See detailed keyword metrics including:
+     - Monthly search volume
+     - Competition level
+     - Competition index
+     - Suggested bid ranges.
+
+4. **Export Options**:
+   - Download complete analysis with metrics.
+   - Export filtered results.
+   - Include volume and competition data.
+
 ## Architecture
 
 ### Client
@@ -140,28 +190,34 @@ Access the application at `http://localhost:3000`. **
 - **Concurrency**: Worker threads for parallel processing
 - **Efficiency**: Streaming for efficient file handling
 
+### Integration
+
+- **Google Ads API**: For search volume and competition metrics
+- **Caching**: Local cache for API responses
+
+
 ## File Structure
 
-```plaintext
-├── client/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── utils/
-│   │   └── App.tsx
-│   └── package.json
-├── server/
-│   ├── src/
-│   │   ├── errorCheckers/
-│   │   ├── utils/
-│   │   ├── worker.ts
-│   │   └── app.ts
-│   └── package.json
-└── README.md
-```
+   ```
+   ├── client/
+   │   ├── src/
+   │   │   ├── components/
+   │   │   ├── utils/
+   │   │   └── App.tsx
+   │   └── package.json
+   ├── server/
+   │   ├── src/
+   │   │   ├── errorCheckers/
+   │   │   ├── utils/
+   │   │   ├── worker.ts
+   │   │   └── app.ts
+   │   └── package.json
+   └── README.md
+   ```
 
-## Error Checks
+## Analysis Features
 
-The analyzer includes a variety of checks across different categories:
+### Feed Analysis
 
 - **Title Checks**:
   - Size and color presence
@@ -197,10 +253,28 @@ The analyzer includes a variety of checks across different categories:
   - Promotional text
   - HTML entities
 
+### Search Terms Analysis
+
+- **Attribute-Based Generation**:
+  - Smart attribute combination
+  - Category-aware term creation
+  - Pattern identification
+
+- **Description-Based Extraction**:
+  - Natural language processing
+  - Relevant phrase extraction
+  - Product context awareness
+
+- **Search Metrics**:
+  - Monthly search volume
+  - Competition analysis
+  - Bid range estimation
+  - Historical data tracking
+
 ## Contributing
 
-We welcome contributions! Please feel free to submit issues, feature requests, or pull requests to help improve this tool. Together, we can build a solution that provides even greater value for the e-commerce and digital marketing community.
+We welcome contributions! Please submit issues, feature requests, or pull requests to help improve this tool. Together, we can build a solution that provides even greater value for the e-commerce and digital marketing community.
 
 ## License
 
-This project is licensed under the Apache License 2.0, which means you are free to use, modify, and distribute the code with attribution. For more details, please refer to the [LICENSE](LICENSE) file in this repository.
+This project is licensed under the Apache License 2.0. For more details, please refer to the [LICENSE](LICENSE) file in this repository.
