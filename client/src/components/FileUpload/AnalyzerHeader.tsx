@@ -101,7 +101,7 @@ const AnalyzerHeader: React.FC<AnalyzerHeaderProps> = ({
           className={`ml-3 px-6 py-4 flex items-center bg-green-600 text-white rounded-full hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-lg`}
         >
           <Search className="w-5 h-5 mr-2" />
-          Search Terms Analysis
+          Generate Search Terms
         </button>
 
         {/* Settings Button */}
