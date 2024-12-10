@@ -25,7 +25,8 @@
 
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { X } from 'lucide-react';
-import { SearchTerm } from '../../types';
+import { SearchTerm } from '@shopping-feed/types';
+
 
 // Define filterable columns
 export type FilterableColumns = 'id' | 'productName' | 'searchTerm' | 'pattern' | 'estimatedVolume';
@@ -86,7 +87,7 @@ const FilterModal: React.FC<FilterModalProps> = ({
   const [value, setValue] = useState('');
 
   if (!isOpen) return null;
-  
+
 /**
  * Handles form submission to add a new filter.
  * - Validates the user-entered value before adding the filter.

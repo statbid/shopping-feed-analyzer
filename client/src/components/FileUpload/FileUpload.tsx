@@ -30,7 +30,7 @@
 import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
-import { SearchTerm, AnalysisResult, ProgressUpdate} from '../../types';
+import { SearchTerm, AnalysisResult, ProgressUpdate} from '@shopping-feed/types';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
 import Settings from './Settings';

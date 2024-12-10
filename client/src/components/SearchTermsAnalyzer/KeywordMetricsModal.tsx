@@ -28,8 +28,7 @@
 
 import React from 'react';
 import { X, TrendingUp, DollarSign, Activity, Users } from 'lucide-react';
-import { KeywordMetrics } from '../../types'
-
+import { KeywordMetrics } from '@shopping-feed/types';
 
 interface KeywordMetricsModalProps {
   isOpen: boolean;

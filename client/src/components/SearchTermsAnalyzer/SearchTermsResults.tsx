@@ -29,7 +29,7 @@ import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, Chev
 import { CSVExporter } from '../utils/CSVExporter';
 import ProductsModal from './SearchTermsDetailsModal';
 import KeywordMetricsModal from './KeywordMetricsModal';
-import { SearchTerm, SearchTermsResultsProps, KeywordMetrics } from '../../types';
+import { SearchTerm, SearchTermsResultsProps, KeywordMetrics } from '@shopping-feed/types';
 import FilterModal, { Filter, columnDisplayNames, filterTypeDisplayNames } from './FilterModal';
 import environment from '../../config/environment';
 
@@ -132,7 +132,7 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
     });
   }, [searchTerms, filters]);
 
-  
+
 // Pagination Logic
 // - `totalPages`: The total number of pages based on the filtered results and items per page.
 // - `startIndex`: The starting index of the items for the current page.

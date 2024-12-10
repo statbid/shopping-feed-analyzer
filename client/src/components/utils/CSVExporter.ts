@@ -13,7 +13,7 @@
  */
 
 
-import { ErrorResult, SearchTerm, KeywordMetrics } from '../../../../server/src/types';
+import { ErrorResult, SearchTerm, KeywordMetrics } from '@shopping-feed/types';
 
 interface CSVOptions {
   includeHeaders?: boolean;
