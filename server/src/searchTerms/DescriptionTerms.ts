@@ -1,6 +1,6 @@
 import nlp from 'compromise';
 import { WordNet } from 'natural';
-import { FeedItem, SearchTerm, DescriptionProgressCallback } from '../types';
+import { FeedItem, SearchTerm, DescriptionProgressCallback } from '@shopping-feed/types';
 
 
 const STOPWORDS = new Set([

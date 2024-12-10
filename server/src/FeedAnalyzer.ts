@@ -43,7 +43,7 @@ import { Transform, TransformCallback } from 'stream';
 import { Worker } from 'worker_threads';
 import { cpus } from 'os';
 import path from 'path';
-import { FeedItem, ErrorResult, AnalysisResult } from './types';
+import { FeedItem, ErrorResult, AnalysisResult } from '@shopping-feed/types';
 import * as errorCheckers from './errorCheckers';
 import { spellChecker } from './errorCheckers/SpellChecker';
 import environment from './config/environment';

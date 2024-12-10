@@ -1,4 +1,4 @@
-import { FeedItem, SearchTerm, ProgressCallback, DescriptionProgressCallback } from '../types';
+import { FeedItem, SearchTerm, ProgressCallback, DescriptionProgressCallback } from '@shopping-feed/types';
 import { DescriptionExtractor } from './DescriptionTerms';
 
 export class SearchTermsAnalyzer {

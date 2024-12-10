@@ -25,7 +25,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 
 
 const validWeightUnits = new Set([

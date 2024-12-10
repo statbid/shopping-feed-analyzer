@@ -33,7 +33,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 import nspell from 'nspell';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import environment from '../config/environment';
