@@ -1,3 +1,18 @@
+/**
+ * CSVExporter
+ *
+ * Utility class for exporting various types of data into CSV format. 
+ * Provides methods to generate and download CSV content for error results, 
+ * search terms, and their summaries. Includes built-in options for customization 
+ * like headers, delimiters, and encoding.
+ *
+ * Key Functionalities:
+ * - Export errors with detailed information.
+ * - Export summary reports for errors and search terms.
+ * - Download CSV files with proper encoding and format.
+ */
+
+
 import { ErrorResult, SearchTerm, KeywordMetrics } from '../../../../server/src/types';
 
 interface CSVOptions {
@@ -7,11 +22,28 @@ interface CSVOptions {
 }
 
 export class CSVExporter {
+  /**
+ * Default options for CSV generation:
+ * - `includeHeaders`: Whether to include a header row in the CSV.
+ * - `delimiter`: The character used to separate fields (default is a comma).
+ * - `encoding`: The encoding format of the CSV file.
+ */
+
   private static readonly DEFAULT_OPTIONS: CSVOptions = {
     includeHeaders: true,
     delimiter: ',',
     encoding: 'utf-8'
   };
+
+  /**
+ * Escapes a CSV field to ensure proper formatting:
+ * - Encloses the field in double quotes if it contains special characters (e.g., `,`, `"`).
+ * - Escapes any double quotes in the field.
+ * - Handles both string and numeric fields.
+ *
+ * @param field - The field value to be escaped.
+ * @returns The escaped field as a string.
+ */
 
   private static escapeCSVField(field: string | number): string {
     if (typeof field === 'number') return field.toString();
@@ -25,6 +57,16 @@ export class CSVExporter {
     
     return value;
   }
+
+
+  /**
+ * Formats a single row for a CSV file:
+ * - Escapes each field in the row.
+ * - Joins the fields using the specified delimiter.
+ *
+ * @param row - Array of field values for the row.
+ * @returns A string representing the formatted row.
+ */
 
   private static formatRow(row: (string | number)[]): string {
     return row.map(field => this.escapeCSVField(field)).join(this.DEFAULT_OPTIONS.delimiter);
@@ -52,7 +94,18 @@ export class CSVExporter {
     return rows.join('\n');
   }
 
-  // Original summary report functionality
+  /**
+ * Exports a summary report for feed analysis as a CSV string:
+ * - Includes a summary section with file name, total products, and error counts.
+ * - Appends detailed error information below the summary.
+ *
+ * @param fileName - Name of the analyzed file.
+ * @param totalProducts - Total number of products analyzed.
+ * @param errorCounts - Object mapping error types to their counts.
+ * @param errors - Array of detailed error results.
+ * @returns A CSV string containing the summary and detailed errors.
+ */
+
   static exportSummaryReport(
     fileName: string,
     totalProducts: number,
@@ -77,7 +130,20 @@ export class CSVExporter {
     return `${summary}\n${detailedErrors}`;
   }
 
-  // New search terms export functionality
+
+  /**
+ * Exports search term data as a CSV string:
+ * - Includes metrics such as monthly search volume, competition, and bid ranges.
+ * - Supports custom options for headers and delimiter.
+ *
+ * @param terms - Array of search term results.
+ * @param options - Custom options for CSV formatting.
+ * @returns A CSV string containing the search term data.
+ *
+ * Example CSV Header:
+ * - Product ID, Product Name, Search Term, Pattern Type, Monthly Search Volume, ...
+ */
+
   static exportSearchTerms(
     terms: SearchTerm[],
     options: CSVOptions = {}
@@ -124,7 +190,17 @@ export class CSVExporter {
     return rows.join('\n');
   }
 
-  // New search terms summary functionality
+  /**
+ * Exports a summary report for search term analysis as a CSV string:
+ * - Includes a summary section with patterns, statistics, and volume data.
+ * - Appends detailed search term information below the summary.
+ *
+ * @param fileName - Name of the analyzed file.
+ * @param terms - Array of all search term results.
+ * @param filteredTerms - (Optional) Array of filtered search term results.
+ * @returns A CSV string containing the summary and detailed terms.
+ */
+
   static exportSearchTermsSummary(
     fileName: string,
     terms: SearchTerm[],
@@ -167,6 +243,16 @@ export class CSVExporter {
       ? ((volumes[mid - 1] + volumes[mid]) / 2).toFixed(0)
       : volumes[mid].toString();
   }
+
+  /**
+ * Initiates a download of a CSV file:
+ * - Adds a BOM (Byte Order Mark) for proper encoding.
+ * - Creates a temporary link to trigger the download.
+ * - Cleans up resources after the download.
+ *
+ * @param content - The CSV content to download.
+ * @param filename - The name of the downloaded file.
+ */
 
   static downloadCSV(content: string, filename: string): void {
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);

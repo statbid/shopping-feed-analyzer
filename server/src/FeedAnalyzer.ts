@@ -1,3 +1,43 @@
+/**
+ * FeedAnalyzer Class
+ *
+ * The `FeedAnalyzer` class provides a framework for analyzing product feed files, identifying errors, and reporting them in a structured format. 
+ * This class supports parallel processing of feed items using worker threads for efficiency and scalability.
+ *
+ * Key Features:
+ * - **Error Detection:** Leverages multiple error checkers to validate product feed fields.
+ * - **Batch Processing:** Processes feed items in batches for improved performance.
+ * - **Parallel Processing:** Uses worker threads to distribute workload across CPU cores.
+ * - **Progress Tracking:** Reports progress during analysis via a callback.
+ * - **Stream-Based Analysis:** Analyzes product feeds directly from readable streams.
+ *
+ * Constructor:
+ * - Initializes the result object, ID counts map, number of workers, and enabled checks.
+ *
+ * Methods:
+ * - `analyzeStream`: Main method to analyze a feed file stream with error checks.
+ * - `createWorker`: Spawns a worker thread to process a batch of feed items.
+ * - `addErrors`: Aggregates errors from workers into the result object.
+ * - `getBatchSize`: Dynamically calculates batch size based on enabled checks.
+ * - `countTotalProducts`: Counts the total number of products in a feed file.
+ * - `resetAnalysis`: Resets internal state for a new analysis run.
+ * - `validateEnabledChecks`: Validates a list of enabled checks against available error checkers.
+ * - `validateChecker`: Verifies the existence of an individual checker.
+ *
+ * Dependencies:
+ * - `csv-parse`: Parses the feed file stream into structured data.
+ * - `worker_threads`: Provides parallel processing capabilities.
+ * - `errorCheckers`: A collection of error-checking functions for validating feed items.
+ * - `SpellChecker`: Spell checking module for linguistic validations.
+ * - `environment`: Configuration file for environment-specific settings.
+ *
+ * Usage:
+ * - Create an instance of `FeedAnalyzer` and call `analyzeStream` with a readable file stream and enabled checks.
+ * - Track progress using the optional progress callback.
+ * - Retrieve results via `getResults` or listen for errors during processing.
+ */
+
+
 import { parse, Parser, Options as ParseOptions } from 'csv-parse';
 import { Transform, TransformCallback } from 'stream';
 import { Worker } from 'worker_threads';

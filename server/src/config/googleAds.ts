@@ -1,4 +1,4 @@
-// src/config/googleAds.ts
+
 
 interface GoogleAdsConfig {
     serviceAccountSecretsPath: string;

@@ -1,3 +1,25 @@
+/**
+ * Attribute Validation Checkers
+ *
+ * This file defines validation functions to check for mismatches between product attributes 
+ * (such as gender and age group) and the textual content of the product title in a `FeedItem`.
+ * Each function performs a single validation and returns an `ErrorResult` if the validation fails.
+ *
+ * Exported Functions:
+ * - `checkGenderMismatch`: Validates consistency between the gender attribute and title references.
+ * - `checkAgeGroupMismatch`: Validates consistency between the age group attribute and title references.
+ *
+ * Dependencies:
+ * - Types: `FeedItem`, `ErrorResult`.
+ * - Helper Function: `wordInText` for keyword detection in text.
+ *
+ * The checks include:
+ * - Detecting gender inconsistencies, such as "women" in the title but "male" in the gender attribute.
+ * - Detecting age group inconsistencies, such as "baby" in the title but "adult" in the age group attribute.
+ *
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 
 const femaleWords = ['female', 'women', 'woman', 'girl', 'females','girls'];

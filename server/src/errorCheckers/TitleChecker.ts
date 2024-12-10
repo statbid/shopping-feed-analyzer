@@ -1,3 +1,24 @@
+/**
+ * Title Validation Checkers
+ *
+ * This file defines various validation functions for checking specific issues
+ * in product titles based on a given `FeedItem` object. Each function performs
+ * a single validation and returns an `ErrorResult` if the validation fails.
+ *
+ * Exported Constants:
+ * - `TitleChecker`: Array of all title validation functions.
+ *
+ * Functions:
+ * - Validation Functions: `checkTitleSize`, `checkTitleColor`, etc.
+ * - Utilities: `getMatches`, `escapeRegExp`, etc.
+ *
+ * Dependencies:
+ * - Constants: Regex patterns and predefined data for validation.
+ * - External Checkers: `SpellChecker`, `MissingSpaceChecker`.
+ *
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 import {
   sizeWords, ignoreWords, specialCharsRegex, badAbbreviationsRegex, repeatedWhitespaceRegex,

@@ -1,3 +1,30 @@
+/**
+ * Required Fields Validation
+ *
+ * This file contains validation functions to ensure the presence and correctness of required fields
+ * in a `FeedItem` object, such as `link`, `image_link`, `price`, and others.
+ *
+ * Functions:
+ * - `checkShippingWeight`: Validates the presence and format of the `shipping_weight` field.
+ * - `checkLinkIsSet`: Validates the presence of the `link` field.
+ * - `checkImageLink`: Validates the presence of the `image_link` field.
+ * - `checkAvailability`: Validates the presence of the `availability` field.
+ * - `checkPrice`: Validates the presence of the `price` field.
+ * - `checkBrand`: Validates the presence of the `brand` field.
+ * - `checkCondition`: Validates the presence of the `condition` field.
+ * - `checkMPN`: Validates the presence of the `mpn` (Manufacturer Part Number) field.
+ *
+ * Constants:
+ * - `validWeightUnits`: Set of valid units for the `shipping_weight` field.
+ * - `requiredFieldsChecks`: Array of all required field validation functions.
+ *
+ * Features:
+ * - Ensures essential fields like `link`, `image_link`, and `price` are present.
+ * - Verifies `shipping_weight` uses a valid format and unit (e.g., "2.5 lbs").
+ * - Generates detailed error messages for missing or invalid fields.
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 
 

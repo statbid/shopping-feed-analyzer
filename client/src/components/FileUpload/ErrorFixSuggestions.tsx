@@ -1,12 +1,44 @@
+/**
+ * ErrorFixSuggestions Component
+ *
+ * This component provides suggestions for fixing specific errors
+ * related to Google Shopping feed requirements. Based on the `errorType` prop,
+ * it dynamically generates a tailored recommendation for the user.
+ *
+ * Features:
+ * - **Dynamic Suggestions:** Displays a suggestion for the provided `errorType` using a predefined set of rules.
+ * - **Fallback Message:** Provides a general fallback message for unknown error types.
+ * 
+ *
+ * Props:
+ * - `errorType` (string): The type of error for which a suggestion is to be displayed.
+ *
+ * Usage:
+ * - Pass an `errorType` string corresponding to a known error.
+ * - The suggestion will be displayed in a styled container.
+ *
+ * Styling:
+ * - Uses Tailwind CSS for basic styling.
+ * - Blue background (`bg-blue-50`) with rounded corners for better readability.
+ */
+
+
 import React from 'react';
 
 interface ErrorFixSuggestionsProps {
-  errorType: string;
+  errorType: string; // The type of error to provide a suggestion for
 }
 
+
 const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) => {
+  /**
+   * Fetches the suggestion corresponding to a specific error type.
+   * @param type - The type of error.
+   * @returns A string containing the suggestion for the given error type.
+   */
   const getSuggestion = (type: string): string => {
     const suggestions: { [key: string]: string } = {
+       // Key-value pairs for error types and their respective suggestions
       'Title Doesn\'t Contain Size When Size is Set ': 'Include the product size in the title when the size attribute is set. Use the exact size value or standard size abbreviations (XS, S, M, L, XL) that match your size attribute.',
       
       'Description Contains Missing Spaces After Commas': 'Add a space after each comma in your descriptions. Example: Change "red,blue,green" to "red, blue, green".',
@@ -119,7 +151,7 @@ const ErrorFixSuggestions: React.FC<ErrorFixSuggestionsProps> = ({ errorType }) 
       'Monitored Pharmacy Words': 'Remove any terms that may violate Google\'s pharmacy policy. Check Google\'s restricted products policy.',
 
     };
-
+    // Default suggestion for unknown error types
     return suggestions[type] || 'Review the item and ensure it follows Google Shopping feed requirements.';
   };
 

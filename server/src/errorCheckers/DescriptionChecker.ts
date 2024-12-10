@@ -1,3 +1,35 @@
+/**
+ * Description Validation Checkers
+ *
+ * This file defines various validation functions for checking specific issues
+ * in product descriptions based on a given `FeedItem` object. Each function 
+ * performs a single validation and returns an `ErrorResult` if the validation fails.
+ *
+ * Exported Constants:
+ * - `DescriptionChecker`: Array of all description validation functions.
+ *
+ * Functions:
+ * - Validation Functions: `checkDescriptionMissingSpaces`, `checkDescriptionRepeatedDashes`, etc.
+ * - Utilities: `getMatches`, `getContext`, `truncateContext`.
+ *
+ * Dependencies:
+ * - Constants: Regex patterns and predefined data for validation.
+ * - Utilities: Helper functions for text matching and context extraction.
+ *
+ * The checks include:
+ * - Missing spaces after commas.
+ * - Repeated dashes or whitespace.
+ * - Leading and trailing whitespace.
+ * - Presence of HTML tags or entities.
+ * - Overly long descriptions.
+ * - Non-breaking spaces.
+ * - Use of promotional words.
+ *
+ */
+
+
+
+
 import { FeedItem, ErrorResult } from '../types';
 import {
   missingSpaceRegex,
@@ -144,7 +176,7 @@ export function checkDescriptionRepeatedWhitespace(item: FeedItem): ErrorResult 
     if (matches.length > 0) {
       const examples = matches.map((match, index) => {
         const context = getContext(item.description!, match.index!, match[0].length);
-        const markedContext = context.replace(match[0], match[0].replace(/\s/g, '␣'));
+        const markedContext = context.replace(match[0], match[0].replace(/\s/g, '__'));
         return `"...${markedContext}..."`;
       });
 
@@ -274,7 +306,7 @@ export function checkDescriptionPromotionalWords(item: FeedItem): ErrorResult | 
 }
 
 export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult | null {
-  /*if (item.description && nonBreakingSpaceRegex.test(item.description)) {
+  if (item.description && nonBreakingSpaceRegex.test(item.description)) {
     const matches = getMatches(nonBreakingSpaceRegex, item.description);
     const examples = matches.map((match, index) => {
       const context = getContext(item.description!, match.index!, match[0].length);
@@ -291,12 +323,11 @@ export function checkDescriptionNonBreakingSpaces(item: FeedItem): ErrorResult |
       affectedField: 'description',
       value: examples.join('; ')
     };
-  }*/
+  }
   return null;
 }
 
 /**********Product Description too long************ */
-
 
 export function checkDescriptionLength(item: FeedItem): ErrorResult | null {
   if (item.description && item.description.length > MAX_DESCRIPTION_LENGTH) {

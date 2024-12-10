@@ -1,3 +1,29 @@
+/**
+ * SearchTermsResults Component
+ *
+ * This component provides an interface to view, filter, and analyze search terms extracted from a file.
+ * It features a responsive layout with a left panel for statistics and filters and a right panel for 
+ * paginated results. The component supports advanced features such as:
+ *
+ * Features:
+ * - **Pagination:** Navigate through search terms with customizable page sizes.
+ * - **Filtering:** Apply multiple filters dynamically to refine results.
+ * - **Search Volume Fetching:** Fetch and display search volume metrics from an API.
+ * - **Detailed Modals:**
+ *   - Products Modal: Displays all products matching a search term.
+ *   - Keyword Metrics Modal: Displays detailed metrics for a selected search term.
+ * - **Export Reports:** Download filtered results or full analysis reports as CSV files.
+ *
+ * Props:
+ * - `results`: Array of `SearchTerm` objects representing the search terms to display.
+ * - `fileName`: Name of the file being analyzed, used for export naming.
+ *
+ * Types:
+ * - `SearchTerm`: Includes fields such as `id`, `productName`, `searchTerm`, `pattern`, and `estimatedVolume`.
+ * - `KeywordMetrics`: Includes metrics such as `avgMonthlySearches`, `competition`, etc.
+ */
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown, Loader, Activity } from 'lucide-react';
 import { CSVExporter } from '../utils/CSVExporter';
@@ -7,9 +33,20 @@ import { SearchTerm, SearchTermsResultsProps, KeywordMetrics } from '../../types
 import FilterModal, { Filter, columnDisplayNames, filterTypeDisplayNames } from './FilterModal';
 import environment from '../../config/environment';
 
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const PAGE_SIZE_OPTIONS = [10, 50, 100, 500];
+
 
 const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileName }) => {
+  // State Management
+// - `currentPage`: Tracks the current page of paginated results.
+// - `itemsPerPage`: Determines the number of items displayed per page.
+// - `filters`: Stores active filters applied to the search terms.
+// - `showFilterModal`: Tracks the visibility of the filter modal.
+// - `selectedTerm`: Stores the search term selected for viewing matching products.
+// - `selectedMetrics`: Stores metrics data for the selected search term.
+// - `isLoadingVolumes`: Indicates whether search volume metrics are being fetched.
+// - `searchTerms`: Stores the list of search terms, updated with fetched metrics.
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [filters, setFilters] = useState<Filter[]>([]);
@@ -22,7 +59,11 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
   const [searchTerms, setSearchTerms] = useState(results);
 
-  // Effect to fetch search volumes
+  /**
+ * Fetches search volume metrics from an API.
+ * Updates the `searchTerms` state with the fetched metrics for each term.
+ */
+
   useEffect(() => {
     const fetchSearchVolumes = async () => {
       if (results.length === 0) return;
@@ -63,7 +104,11 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
     fetchSearchVolumes();
   }, [results]);
 
-  // Filter logic
+  /**
+ * Filters the search terms based on the active filters.
+ * Supports conditions such as "contains", "notContains", "greaterThan", and "lessThan".
+ */
+
   const filteredResults = useMemo(() => {
     return searchTerms.filter(term => {
       return filters.every(filter => {
@@ -86,6 +131,13 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
       });
     });
   }, [searchTerms, filters]);
+
+  
+// Pagination Logic
+// - `totalPages`: The total number of pages based on the filtered results and items per page.
+// - `startIndex`: The starting index of the items for the current page.
+// - `endIndex`: The ending index of the items for the current page.
+// - `currentPageData`: The subset of filtered results to display on the current page.
 
   const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -120,6 +172,19 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const handlePageSizeChange = (newSize: number) => {
     setItemsPerPage(newSize);
     setCurrentPage(1);
+  };
+
+
+  const handleAddFilter = (newFilter: Filter) => {
+    setFilters([...filters, newFilter]);
+    setCurrentPage(1); // Reset to first page
+    setShowFilterModal(false);
+  };
+  
+  // When removing a filter:
+  const handleRemoveFilter = (index: number) => {
+    setFilters(filters.filter((_, i) => i !== index));
+    setCurrentPage(1); // Reset to first page
   };
 
 
@@ -163,25 +228,28 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
             </div>
 
             {filters.length > 0 && (
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="font-bold text-lg mb-2">Active Filters:</p>
-                <div className="space-y-2">
-                  {filters.map((filter, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
-                      <span className="text-sm">
-                        {columnDisplayNames[filter.column]} {filterTypeDisplayNames[filter.type]} "{filter.value}"
-                      </span>
-                      <button
-                        onClick={() => setFilters(filters.filter((_, i) => i !== index))}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+  <div className="p-3 bg-gray-50 rounded-lg">
+    <p className="font-bold text-lg mb-2">Active Filters:</p>
+    <div className="space-y-2">
+      {filters.map((filter, index) => (
+        <div key={index} className="flex items-center justify-between bg-white p-2 rounded">
+          <span className="text-sm">
+            {columnDisplayNames[filter.column]} {filterTypeDisplayNames[filter.type]} "{filter.value}"
+          </span>
+          <button
+            onClick={() => {
+              setFilters(filters.filter((_, i) => i !== index));
+              setCurrentPage(1); // Reset to first page
+            }}
+            className="text-red-500 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
 <div className="p-3 bg-blue-50 rounded-lg relative group">
   <div className="relative">
@@ -295,6 +363,8 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
         </div>
 
         {/* Pagination */}
+
+
         {totalPages > 1 && (
           <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200">
             <button
@@ -338,6 +408,13 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           </div>
         )}
       </div>
+
+
+
+
+
+
+
 
       {/* Modals */}
       {showFilterModal && (

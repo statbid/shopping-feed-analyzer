@@ -1,4 +1,4 @@
-import { FeedItem, SearchTerm } from '../types';
+import { FeedItem, SearchTerm, ProgressCallback, DescriptionProgressCallback } from '../types';
 import { DescriptionExtractor } from './DescriptionTerms';
 
 export class SearchTermsAnalyzer {
@@ -6,6 +6,7 @@ export class SearchTermsAnalyzer {
   private readonly MIN_COMBINATION_SIZE = 2;
   private readonly MAX_COMBINATION_SIZE = 4;
   private readonly MIN_MATCHING_PRODUCTS = 5;
+  private readonly progressCallback?: ProgressCallback;
 
   private static readonly ATTRIBUTE_PRIORITY: { [key: string]: number } = {
     'Condition': 1,
@@ -41,8 +42,19 @@ export class SearchTermsAnalyzer {
     'Product Type',
   ];
 
-  constructor(progressCallback?: (status: string, count: number) => void) {
-    this.descriptionExtractor = new DescriptionExtractor(progressCallback);
+  constructor(progressCallback?: ProgressCallback) {
+    this.progressCallback = progressCallback;
+
+    // Modified to pass current batch and total batches
+    this.descriptionExtractor = new DescriptionExtractor(
+      (stage: string, current: number, total: number) => {
+        const progress = (current / total) * 100;
+        console.log(
+          `Description extraction progress: ${current}/${total} batches (${progress.toFixed(1)}%)`
+        );
+        this.progressCallback?.('description', progress);
+      }
+    );
   }
 
   private getFieldValue(item: FeedItem, fieldType: 'category' | 'productType'): string | undefined {
@@ -151,7 +163,7 @@ export class SearchTermsAnalyzer {
   }
 
   private matchItemsToPattern(
-    item: FeedItem, 
+    item: FeedItem,
     pattern: string[]
   ): { searchTerm: string; pattern: string; attributeValues: Array<{ type: string; value: string }>; category: string } | undefined {
     const category = this.getAttributeValue(item, 'Category');
@@ -211,52 +223,53 @@ export class SearchTermsAnalyzer {
     return filteredMatches;
   }
 
+
+
+
+
   public async analyzeSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
-    const attributeResults: SearchTerm[] = [];
-    const combinations = this.generateAllCombinations(items);
-
-    const generatedSearchTerms = new Set<string>();
-
-    combinations.forEach((data, searchTerm) => {
-      attributeResults.push({
-        id: data.items[0].id,
-        productName: data.items[0].title || '',
-        searchTerm: searchTerm,
-        pattern: `Attribute-based: ${data.pattern} (${data.items.length} products)`,
-        estimatedVolume: 1,
-        matchingProducts: data.items.map(item => ({
-          id: item.id,
-          productName: item.title || '',
-        })),
-      });
-
-      generatedSearchTerms.add(searchTerm);
-
-      const attributeValues = data.attributeValues.map(av => av.value);
-      const permutations = this.permute(attributeValues);
-
-      permutations.forEach(permutation => {
-        const permutedSearchTerm = `${permutation.join(' ')} ${data.category}`;
-        if (!generatedSearchTerms.has(permutedSearchTerm)) {
-          attributeResults.push({
-            id: data.items[0].id,
-            productName: data.items[0].title || '',
-            searchTerm: permutedSearchTerm,
-            pattern: `Attribute-based (permuted): ${data.pattern} (${data.items.length} products)`,
-            estimatedVolume: 1,
-            matchingProducts: data.items.map(item => ({
-              id: item.id,
-              productName: item.title || '',
-            })),
-          });
-          generatedSearchTerms.add(permutedSearchTerm);
+    try {
+      const attributeResults: SearchTerm[] = [];
+      const combinations = this.generateAllCombinations(items);
+      let combinationCount = 0;
+      const totalCombinations = combinations.size;
+  
+      console.log(`Processing ${totalCombinations} attribute combinations...`);
+  
+      for (const [searchTerm, data] of combinations.entries()) {
+        attributeResults.push({
+          id: data.items[0].id,
+          productName: data.items[0].title || '',
+          searchTerm: searchTerm,
+          pattern: `Attribute-based: ${data.pattern} (${data.items.length} products)`,
+          estimatedVolume: 0,
+          matchingProducts: data.items.map(item => ({
+            id: item.id,
+            productName: item.title || '',
+          })),
+        });
+  
+        combinationCount++;
+        const progress = Math.round((combinationCount / totalCombinations) * 100);
+        if (this.progressCallback) {
+          this.progressCallback('attribute', progress);
         }
-      });
-    });
-
-    const descriptionTerms = await this.descriptionExtractor.extractSearchTerms(items);
-
-    const results = [...attributeResults, ...descriptionTerms];
-    return results;
+      }
+  
+      console.log(`Completed attribute analysis. Found ${attributeResults.length} combinations.`);
+  
+      // Then process description-based terms
+      const descriptionTerms = await this.descriptionExtractor.extractSearchTerms(items);
+  
+      return [...attributeResults, ...descriptionTerms];
+    } catch (error) {
+      console.error('Error during search terms analysis:', error);
+      throw error;
+    }
   }
+
+
+
+
+
 }

@@ -1,4 +1,19 @@
-// checkConfig.ts
+/**
+ * checkConfig
+ *
+ * This module defines the configuration for various quality checks used in the application.
+ * Each check belongs to a category, and all categories are organized into an array `checkCategories`.
+ * The configuration includes metadata like:
+ * - `id`: A unique identifier for the check.
+ * - `name`: A human-readable name for the check.
+ * - `category`: The category to which the check belongs.
+ * - `enabled`: A flag indicating whether the check is enabled by default.
+ * - `checkerFunction`: The function name to execute the specific check.
+ *
+ * Additionally, this module provides a utility function:
+ * - `getEnabledChecks`: Retrieves the names of enabled checker functions for given check IDs.
+ */
+
 
 export interface CheckConfig {
     id: string;
@@ -7,6 +22,16 @@ export interface CheckConfig {
     enabled: boolean;
     checkerFunction: string;
 }
+
+
+/**
+ * Defines categories of quality checks with their respective checks.
+ * Categories are ordered, and each contains multiple checks.
+ * Properties:
+ * - `name` (string): Name of the category.
+ * - `order` (number): Determines the display order of categories.
+ * - `checks` (array): List of `CheckConfig` objects representing individual checks.
+ */
 
 export const checkCategories = [
   {
@@ -414,6 +439,15 @@ export const checkCategories = [
 
 
 ];
+
+
+/**
+ * Retrieves the names of checker functions for the selected check IDs.
+ * 
+ * @param selectedCheckIds - Array of IDs for the selected checks.
+ * @returns Array of checker function names corresponding to the selected IDs.
+ *
+ */
 
 export function getEnabledChecks(selectedCheckIds: string[]): string[] {
   const allChecks = checkCategories.flatMap(category => category.checks);

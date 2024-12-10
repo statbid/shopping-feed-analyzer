@@ -1,3 +1,38 @@
+/**
+ * Spelling Checker
+ *
+ * This file implements spelling validation for product data fields like `title` and `description`.
+ * It uses the `nspell` library for spell-checking, provides caching for optimization, and includes
+ * utility functions to filter and process words for spell-checking.
+ *
+ * Classes:
+ * - `SpellChecker`: Singleton class for managing spell-check operations, caching results, and
+ *   optimizing performance.
+ *
+ * Functions:
+ * - `checkSpelling`: Main function to validate spelling in fields like `title` and `description`.
+ * - `checkTitleSpelling`: Validates spelling in the `title` field.
+ * - `checkDescriptionSpelling`: Validates spelling in the `description` field.
+ * - `shouldCheckWord`: Determines whether a word should be spell-checked.
+ * - `getContext`: Retrieves contextual text around a word match.
+ * - `truncateContext`: Shortens the context for reporting.
+ * - `isLikelyProperNoun`: Identifies proper nouns to avoid unnecessary checks.
+ *
+ * Constants:
+ * - `spellingChecks`: Array of field-specific spell-check functions.
+ * - `spellChecks`: Array of general spell-check functions.
+ * - `spellChecker`: Instance of the `SpellChecker` singleton.
+ *
+ * Features:
+ * - Spell-checks words in the `title` and `description` fields, filtering out proper nouns,
+ *   special characters, and other exceptions.
+ * - Provides suggestions for misspelled words.
+ * - Includes contextual information about spelling errors in error reports.
+ * - Caches results for improved performance and supports preloading common words.
+ * - Cleans up cache when it exceeds a defined size threshold.
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 import nspell from 'nspell';
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';

@@ -1,3 +1,34 @@
+/**
+ * Word Splitter
+ *
+ * This module implements the `WordSplitter` class, which provides functionality
+ * for splitting compound words into valid word pairs and caching the results
+ * for improved performance. The module is designed to handle large caches efficiently,
+ * using cleanup mechanisms when cache size exceeds specified thresholds.
+ *
+ * Key Features:
+ * - Splits compound words into valid word pairs based on spelling checks.
+ * - Caches split results to avoid redundant computations.
+ * - Dynamically manages cache size with cleanup and periodic saves.
+ * - Integrates with a spell checker to validate words and suggest corrections.
+ *
+ * Classes:
+ * - `WordSplitter`: Singleton class for managing word splitting and caching.
+ *
+ * Exported Constants:
+ * - `wordSplitter`: Instance of the `WordSplitter` class.
+ *
+ * Utilities:
+ * - Cache management with size thresholds and cleanup.
+ * - Predefined common word parts to improve splitting accuracy.
+ *
+ * Cache Management:
+ * - Stores split results in a JSON file for persistence.
+ * - Dynamically resizes cache based on a maximum size and cleanup threshold.
+ * - Automatically saves cache changes during runtime and before process exits.
+ */
+
+
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'fs';
 import path from 'path';
 import { spellChecker } from './SpellChecker';

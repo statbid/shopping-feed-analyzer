@@ -1,3 +1,27 @@
+/**
+ * CheckSelector Component
+ *
+ * This component provides a user interface for selecting and managing quality checks.
+ * It organizes checks into expandable/collapsible categories, supports selecting/deselecting
+ * individual or all checks, and provides a summary of the current selection.
+ *
+ * Features:
+ * - **Category Management:** Displays checks grouped by categories, which can be expanded or collapsed.
+ * - **Select/Deselect All Controls:** Users can select or clear all checks with one click.
+ * - **Dynamic State Updates:** Keeps track of selected checks and communicates changes to the parent component.
+ * - **Interactive Checkboxes:** Allows toggling individual checks or entire categories.
+ *
+ * Props:
+ * - `categories`: An array of categories containing checks to be displayed.
+ * - `onSelectionChange`: A callback function triggered when the selection changes, passing the selected check IDs.
+ * - `hideHeader`: A boolean that hides the header if set to `true`.
+ * - `selectedChecks`: An array of currently selected check IDs to initialize the component.
+ *
+ * Styling:
+ * - Uses Tailwind CSS for layout and styling.
+ * - Includes responsive and scrollable sections for better usability with long lists of checks.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Check } from 'lucide-react';
 
@@ -18,25 +42,31 @@ interface CheckSelectorProps {
   categories: CheckCategory[];
   onSelectionChange: (selectedChecks: string[]) => void;
   hideHeader?: boolean;
-  selectedChecks: string[]; // Add this prop
+  selectedChecks: string[];
 }
 
-const CheckSelector = ({ 
+const CheckSelector: React.FC<CheckSelectorProps> = ({
   categories, 
   onSelectionChange, 
   hideHeader = false,
   selectedChecks 
-}: CheckSelectorProps) => {
+}) => {
+  // State for tracking expanded categories
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // State for tracking locally selected checks
   const [localSelectedChecks, setLocalSelectedChecks] = useState<Set<string>>(
-    new Set(selectedChecks) // Initialize with prop instead of all checks
+    new Set(selectedChecks)
   );
 
-  // Update local state when prop changes
+  // Sync local state with selectedChecks prop
   useEffect(() => {
     setLocalSelectedChecks(new Set(selectedChecks));
   }, [selectedChecks]);
 
+  /**
+   * Toggles the expansion of a category.
+   * @param categoryName - The name of the category to toggle.
+   */
   const handleCategoryExpand = (categoryName: string) => {
     const newExpanded = new Set(expandedCategories);
     if (newExpanded.has(categoryName)) {
@@ -47,6 +77,10 @@ const CheckSelector = ({
     setExpandedCategories(newExpanded);
   };
 
+  /**
+   * Toggles the selection of an individual check.
+   * @param checkId - The ID of the check to toggle.
+   */
   const handleCheckToggle = (checkId: string) => {
     const newSelected = new Set(localSelectedChecks);
     if (newSelected.has(checkId)) {
@@ -58,30 +92,37 @@ const CheckSelector = ({
     onSelectionChange(Array.from(newSelected));
   };
 
+  /**
+   * Toggles the selection of all checks in a category.
+   * @param category - The category whose checks are toggled.
+   */
   const handleCategoryToggle = (category: CheckCategory) => {
     const newSelected = new Set(localSelectedChecks);
     const categoryChecks = category.checks.map(check => check.id);
-    
     const allCategoryChecksSelected = categoryChecks.every(id => localSelectedChecks.has(id));
-    
+
     if (allCategoryChecksSelected) {
-      // Unselect all checks in this category
       categoryChecks.forEach(id => newSelected.delete(id));
     } else {
-      // Select all checks in this category
       categoryChecks.forEach(id => newSelected.add(id));
     }
-    
+
     setLocalSelectedChecks(newSelected);
     onSelectionChange(Array.from(newSelected));
   };
 
+  /**
+   * Selects all checks across all categories.
+   */
   const handleSelectAll = () => {
     const allCheckIds = categories.flatMap(cat => cat.checks.map(check => check.id));
     setLocalSelectedChecks(new Set(allCheckIds));
     onSelectionChange(allCheckIds);
   };
 
+  /**
+   * Clears all selected checks.
+   */
   const handleClearAll = () => {
     setLocalSelectedChecks(new Set());
     onSelectionChange([]);
@@ -89,28 +130,30 @@ const CheckSelector = ({
 
   return (
     <div className="bg-white flex flex-col h-full">
-      {/* Top Controls - Always visible */}
-      <div className="pb-4 mb-4 border-b flex justify-between items-center">
-        <div className="text-sm text-gray-600 font-medium">
-          {localSelectedChecks.size} checks selected
+      {/* Header Section (optional) */}
+      {!hideHeader && (
+        <div className="pb-4 mb-4 border-b flex justify-between items-center">
+          <div className="text-sm text-gray-600 font-medium">
+            {localSelectedChecks.size} checks selected
+          </div>
+          <div className="space-x-4">
+            <button
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              onClick={handleSelectAll}
+            >
+              Select All
+            </button>
+            <button
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              onClick={handleClearAll}
+            >
+              Clear All
+            </button>
+          </div>
         </div>
-        <div className="space-x-4">
-          <button
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            onClick={handleSelectAll}
-          >
-            Select All
-          </button>
-          <button
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-            onClick={handleClearAll}
-          >
-            Clear All
-          </button>
-        </div>
-      </div>
+      )}
 
-      {/* Categories List - Scrollable */}
+      {/* Categories Section */}
       <div className="space-y-2 overflow-y-auto">
         {categories.sort((a, b) => a.order - b.order).map((category) => (
           <div key={category.name} className="border rounded-lg">
@@ -143,7 +186,7 @@ const CheckSelector = ({
               )}
             </button>
 
-            {/* Category Checks */}
+            {/* Category Items */}
             {expandedCategories.has(category.name) && (
               <div className="px-4 py-2 space-y-2">
                 {category.checks.map((check) => (
@@ -156,7 +199,10 @@ const CheckSelector = ({
                         <Check className="w-4 h-4 text-blue-600" />
                       )}
                     </div>
-                    <label className="text-gray-700 cursor-pointer select-none" onClick={() => handleCheckToggle(check.id)}>
+                    <label
+                      className="text-gray-700 cursor-pointer select-none"
+                      onClick={() => handleCheckToggle(check.id)}
+                    >
                       {check.name}
                     </label>
                   </div>

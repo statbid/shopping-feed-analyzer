@@ -1,3 +1,31 @@
+/**
+ * KeywordMetricsModal Component
+ *
+ * This component displays detailed keyword metrics for a given search term. 
+ * The metrics are presented in a modal with a clean grid layout, providing insights 
+ * such as average monthly searches, competition level, and top-of-page bid estimates.
+ *
+ * Features:
+ * - **Dynamic Formatting:**
+ *   - Formats currency values for bids.
+ *   - Colors competition levels based on their severity.
+ *   - Formats competition index as a percentage.
+ * - **Responsive Design:** Adapts to various screen sizes with a modal overlay.
+ * - **Clear Layout:** Uses a grid layout for organizing metrics into sections.
+ *
+ * Props:
+ * - `isOpen` (boolean): Determines whether the modal is visible.
+ * - `onClose` (function): Callback triggered when the modal is closed.
+ * - `searchTerm` (string): The search term for which metrics are being displayed.
+ * - `metrics` (object): An object containing the following properties:
+ *   - `avgMonthlySearches` (number): Average monthly search volume.
+ *   - `competition` (string): Competition level (`HIGH`, `MEDIUM`, `LOW`).
+ *   - `competitionIndex` (number): Numerical index for competition (0–1).
+ *   - `lowTopPageBid` (number): Lowest bid for the top-of-page position.
+ *   - `highTopPageBid` (number): Highest bid for the top-of-page position.
+ */
+
+
 import React from 'react';
 import { X, TrendingUp, DollarSign, Activity, Users } from 'lucide-react';
 import { KeywordMetrics } from '../../types'
@@ -18,7 +46,11 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Helper to format currency
+ /**
+ * Formats a number as USD currency.
+ * @param value - The number to format.
+ * @returns A string representing the formatted currency or 'N/A' if undefined.
+ */
   const formatCurrency = (value?: number) => {
     if (value === undefined) return 'N/A';
     return value.toLocaleString('en-US', {
@@ -29,7 +61,12 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
     });
   };
 
-  // Helper to get competition color
+  /**
+ * Maps competition levels to corresponding text colors.
+ * @param competition - The competition level (`HIGH`, `MEDIUM`, `LOW`).
+ * @returns A string representing the Tailwind CSS color class.
+ */
+
   const getCompetitionColor = (competition: string) => {
     switch (competition) {
       case 'HIGH': return 'text-red-600';
@@ -39,7 +76,11 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
     }
   };
 
-  // Helper to format competition index as percentage
+  /**
+ * Formats a competition index as a percentage.
+ * @param index - A number between 0 and 1 representing the competition index.
+ * @returns A string formatted as a percentage (e.g., "45.6%").
+ */
   const formatCompetitionIndex = (index: number) => {
     return `${(index * 100).toFixed(1)}%`;
   };

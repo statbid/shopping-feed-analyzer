@@ -1,3 +1,40 @@
+/**
+ * ErrorDetailsModal Component
+ *
+ * This component displays detailed information about errors in a paginated table. 
+ * It includes functionality for marking errors as false positives and adjusting page size.
+ *
+ * Features:
+ * - **Paginated Table:** Displays errors in a paginated grid format with adjustable page sizes.
+ * - **False Positive Management:**
+ *   - Allows marking/unmarking errors as false positives.
+ *   - Supports bulk selection/deselection of errors as false positives on the current page.
+ * - **Dynamic State Updates:** Resets page and selection state when props like `errorType` or `isOpen` change.
+ * - **Customizable Page Size:** Provides options to adjust the number of items displayed per page.
+ * - **Responsive Design:** Uses a flexible grid layout and scrollable content for large datasets.
+ *
+ * Props:
+ * - `isOpen` (boolean): Determines whether the modal is visible.
+ * - `onClose` (function): Callback function triggered when the modal is closed.
+ * - `errorType` (string): The type of errors being displayed (e.g., "Missing Fields").
+ * - `errors` (array of `ErrorResult`): Array of error objects to display.
+ * - `onFalsePositiveChange` (optional function): Callback triggered when an error is marked/unmarked as a false positive.
+ * - `falsePositives` (optional `Set<string>`): Initial set of error IDs marked as false positives.
+ *
+ * Styling:
+ * - Uses Tailwind CSS for layout and appearance.
+ * - Includes hover and transition effects for interactive elements.
+ * - Fixed modal with a semi-transparent backdrop.
+ *
+ * Types:
+ * - `ErrorResult`: Object with properties:
+ *   - `id` (string): Unique identifier for the error.
+ *   - `errorType` (string): The type of error.
+ *   - `details` (string): A description of the error.
+ *   - `affectedField` (string): The field affected by the error.
+ *   - `value` (string): The invalid or problematic value.
+ */
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Flag, ChevronDown } from 'lucide-react';
 
@@ -10,15 +47,14 @@ interface ErrorResult {
 }
 
 interface ErrorDetailsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  errorType: string;
-  errors: ErrorResult[];
-  onFalsePositiveChange?: (errorId: string, isFalsePositive: boolean) => void;
-  falsePositives?: Set<string>;
+  isOpen: boolean; // Determines if the modal is visible
+  onClose: () => void; // Callback to close the modal
+  errorType: string; // The type of errors being displayed
+  errors: ErrorResult[]; // Array of error objects
+  onFalsePositiveChange?: (errorId: string, isFalsePositive: boolean) => void; // Callback for marking errors as false positives
+  falsePositives?: Set<string>; // Initial set of false positive error IDs
 }
 
-// Available page sizes
 const PAGE_SIZE_OPTIONS = [20, 50, 100, 200];
 
 const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
@@ -27,7 +63,7 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
   errorType,
   errors,
   onFalsePositiveChange,
-  falsePositives = new Set()
+  falsePositives = new Set(),
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(100);
@@ -41,7 +77,6 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
     }
   }, [isOpen, errorType]);
 
-  // Reset selectAll when changing pages
   useEffect(() => {
     setSelectAll(false);
   }, [currentPage]);
@@ -52,7 +87,7 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
-  }, [currentPage, totalPages, itemsPerPage]); // Added itemsPerPage dependency
+  }, [currentPage, totalPages, itemsPerPage]);
 
   const currentPageData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -84,11 +119,11 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
   const handleSelectAllToggle = () => {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
-    
-    const currentPageIds = currentPageData.map(error => error.id);
+
+    const currentPageIds = currentPageData.map((error) => error.id);
     const newFalsePositives = new Set(localFalsePositives);
-    
-    currentPageIds.forEach(id => {
+
+    currentPageIds.forEach((id) => {
       if (newSelectAll) {
         newFalsePositives.add(id);
       } else {
@@ -96,14 +131,14 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
       }
       onFalsePositiveChange?.(id, newSelectAll);
     });
-    
+
     setLocalFalsePositives(newFalsePositives);
   };
 
   const handlePageSizeChange = (newSize: number) => {
     setItemsPerPage(newSize);
-    setCurrentPage(1); // Reset to first page when changing page size
-    setSelectAll(false); // Reset selectAll when changing page size
+    setCurrentPage(1);
+    setSelectAll(false);
   };
 
   if (!isOpen) return null;
@@ -135,7 +170,7 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
                   onChange={(e) => handlePageSizeChange(Number(e.target.value))}
                   className="appearance-none bg-gray-50 border border-gray-300 rounded px-3 py-1 pr-8 focus:outline-none focus:border-blue-500 cursor-pointer text-gray-600"
                 >
-                  {PAGE_SIZE_OPTIONS.map(size => (
+                  {PAGE_SIZE_OPTIONS.map((size) => (
                     <option key={size} value={size}>
                       {size} per page
                     </option>
@@ -149,34 +184,9 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
             <X className="w-6 h-6" />
           </button>
         </div>
-
-        <div className="grid grid-cols-[1fr_2fr_1fr_2fr_80px] gap-4 p-4 font-bold bg-gray-100 border-b border-gray-300">
-  <div>Product ID</div>
-  <div>Details</div>
-  <div>Affected Field</div>
-  <div>Value</div>
-  <div className="text-center flex items-center justify-center">
-    <button
-      onClick={handleSelectAllToggle}
-      className={`p-1 rounded-lg transition-colors flex flex-col items-center gap-1 ${
-        selectAll
-          ? 'bg-red-100 text-red-600'
-          : 'bg-gray-100  hover:bg-gray-200'
-      }`}
-      title={selectAll ? "Unmark all as false positive" : "Mark all as false positive"}
-    >
-       <span className="font-semibold">False Positive</span>
-      <Flag className="w-4 h-4" />
-     
-      
-    </button>
-  </div>
-</div>
-
-
         <div className="flex-1 overflow-y-auto">
           {currentPageData.map((error) => (
-            <div 
+            <div
               key={error.id}
               className={`grid grid-cols-[1fr_2fr_1fr_2fr_80px] gap-4 p-4 border-b border-gray-300 hover:bg-gray-50 transition-colors ${
                 localFalsePositives.has(error.id) ? 'bg-gray-200' : ''
@@ -185,9 +195,7 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
               <div className="break-all">{error.id}</div>
               <div className="break-words whitespace-pre-wrap">{error.details}</div>
               <div className="break-words">{error.affectedField}</div>
-              <div className="break-words whitespace-pre-wrap">
-                {formatValue(error.value)}
-              </div>
+              <div className="break-words whitespace-pre-wrap">{formatValue(error.value)}</div>
               <div className="flex justify-center">
                 <button
                   onClick={() => handleFalsePositiveToggle(error.id)}
@@ -196,7 +204,11 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
                       ? 'bg-red-100 text-red-600'
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                   }`}
-                  title={localFalsePositives.has(error.id) ? "Unmark as false positive" : "Mark as false positive"}
+                  title={
+                    localFalsePositives.has(error.id)
+                      ? 'Unmark as false positive'
+                      : 'Mark as false positive'
+                  }
                 >
                   <Flag className="w-5 h-5" />
                 </button>
@@ -204,24 +216,21 @@ const ErrorDetailsModal: React.FC<ErrorDetailsModalProps> = ({
             </div>
           ))}
         </div>
-
         <div className="border-t border-gray-300 p-4 flex justify-between items-center bg-white">
           <button
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage === 1}
             className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300 flex items-center"
           >
             <ChevronLeft className="w-4 h-4 mr-1" /> Previous
           </button>
-          
           <div className="text-sm text-gray-600">
             <span>Page {currentPage} of {totalPages}</span>
             <span className="mx-2 text-gray-400">|</span>
             <span>Total {errors.length} errors</span>
           </div>
-          
           <button
-            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
             disabled={currentPage === totalPages}
             className="px-3 py-1 bg-blue-500 text-white rounded disabled:bg-gray-300 flex items-center"
           >

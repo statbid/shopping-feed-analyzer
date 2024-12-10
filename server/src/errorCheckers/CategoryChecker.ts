@@ -1,15 +1,37 @@
-// CategoryChecker.ts
+/**
+ * Category Validation Checkers
+ *
+ * This file defines various validation functions for checking specific issues
+ * related to product categories in the provided `FeedItem` object. Each function 
+ * performs a single validation and returns an `ErrorResult` if the validation fails.
+ *
+ * Exported Constants:
+ * - `CategoryChecker`: Array of all category validation functions.
+ *
+ * Functions:
+ * - Validation Functions: `checkGoogleProductCategory`, `checkApparelAttributes`, `checkGoogleProductCategoryValidity`.
+ *
+ * Dependencies:
+ * - Types: `FeedItem`, `ErrorResult`.
+ *
+ * The checks include:
+ * - Ensuring the Google Product Category is set and sufficiently specific.
+ * - Verifying that essential attributes (e.g., color, size, gender) are present for apparel items.
+ * - Detecting invalid Google Product Category values (e.g., numbered categories).
+ *
+ */
+
 import { FeedItem, ErrorResult } from '../types';
 
 /*****Google Product Category isn't specific enough**********Google Product Category isn't set************** */
 
 
 export function checkGoogleProductCategory(item: FeedItem): ErrorResult | null {
-  // Ensure the category exists and is not just empty spaces
+ 
   const category = item.google_product_category?.trim();
 
   if (category) {
-    //check if the category is purely numeric (e.g., "500")
+ 
     if (/^\d+$/.test(category)) {
       return {
         id: item.id || 'UNKNOWN',

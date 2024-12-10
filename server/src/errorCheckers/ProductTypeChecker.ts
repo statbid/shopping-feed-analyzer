@@ -1,3 +1,25 @@
+/**
+ * Product Information Validation Checkers
+ *
+ * This file contains validation functions for checking errors related to
+ * product information fields in a feed item, such as `product_type` and
+ * `image_link`. Each function performs a specific validation and returns an
+ * `ErrorResult` if the validation fails.
+ *
+ * Exported Constants:
+ * - `ProductInfoChecker`: Array of all product information validation functions.
+ *
+ * Functions:
+ * - `checkImageLinkCommas`: Checks if the image link contains commas.
+ * - `checkProductType`: Verifies if the product type is set.
+ * - `checkProductTypePromotionalWords`: Detects promotional words in the product type.
+ * - `checkProductTypeCommas`: Checks if the product type contains commas.
+ * - `checkProductTypeRepeatedTiers`: Identifies repeated tiers in the product type hierarchy.
+ * - `checkProductTypeWhitespace`: Detects leading or trailing whitespace in the product type.
+ * - `checkProductTypeRepeatedWhitespace`: Checks for repeated whitespace in the product type.
+ * - `checkProductTypeAngleBrackets`: Verifies if the product type starts or ends with angle brackets.
+ *
+ */
 
 import { FeedItem, ErrorResult } from '../types';
 import { 

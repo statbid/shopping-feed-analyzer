@@ -1,3 +1,26 @@
+/**
+ * GTIN Validation Checker
+ *
+ * This file defines validation functions to ensure the integrity of the GTIN (Global Trade Item Number) attribute 
+ * in a `FeedItem`. The primary focus is to validate the GTIN length and format based on predefined standards.
+ *
+ * Exported Constants:
+ * - `GTINChecker`: Array of all GTIN validation functions.
+ *
+ * Exported Functions:
+ * - `checkGTINLength`: Validates the length of the GTIN against accepted standards.
+ *
+ * Dependencies:
+ * - Types: `FeedItem`, `ErrorResult`.
+ * - Helper Function: `cleanGTIN` for cleaning and normalizing GTIN values.
+ *
+ * The checks include:
+ * - Removing non-digit characters and normalizing scientific notation in GTIN.
+ * - Validating GTIN length to match standard values (8, 12, 13, or 14 digits).
+ *
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 
 function cleanGTIN(gtin: string): string {

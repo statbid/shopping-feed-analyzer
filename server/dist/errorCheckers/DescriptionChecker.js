@@ -118,7 +118,7 @@ function checkDescriptionRepeatedWhitespace(item) {
         if (matches.length > 0) {
             const examples = matches.map((match, index) => {
                 const context = getContext(item.description, match.index, match[0].length);
-                const markedContext = context.replace(match[0], match[0].replace(/\s/g, '␣'));
+                const markedContext = context.replace(match[0], match[0].replace(/\s/g, '__'));
                 return `"...${markedContext}..."`;
             });
             return {
@@ -232,24 +232,23 @@ function checkDescriptionPromotionalWords(item) {
     return null;
 }
 function checkDescriptionNonBreakingSpaces(item) {
-    /*if (item.description && nonBreakingSpaceRegex.test(item.description)) {
-      const matches = getMatches(nonBreakingSpaceRegex, item.description);
-      const examples = matches.map((match, index) => {
-        const context = getContext(item.description!, match.index!, match[0].length);
-        const truncatedContext = truncateContext(context, match[0]);
-        return matches.length > 1
-          ? `(case ${index + 1}) "${truncatedContext}"`
-          : `"${truncatedContext}"`;
-      });
-  
-      return {
-        id: item.id || 'UNKNOWN',
-        errorType: 'Description Contains Nonbreaking Spaces',
-        details: `Found ${matches.length} instance(s) of non-breaking spaces`,
-        affectedField: 'description',
-        value: examples.join('; ')
-      };
-    }*/
+    if (item.description && constants_1.nonBreakingSpaceRegex.test(item.description)) {
+        const matches = getMatches(constants_1.nonBreakingSpaceRegex, item.description);
+        const examples = matches.map((match, index) => {
+            const context = getContext(item.description, match.index, match[0].length);
+            const truncatedContext = truncateContext(context, match[0]);
+            return matches.length > 1
+                ? `(case ${index + 1}) "${truncatedContext}"`
+                : `"${truncatedContext}"`;
+        });
+        return {
+            id: item.id || 'UNKNOWN',
+            errorType: 'Description Contains Nonbreaking Spaces',
+            details: `Found ${matches.length} instance(s) of non-breaking spaces`,
+            affectedField: 'description',
+            value: examples.join('; ')
+        };
+    }
     return null;
 }
 /**********Product Description too long************ */

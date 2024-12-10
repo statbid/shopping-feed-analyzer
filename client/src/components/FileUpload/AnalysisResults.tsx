@@ -1,3 +1,25 @@
+/**
+ * AnalysisResults Component
+ *
+ * This component displays the results of the analysis, including error summaries, suggestions for fixing errors, 
+ * and detailed views for individual error types. It also provides functionality for exporting reports and managing 
+ * false positives.
+ *
+ * Features:
+ * - **Error Summary Panel:** Displays the total errors, SKUs checked, and failed checks.
+ * - **Error List:** Categorizes and lists errors, allowing users to view details and download reports.
+ * - **Error Details Modal:** Displays detailed error information and allows marking errors as false positives.
+ * - **Pagination:** Handles paginated display of error categories.
+ * - **Export Reports:** Allows downloading both error-specific and summary CSV reports.
+ *
+ * Props:
+ * - `results`: Object containing analysis results (`totalProducts`, `errorCounts`, `errors`).
+ * - `fileName`: Name of the uploaded file, used for report generation.
+ * - `isLoading`: Indicates whether analysis is in progress.
+ */
+
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Eye, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import ErrorDetailsModal from './ErrorDetailsModal';
@@ -68,11 +90,23 @@ const errorCategories = {
   }
 };
 
+
 const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   results,
   fileName,
   isLoading,
 }) => {
+
+
+  // State Management
+// - `isModalOpen`: Tracks whether the Error Details modal is open.
+// - `selectedErrorType`: Stores the currently selected error type for detailed view.
+// - `currentPage`: Tracks the current page in the paginated error list.
+// - `processedProducts`: Simulates progress updates while the analysis is loading.
+// - `isInfoModalOpen`: Tracks whether the informational modal is open.
+// - `falsePositives`: Stores IDs of errors marked as false positives.
+
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedErrorType, setSelectedErrorType] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +126,10 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
 
   const totalErrors = Object.values(results.errorCounts).reduce((a, b) => a + b, 0);
   const totalChecksFailed = Object.keys(results.errorCounts).length;
+
+  // Group Errors by Category
+// This groups errors into predefined categories (e.g., Title Errors, Attribute Errors) based on regex patterns.
+// The results are sorted by the category order defined in `errorCategories`.
 
   const groupedErrors = useMemo(() => {
     const grouped = Object.entries(results.errorCounts).reduce((acc, [errorType, count]) => {

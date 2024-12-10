@@ -1,15 +1,44 @@
+/**
+ * FileUpload Component
+ *
+ * This component provides a interface for uploading files, analyzing data, and presenting results.
+ * It manages multiple states and processes, including file handling, analysis progress tracking, error reporting, 
+ * and displaying analysis results.
+ *
+ * Features:
+ * - **File Upload and Validation:** Supports file selection and server upload with error handling.
+ * - **Analysis Progress Tracking:** Displays a progress indicator for feed quality checks and search terms analysis.
+ * - **Error Reporting:** Presents detailed error results categorized by type.
+ * - **Search Terms Analysis:** Generates search terms.
+ * - **Settings Management:** Allows users to configure analysis checks and toggle search volume usage.
+ * - **Toast Notifications:** Provides success or error feedback messages.
+ * - **Modal Management:** Uses various modals for progress, settings, and results.
+ *
+ * State Management:
+ * - `file`: Tracks the uploaded file.
+ * - `uploadStatus`: Stores the type and message of upload status (success or error).
+ * - `isLoading`: Indicates if analysis or file upload is in progress.
+ * - `analysisResults`: Stores results of the feed analysis.
+ * - `searchTermsResults`: Stores results of the search terms analysis.
+ * - `progressStatus`: Tracks the current stage of the analysis process (e.g., uploading, analyzing).
+ * - `selectedChecks`: Keeps track of user-selected checks for feed analysis.
+ * - `analysisType`: Tracks whether the current analysis is for feed quality or search terms.
+ */
+
+
+
 import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
-import { SearchTerm, AnalysisResult } from '../../types';
+import { SearchTerm, AnalysisResult, ProgressUpdate} from '../../types';
 import AnalysisResults from './AnalysisResults';
 import ProgressModal from './ProgressModal';
 import Settings from './Settings';
 import Toast from './Toast';
-import CheckSelectorModal from './CheckSelectorModal';
 import { checkCategories, getEnabledChecks } from '../utils/checkConfig';
 import environment from '../../config/environment';
 import SearchTermsResults from '../SearchTermsAnalyzer/SearchTermsResults';
+import SearchTermsProgress from '../SearchTermsAnalyzer/SearchTermsProgressModal';
 
 interface UploadStatus {
   type: 'success' | 'error' | '';
@@ -23,6 +52,8 @@ interface ErrorResult {
   affectedField: string;
   value: string;
 }
+
+
 
 type ProgressStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
 
@@ -43,6 +74,20 @@ export default function FileUpload() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [analysisType, setAnalysisType] = useState<'feed' | 'search'>('feed');
   const [useSearchVolumes, setUseSearchVolumes] = useState(true);
+  const [attributeProgress, setAttributeProgress] = useState(0);
+  const [descriptionProgress, setDescriptionProgress] = useState(0);
+
+  const [analysisStage, setAnalysisStage] = useState<'attribute' | 'description'>('attribute');
+const [analysisProgress, setAnalysisProgress] = useState(0);
+
+
+/**
+ * Handles the file upload process.
+ * - Uploads the selected file to the server using a `POST` request.
+ * - Provides success or error feedback via toast notifications.
+ * - Updates the `file` and `uploadStatus` states.
+ * @param selectedFile - The file selected by the user.
+ */
 
   const handleFileSelect = async (selectedFile: File) => {
     setIsLoading(true);
@@ -85,6 +130,13 @@ export default function FileUpload() {
     }
   };
 
+
+/**
+ * Handles the feed quality analysis process.
+ * - Sends the selected file and enabled checks to the server for analysis.
+ * - Updates the progress status during the analysis process.
+ * - Displays the analysis results or error feedback.
+ */
   const handleAnalyze = async () => {
     if (!file) return;
 
@@ -173,73 +225,90 @@ export default function FileUpload() {
     }
   };
 
+
+
+
+
+
+/**
+ * Initiates the search terms analysis process.
+ * - Sends the selected file to the server for search terms analysis.
+ * - Tracks and updates progress for attributes and descriptions separately.
+ * 
+ */
+
   const handleSearchTermsClick = async () => {
     if (!file) return;
-
+  
     setAnalysisResults(null);
+    setSearchTermsResults(null);
     setIsLoading(true);
     setIsProgressModalOpen(true);
-    setProcessedProducts(0);
-    setProgressStatus('analyzing');
     setAnalysisType('search');
-
+    setAttributeProgress(0);
+    setDescriptionProgress(0);
+  
+    let accumulatedResults: SearchTerm[] = [];
+  
     try {
-      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.searchTerms}`, {
+      const response = await fetch(`${environment.api.baseUrl}/api/search-terms`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ fileName: file.name }),
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
+  
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+  
       const reader = response.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-
+  
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-
+  
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n\n');
         buffer = lines.pop() || '';
-
+  
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-
-              if (data.error) {
-                console.error('Server error:', data.error, data.details);
-                setUploadStatus({
-                  type: 'error',
-                  message: `Error analyzing search terms: ${data.details || data.error}`,
-                });
-                return;
-              }
-
-              if (data.status === 'processing' || data.status === 'analyzing') {
-                setProcessedProducts(data.processed);
-                setProgressStatus(data.status);
-              }
-
-              if (data.status === 'complete') {
-                setSearchTermsResults(data.results as SearchTerm[]);
+            const data: ProgressUpdate = JSON.parse(line.slice(6));
+            
+            switch (data.status) {
+              case 'analyzing':
+                if (data.stage === 'attribute') {
+                  setAttributeProgress(data.progress || 0);
+                  setAnalysisStage('attribute');
+                } else if (data.stage === 'description') {
+                  setDescriptionProgress(data.progress || 0);
+                  setAnalysisStage('description');
+                }
                 setUploadStatus({
                   type: 'success',
-                  message: 'Search terms analysis completed successfully!',
+                  message: data.message || `Processing ${data.stage} analysis...`
                 });
-              }
-            } catch (jsonError) {
-              console.error('Error parsing JSON:', jsonError);
-              setUploadStatus({
-                type: 'error',
-                message: 'Error parsing server response',
-              });
+                break;
+  
+              case 'chunk':
+                if (data.chunk && Array.isArray(data.chunk)) {
+                  accumulatedResults = [...accumulatedResults, ...data.chunk];
+                  setSearchTermsResults([...accumulatedResults]);
+                }
+                break;
+  
+              case 'complete':
+                setSearchTermsResults(accumulatedResults);
+                setUploadStatus({
+                  type: 'success',
+                  message: `Analysis complete: ${accumulatedResults.length} search terms found`
+                });
+                break;
+  
+              case 'error':
+                throw new Error(data.error || 'Unknown error during analysis');
             }
           }
         }
@@ -248,15 +317,26 @@ export default function FileUpload() {
       console.error('Error analyzing search terms:', error);
       setUploadStatus({
         type: 'error',
-        message: `Error analyzing search terms: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
       });
     } finally {
       setIsLoading(false);
       setIsProgressModalOpen(false);
     }
   };
+
+
+
+
+
+
+
+
+/**
+ * Updates the selected checks for feed quality analysis.
+ * - Updates the `selectedChecks` state with the user-selected checks.
+ * @param checks - Array of selected check IDs.
+ */
 
   const handleCheckSelection = (checks: string[]) => {
     setSelectedChecks(checks);
@@ -272,6 +352,8 @@ export default function FileUpload() {
 
   return (
     <div className="w-full h-full flex flex-col">
+
+      {/* AnalyzerHeader - Manages the file upload, analysis initiation, and navigation to settings. */}
       <AnalyzerHeader
         file={file}
         onUploadClick={() => setIsModalOpen(true)}
@@ -282,6 +364,7 @@ export default function FileUpload() {
         isLoading={isLoading}
       />
 
+{/* Toast - Displays success or error notifications for user actions. */}
       {uploadStatus.type && (
         <Toast
           type={uploadStatus.type}
@@ -291,6 +374,8 @@ export default function FileUpload() {
       )}
 
       <div className="flex-grow overflow-hidden">
+
+        {/* Main Content - Displays either search terms results or feed analysis results based on user action. */}
         {searchTermsResults && searchTermsResults.length > 0 ? (
           <SearchTermsResults
             results={searchTermsResults}
@@ -312,15 +397,8 @@ export default function FileUpload() {
         onFileSelect={handleFileSelect}
       />
 
-      <CheckSelectorModal
-        isOpen={isCheckSelectorModalOpen}
-        onClose={() => setIsCheckSelectorModalOpen(false)}
-        onAnalyze={handleAnalyze}
-        onSelectionChange={handleCheckSelection}
-        isAnalyzing={isLoading}
-        selectedChecks={selectedChecks}
-      />
-
+ 
+{/* Settings Modal - Allows users to customize analysis checks and toggle search volume usage. */}
       <Settings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -330,12 +408,15 @@ export default function FileUpload() {
         onSearchVolumeChange={setUseSearchVolumes}
       />
 
-      <ProgressModal
+{/* Progress Modal - Displays real-time progress for feed or search terms analysis. */}
+
+<ProgressModal
         isOpen={isProgressModalOpen}
         processedProducts={processedProducts}
         status={progressStatus}
         analysisType={analysisType}
       />
+      
     </div>
   );
 }

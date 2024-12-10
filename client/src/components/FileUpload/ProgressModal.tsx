@@ -1,12 +1,42 @@
+/**
+ * ProgressModal Component
+ *
+ * This component displays a modal to indicate the progress of various stages of file processing or analysis.
+ * It is designed to provide visual feedback to the user during tasks like uploading, extracting, or analyzing files.
+ *
+ * Features:
+ * - **Dynamic Content:** Displays different icons, messages, and animations based on the current `status`.
+ * - **Progress Tracking:** Shows the number of products processed for relevant tasks.
+ * - **Optional Analysis Type:** Tailors the content based on the type of analysis (`feed` or `search`).
+ * - **Custom Status Message:** Allows for an additional message to be displayed below the main content.
+ *
+ * Props:
+ * - `isOpen` (boolean): Determines whether the modal is visible.
+ * - `processedProducts` (number): The number of products processed, displayed during analysis or processing.
+ * - `status` (string): The current stage of the process. Can be:
+ *    - `'uploading'`
+ *    - `'extracting'`
+ *    - `'extracted'`
+ *    - `'analyzing'`
+ *    - `'processing'`
+ * - `analysisType` (optional string): Specifies the type of analysis, either `'feed'` or `'search'`.
+ * - `statusMessage` (optional string): An additional status message displayed below the main content.
+ *
+ * Styling:
+ * - Uses Tailwind CSS for layout and visual design.
+ * - Includes animations (e.g., spinning borders) for a better user experience.
+ * - Modal is centered on the screen with a semi-transparent backdrop.
+ */
+
 import React from 'react';
 import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react';
 
 interface ProgressModalProps {
-  isOpen: boolean;
-  processedProducts: number;
-  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
-  analysisType?: 'feed' | 'search';
-  statusMessage?: string;
+  isOpen: boolean; // Determines whether the modal is visible
+  processedProducts: number; // Number of products processed
+  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing'; // Current processing status
+  analysisType?: 'feed' | 'search'; // Type of analysis being performed (optional)
+  statusMessage?: string; // Optional additional status message
 }
 
 const ProgressModal: React.FC<ProgressModalProps> = ({
@@ -16,8 +46,12 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
   analysisType,
   statusMessage
 }) => {
+  // If the modal is not open, do not render it
   if (!isOpen) return null;
 
+  /**
+   * Generates the content to display based on the current status.
+   */
   const getContent = () => {
     switch (status) {
       case 'uploading':
@@ -74,6 +108,9 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
     }
   };
 
+  /**
+   * Determines the title of the modal based on the current status.
+   */
   const getTitle = () => {
     switch (status) {
       case 'uploading':

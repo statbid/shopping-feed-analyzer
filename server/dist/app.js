@@ -15,8 +15,11 @@ const FileHandler_1 = require("./utils/FileHandler");
 const environment_1 = __importDefault(require("./config/environment"));
 const GoogleAdsService_1 = require("./services/GoogleAdsService");
 const QuotaService_1 = require("./services/QuotaService");
+const CHUNK_SIZE = 5000;
 const app = (0, express_1.default)();
 const port = environment_1.default.server.port;
+app.use(express_1.default.json({ limit: '50mb' }));
+app.use(express_1.default.urlencoded({ limit: '50mb', extended: true }));
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 FileHandler_1.FileHandler.cleanupUploadsDirectory();
@@ -98,44 +101,6 @@ app.post('/api/analyze', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
-/*
-app.get('/api/debug-ads', async (req, res) => {
-  console.log('=== Starting Google Ads Debug Test ===');
-
-  try {
-    // Log environment variables (masked)
-    console.log('Environment check:', {
-      hasClientId: !!process.env.GOOGLE_ADS_CLIENT_ID,
-      hasClientSecret: !!process.env.GOOGLE_ADS_CLIENT_SECRET,
-      hasDeveloperToken: !!process.env.GOOGLE_ADS_DEVELOPER_TOKEN,
-      hasRefreshToken: !!process.env.GOOGLE_ADS_REFRESH_TOKEN,
-      customerId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID
-    });
-
-    const service = new GoogleAdsService({
-      clientId: process.env.GOOGLE_ADS_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
-      developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
-      refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN!,
-      customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID!
-    });
-
-    await service.testConnection();
-
-    res.json({
-      status: 'success',
-      message: 'Debug test completed, check server logs for details'
-    });
-  } catch (error) {
-    console.error('Debug test failed:', error);
-    res.status(500).json({
-      error: 'Test failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-*/
 app.post('/api/search-volumes', async (req, res) => {
     const { searchTerms } = req.body;
     if (!Array.isArray(searchTerms)) {
@@ -154,7 +119,7 @@ app.post('/api/search-volumes', async (req, res) => {
         });
         // Process in batches of 20 terms
         const batches = service.batchKeywords(searchTerms);
-        const volumes = new Map();
+        const metrics = new Map();
         let processedCount = 0;
         let errorCount = 0;
         console.log(`Split into ${batches.length} batches of max 20 keywords each`);
@@ -166,9 +131,9 @@ app.post('/api/search-volumes', async (req, res) => {
                 if (i > 0) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 }
-                const batchVolumes = await service.getSearchVolumes(batch);
-                for (const [term, volume] of batchVolumes.entries()) {
-                    volumes.set(term, volume);
+                const batchMetrics = await service.getSearchVolumes(batch);
+                for (const [term, keywordMetrics] of batchMetrics.entries()) {
+                    metrics.set(term, keywordMetrics);
                 }
                 processedCount += batch.length;
                 console.log(`Completed batch ${i + 1}, processed ${processedCount}/${searchTerms.length} terms`);
@@ -180,11 +145,11 @@ app.post('/api/search-volumes', async (req, res) => {
             }
         }
         res.json({
-            volumes: Object.fromEntries(volumes),
+            metrics: Object.fromEntries(metrics),
             stats: {
                 requested: searchTerms.length,
                 processed: processedCount,
-                found: volumes.size,
+                found: metrics.size,
                 errorBatches: errorCount
             }
         });
@@ -203,75 +168,110 @@ app.post('/api/search-terms', async (req, res) => {
     if (!filePath) {
         return res.status(404).json({ error: 'File not found' });
     }
-    // Set up SSE headers
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
     });
     const sendUpdate = (data) => {
-        res.write(`data: ${JSON.stringify(data)}\n\n`);
+        try {
+            if (data.results && Array.isArray(data.results)) {
+                // Split results into larger chunks to reduce overhead
+                const CHUNK_SIZE = 10000; // Increased chunk size
+                const chunks = [];
+                for (let i = 0; i < data.results.length; i += CHUNK_SIZE) {
+                    chunks.push(data.results.slice(i, i + CHUNK_SIZE));
+                }
+                // Send initial chunk info
+                res.write(`data: ${JSON.stringify({
+                    status: 'chunking',
+                    totalChunks: chunks.length,
+                    totalTerms: data.results.length,
+                })}\n\n`);
+                // Send chunks sequentially with minimal delay
+                chunks.forEach((chunk, index) => {
+                    res.write(`data: ${JSON.stringify({
+                        status: 'chunk',
+                        chunkIndex: index,
+                        chunk: chunk,
+                        progress: Math.round(((index + 1) / chunks.length) * 100),
+                    })}\n\n`);
+                });
+                // Send completion after all chunks
+                res.write(`data: ${JSON.stringify({
+                    status: 'complete',
+                    totalTerms: data.results.length,
+                })}\n\n`);
+            }
+            else if (data.status === 'analyzing') {
+                // Forward progress updates
+                res.write(`data: ${JSON.stringify(data)}\n\n`);
+            }
+        }
+        catch (error) {
+            console.error('Error sending update:', error);
+            res.write(`data: ${JSON.stringify({
+                status: 'error',
+                error: 'Error sending data',
+            })}\n\n`);
+        }
     };
     try {
         const items = [];
-        let processedCount = 0;
+        // First phase: Read the file
         const parser = (0, csv_parse_1.parse)({
             columns: true,
             delimiter: '\t',
-            skip_empty_lines: true
+            skip_empty_lines: true,
         });
-        const fileStream = fs_1.default.createReadStream(filePath);
         await new Promise((resolve, reject) => {
-            fileStream
+            fs_1.default.createReadStream(filePath)
                 .pipe(parser)
                 .on('data', (item) => {
                 items.push(item);
-                processedCount++;
-                if (processedCount % 1000 === 0) {
+                if (items.length % 1000 === 0) {
                     sendUpdate({
-                        status: 'processing',
-                        processed: processedCount,
-                        message: 'Reading feed data...'
+                        status: 'analyzing',
+                        phase: 'reading',
+                        processed: items.length,
+                        message: `Reading feed data: ${items.length} items processed`,
                     });
                 }
             })
                 .on('end', resolve)
                 .on('error', reject);
         });
-        sendUpdate({
-            status: 'analyzing',
-            processed: processedCount,
-            message: 'Generating search terms...'
+        // Second phase: Analyze search terms
+        const analyzer = new SearchTermsAnalyzer_1.SearchTermsAnalyzer((stage, progress) => {
+            sendUpdate({
+                status: 'analyzing',
+                stage: stage,
+                progress: progress,
+            });
         });
-        const analyzer = new SearchTermsAnalyzer_1.SearchTermsAnalyzer();
         const searchTerms = await analyzer.analyzeSearchTerms(items);
-        // Log the results for debugging
-        console.log(`Generated search terms breakdown:
-      Total terms: ${searchTerms.length}
-      Attribute-based: ${searchTerms.filter(t => t.pattern.includes('Attribute-based')).length}
-      Description-based: ${searchTerms.filter(t => t.pattern.includes('Description-based')).length}
-    `);
-        sendUpdate({
-            status: 'complete',
-            results: searchTerms,
-            totalProcessed: processedCount,
-            totalTerms: searchTerms.length
-        });
+        // Send final results
+        sendUpdate({ results: searchTerms });
         res.end();
     }
     catch (error) {
         console.error('Error analyzing search terms:', error);
-        sendUpdate({
+        res.write(`data: ${JSON.stringify({
             status: 'error',
             error: 'Error analyzing search terms',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        });
+            details: error instanceof Error ? error.message : 'Unknown error',
+        })}\n\n`);
         res.end();
     }
 });
 app.get('/api/quota-status', (req, res) => {
     const quotaService = QuotaService_1.QuotaService.getInstance();
-    res.json(quotaService.getStatus());
+    const status = quotaService.getStatus();
+    const limit = Number(process.env.GOOGLE_ADS_DAILY_QUOTA) || 15000;
+    res.json({
+        ...status,
+        limit
+    });
 });
 app.get('/quota-status', (req, res) => {
     const quotaService = QuotaService_1.QuotaService.getInstance();

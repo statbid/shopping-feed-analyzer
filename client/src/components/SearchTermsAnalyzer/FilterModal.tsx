@@ -1,3 +1,28 @@
+/**
+ * FilterModal Component
+ *
+ * This component provides a modal interface for adding filters to search or analysis results.
+ * Users can specify a column, condition, and value for the filter. The selected filter is passed 
+ * to the parent component through the `onAddFilter` callback.
+ *
+ * Features:
+ * - **Dynamic Filter Options:** Adapts available conditions based on the selected column.
+ * - **Validation:** Ensures that a valid value is provided before adding a filter.
+ * - **Responsive Modal:** Includes a semi-transparent backdrop and centralized content.
+ *
+ * Props:
+ * - `isOpen` (boolean): Determines whether the modal is visible.
+ * - `onClose` (function): Callback triggered when the modal is closed.
+ * - `onAddFilter` (function): Callback triggered when a new filter is added.
+ * - `currentFilters` (array): Array of currently applied filters (not modified by this component).
+ *
+ * Types:
+ * - `FilterableColumns`: Enumerates the columns that can be filtered (e.g., `id`, `productName`).
+ * - `FilterType`: Enumerates the types of conditions available for filtering (e.g., `contains`, `greaterThan`).
+ * - `Filter`: Represents a single filter with `column`, `type`, and `value` properties.
+ */
+
+
 import React, { useState, FormEvent, ChangeEvent } from 'react';
 import { X } from 'lucide-react';
 import { SearchTerm } from '../../types';
@@ -51,12 +76,23 @@ const FilterModal: React.FC<FilterModalProps> = ({
   onAddFilter,
   currentFilters
 }) => {
+  // Local State Management
+// - `column`: Tracks the currently selected column for filtering.
+// - `type`: Tracks the selected condition type (e.g., contains, greaterThan).
+// - `value`: Holds the user-entered value for the filter.
+
   const [column, setColumn] = useState<FilterableColumns>('searchTerm');
   const [type, setType] = useState<FilterType>('contains');
   const [value, setValue] = useState('');
 
   if (!isOpen) return null;
-
+  
+/**
+ * Handles form submission to add a new filter.
+ * - Validates the user-entered value before adding the filter.
+ * - Resets the `value` state and closes the modal upon successful addition.
+ * @param e - Form submission event.
+ */
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (value.trim()) {

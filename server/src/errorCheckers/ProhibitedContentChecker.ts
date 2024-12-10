@@ -1,3 +1,25 @@
+/**
+ * Monitored Pharmacy Words Checker
+ *
+ * This file contains functionality for detecting the presence of monitored pharmacy words 
+ * in the `title` and `description` fields of a `FeedItem`. The list of monitored words 
+ * is predefined, and the checker identifies and reports any occurrences with contextual 
+ * details.
+ *
+ * Functions:
+ * - `checkMonitoredPharmacyWords`: Checks for occurrences of monitored pharmacy words 
+ *   in the `title` and `description` fields.
+ * - `normalizeText`: Normalizes text for comparison by converting to lowercase and 
+ *   removing non-alphanumeric characters.
+ * - `getContext`: Retrieves surrounding text around a match for providing context in 
+ *   error reporting.
+ *
+ * Exported Constants:
+ * - `monitoredWords`: Set of predefined monitored words for validation.
+ *
+ */
+
+
 import { FeedItem, ErrorResult } from '../types';
 
 // Create a Set of monitored words for O(1) lookup time
