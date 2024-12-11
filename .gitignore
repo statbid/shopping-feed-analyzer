@@ -12,5 +12,5 @@ server/uploads/*
 
 
 # Build directories
-client/build/
-server/dist/
+client/build/*
+server/dist/*
