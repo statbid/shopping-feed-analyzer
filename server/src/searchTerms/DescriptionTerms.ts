@@ -2,7 +2,6 @@ import nlp from 'compromise';
 import { WordNet } from 'natural';
 import { FeedItem, SearchTerm, DescriptionProgressCallback } from '@shopping-feed/types';
 
-
 const STOPWORDS = new Set([
   "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
   "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", 
@@ -31,7 +30,6 @@ export class DescriptionExtractor {
     this.progressCallback = progressCallback;
     this.wordnet = new WordNet();
     this.phraseCache = new Map();
-    
   }
 
   private cleanText(text: string): string {
@@ -42,44 +40,146 @@ export class DescriptionExtractor {
       .trim();
   }
 
-  private getProductIdentifier(item: FeedItem): string {
-    if (item['product type']) {
-      const segments = item['product type'].split('>');
-      const lastSegment = segments[segments.length - 1].trim().toLowerCase();
-      if (lastSegment) return lastSegment;
-    }
-
-    if (item['google product category']) {
-      const segments = item['google product category'].split('>');
-      const lastSegment = segments[segments.length - 1].trim().toLowerCase();
-      if (lastSegment) return lastSegment;
-    }
-
-    return '';
+  private async getSynonyms(word: string): Promise<string[]> {
+    return new Promise((resolve) => {
+      this.wordnet.lookup(word, (results: any[]) => {
+        if (results.length > 0) {
+          const synonyms = results.flatMap((result) => result.synonyms || []);
+          resolve(Array.from(new Set(synonyms.filter(synonym => synonym.split(' ').length === 1))));
+        } else {
+          resolve([]);
+        }
+      });
+    });
   }
 
-  private isValidPhrase(phrase: string): boolean {
-    const words = phrase.split(' ');
+  private async addBrandAndSynonymsToTerms(terms: SearchTerm[], items: FeedItem[]): Promise<SearchTerm[]> {
+    const enhancedTerms: SearchTerm[] = [];
 
-    if (words.length < 2 || words.length > MAX_WORDS_IN_PHRASE) return false;
+    for (const term of terms) {
+      const originalTerm = { ...term }; // Preserve the original term
+      enhancedTerms.push(originalTerm);
 
-    if (words.every(word => STOPWORDS.has(word))) return false;
+      const matchingItem = items.find(item => item.id === term.id);
+      const brand = matchingItem?.brand?.toLowerCase().trim();
 
-    const hasSubstantialWord = words.some(word => 
-      word.length > 3 && !STOPWORDS.has(word)
-    );
+      if (brand && !term.searchTerm.includes(brand)) {
+        const brandPrepended = {
+          ...term,
+          searchTerm: `${brand} ${term.searchTerm}`,
+        };
+        const brandAppended = {
+          ...term,
+          searchTerm: `${term.searchTerm} ${brand}`,
+        };
 
-    return hasSubstantialWord;
+        // Avoid duplicating terms
+        if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === brandPrepended.searchTerm)) {
+          enhancedTerms.push(brandPrepended);
+        }
+
+        if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === brandAppended.searchTerm)) {
+          enhancedTerms.push(brandAppended);
+        }
+      }
+
+      const words = term.searchTerm.split(' ');
+      let synonymAdded = false;
+
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        if (!STOPWORDS.has(word) && word.length > 3) {
+          const synonyms = await this.getSynonyms(word);
+          if (synonyms.length > 0) {
+            const modifiedWords = [...words];
+            modifiedWords[i] = synonyms[0]; // Replace the word with its first synonym
+            const synonymTerm = modifiedWords.join(' ');
+
+            if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === synonymTerm)) {
+              enhancedTerms.push({
+                ...term,
+                searchTerm: synonymTerm,
+              });
+            }
+
+            synonymAdded = true;
+            break; // Only add one synonym variant per term
+          }
+        }
+      }
+    }
+
+    return enhancedTerms;
   }
 
-  private cleanPhrase(phrase: string): string {
-    return phrase
-      .toLowerCase()
-      .split(' ')
-      .filter(word => !STOPWORDS.has(word))
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+  public async extractSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
+    const allTerms = new Map<string, Set<string>>();
+    const totalItems = items.length;
+    let processedCount = 0;
+    const totalBatches = Math.ceil(items.length / this.BATCH_SIZE);
+
+    for (let i = 0; i < items.length; i += this.BATCH_SIZE) {
+      const batch = items.slice(i, i + this.BATCH_SIZE);
+      const currentBatch = Math.floor(i / this.BATCH_SIZE) + 1;
+
+      const batchTerms = await this.processBatch(batch);
+
+      batchTerms.forEach((productIds, term) => {
+        if (!allTerms.has(term)) {
+          allTerms.set(term, new Set());
+        }
+        productIds.forEach(id => allTerms.get(term)!.add(id));
+      });
+
+      processedCount += batch.length;
+      this.progressCallback?.('description', currentBatch, totalBatches);
+    }
+
+    const searchTerms: SearchTerm[] = [];
+
+    for (const [term, productIds] of allTerms) {
+      if (productIds.size >= this.MIN_PRODUCTS) {
+        const matchingProducts = items
+          .filter(item => productIds.has(item.id))
+          .map(item => ({
+            id: item.id,
+            productName: item.title || ''
+          }));
+
+        searchTerms.push({
+          id: matchingProducts[0].id,
+          productName: matchingProducts[0].productName,
+          searchTerm: term,
+          pattern: `Description-based: ${matchingProducts.length} products`,
+          estimatedVolume: 0,
+          matchingProducts,
+          keywordMetrics: undefined
+        });
+      }
+    }
+
+    const enhancedSearchTerms = await this.addBrandAndSynonymsToTerms(searchTerms, items);
+    return enhancedSearchTerms;
+  }
+
+  private async processBatch(items: FeedItem[]): Promise<Map<string, Set<string>>> {
+    const termToProducts = new Map<string, Set<string>>();
+
+    await Promise.all(items.map(async item => {
+      if (!item.description) return;
+
+      const text = this.cleanText(item.description);
+      const phrases = await this.findRelevantPhrases(text, item);
+
+      phrases.forEach(phrase => {
+        if (!termToProducts.has(phrase)) {
+          termToProducts.set(phrase, new Set());
+        }
+        termToProducts.get(phrase)!.add(item.id);
+      });
+    }));
+
+    return termToProducts;
   }
 
   private async findRelevantPhrases(text: string, item: FeedItem): Promise<Set<string>> {
@@ -118,128 +218,58 @@ export class DescriptionExtractor {
     return phrases;
   }
 
+  private cleanPhrase(phrase: string): string {
+    return phrase
+      .toLowerCase()
+      .split(' ')
+      .filter(word => !STOPWORDS.has(word))
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private isValidPhrase(phrase: string): boolean {
+    const words = phrase.split(' ');
+
+    if (words.length < 2 || words.length > MAX_WORDS_IN_PHRASE) {
+      return false;
+    }
+
+    if (words.every(word => STOPWORDS.has(word))) {
+      return false;
+    }
+
+    const hasSubstantialWord = words.some(word => 
+      word.length > 3 && !STOPWORDS.has(word)
+    );
+
+    return hasSubstantialWord;
+  }
+
   private isRelevantCombination(phrase: string, identifier: string): boolean {
     const phraseWords = phrase.split(' ');
     const lastWord = phraseWords[phraseWords.length - 1];
 
-    return !identifier.includes(lastWord) && 
+    const result = !identifier.includes(lastWord) && 
            !lastWord.includes(identifier) &&
            phraseWords.length + identifier.split(' ').length <= MAX_WORDS_IN_PHRASE;
+
+    return result;
   }
 
-  private async processBatch(items: FeedItem[]): Promise<Map<string, Set<string>>> {
-    const termToProducts = new Map<string, Set<string>>();
-
-    await Promise.all(items.map(async item => {
-      if (!item.description) return;
-
-      const text = this.cleanText(item.description);
-      const phrases = await this.findRelevantPhrases(text, item);
-
-      phrases.forEach(phrase => {
-        if (!termToProducts.has(phrase)) {
-          termToProducts.set(phrase, new Set());
-        }
-        termToProducts.get(phrase)!.add(item.id);
-      });
-    }));
-
-    return termToProducts;
-  }
-
-
-
-
-  public async extractSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
-    const allTerms = new Map<string, Set<string>>();
-    const totalItems = items.length;
-    let processedCount = 0;
-    const totalBatches = Math.ceil(items.length / this.BATCH_SIZE);
-
-    for (let i = 0; i < items.length; i += this.BATCH_SIZE) {
-      const batch = items.slice(i, i + this.BATCH_SIZE);
-      const currentBatch = Math.floor(i / this.BATCH_SIZE) + 1;
-
-      console.log(`Processing batch ${currentBatch} / ${totalBatches}`);
-
-      const batchTerms = await this.processBatch(batch);
-
-      batchTerms.forEach((productIds, term) => {
-        if (!allTerms.has(term)) {
-          allTerms.set(term, new Set());
-        }
-        productIds.forEach(id => allTerms.get(term)!.add(id));
-      });
-
-      processedCount += batch.length;
-      
-      // Calculate progress percentage based on current batch
-      const progress = (currentBatch / totalBatches) * 100;
-      
-      console.log(`Processed ${processedCount} / ${totalItems} items (${progress.toFixed(1)}%)`);
-      this.progressCallback?.('description', currentBatch, totalBatches);
+  private getProductIdentifier(item: FeedItem): string {
+    if (item['product type']) {
+      const segments = item['product type'].split('>');
+      const lastSegment = segments[segments.length - 1].trim().toLowerCase();
+      if (lastSegment) return lastSegment;
     }
 
-    const searchTerms: SearchTerm[] = [];
-
-
-
-
-
-
-
-
-
-    for (const [term, productIds] of allTerms) {
-      if (productIds.size >= this.MIN_PRODUCTS) {
-        const matchingProducts = items
-          .filter(item => productIds.has(item.id))
-          .map(item => ({
-            id: item.id,
-            productName: item.title || ''
-          }));
-
-        const firstProduct = items.find(item => item.id === matchingProducts[0].id);
-        const brand = firstProduct?.brand?.toLowerCase().trim();
-        const productType = this.getProductIdentifier(firstProduct!);
-
-        searchTerms.push({
-          id: matchingProducts[0].id,
-          productName: matchingProducts[0].productName,
-          searchTerm: term,
-          pattern: `Description-based: ${matchingProducts.length} products`,
-          estimatedVolume: 0,
-          matchingProducts
-        });
-
-        if (brand && !term.includes(brand) && 
-            !brand.split(' ').some(word => STOPWORDS.has(word))) {
-          searchTerms.push({
-            id: matchingProducts[0].id,
-            productName: matchingProducts[0].productName,
-            searchTerm: `${brand} ${term}`,
-            pattern: `Description-based with brand: ${matchingProducts.length} products`,
-            estimatedVolume: 0,
-            matchingProducts
-          });
-        }
-
-        if (productType && !term.includes(productType) && 
-            productType !== brand &&
-            !productType.split(' ').some(word => STOPWORDS.has(word))) {
-          searchTerms.push({
-            id: matchingProducts[0].id,
-            productName: matchingProducts[0].productName,
-            searchTerm: `${term} ${productType}`,
-            pattern: `Description-based with product type: ${matchingProducts.length} products`,
-            estimatedVolume: 0,
-            matchingProducts
-          });
-        }
-      }
+    if (item['google product category']) {
+      const segments = item['google product category'].split('>');
+      const lastSegment = segments[segments.length - 1].trim().toLowerCase();
+      if (lastSegment) return lastSegment;
     }
 
-  console.log(`Extracted ${searchTerms.length} description-based search terms (including identifier variations)`);
-    return searchTerms;
+    return '';
   }
 }
