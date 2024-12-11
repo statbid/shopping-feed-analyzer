@@ -1,5 +1,5 @@
-import { FeedItem } from '../types';
-import * as errorCheckers from '../errorCheckers';
+import { FeedItem } from '@shopping-feed/types';
+import * as errorCheckers from '../../errorCheckers';
 
 describe('Attribute Mismatch Checks', () => {
   describe('checkMonitoredPharmacyWords', () => {

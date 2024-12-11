@@ -1,5 +1,5 @@
-import { FeedItem, ErrorResult } from '../types';
-import * as errorCheckers from '../errorCheckers';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
+import * as errorCheckers from '../../errorCheckers';
 
 describe('checkMonitoredPharmacyWords', () => {
 
