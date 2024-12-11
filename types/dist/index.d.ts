@@ -51,9 +51,9 @@ export interface SearchTerm {
     productName: string;
     searchTerm: string;
     pattern: string;
-    estimatedVolume: number;
+    estimatedVolume: number | null | undefined;
+    keywordMetrics: KeywordMetrics | null | undefined;
     matchingProducts: Product[];
-    keywordMetrics?: KeywordMetrics;
 }
 export interface SearchTermsResultsProps {
     results: SearchTerm[];

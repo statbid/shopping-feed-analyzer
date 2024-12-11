@@ -58,16 +58,18 @@ export interface Product {
     productName: string;
     searchTerm: string;
     pattern: string;
-    estimatedVolume: number;
+    estimatedVolume: number | null | undefined;  
+    keywordMetrics: KeywordMetrics | null | undefined;  
     matchingProducts: Product[];
-    keywordMetrics?: KeywordMetrics;
   }
+
+
   
   // Component Props
   export interface SearchTermsResultsProps {
     results: SearchTerm[];
     fileName: string;
-    useSearchVolumes: boolean;
+    useSearchVolumes: boolean; 
   }
   
   export interface ProductsModalProps {
