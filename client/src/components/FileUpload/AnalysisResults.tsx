@@ -191,6 +191,17 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
     setIsInfoModalOpen(false);
   };
 
+
+
+
+
+
+
+
+
+
+  
+
   const handleDownloadDetails = (errorType: string) => {
   const filteredErrors = results.errors
     .filter(error => error.errorType === errorType && !falsePositives.has(error.id));
@@ -234,6 +245,16 @@ const handleDownloadReport = () => {
       }, 200);
     }
   }, [isLoading, results.totalProducts]);
+
+
+
+
+
+
+
+
+
+
 
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const endIndex = Math.min(currentPage * ITEMS_PER_PAGE, groupedErrors.length);

@@ -251,6 +251,9 @@ const getPatternCounts = () => {
   const endIndex = Math.min(currentPage * itemsPerPage, filteredResults.length);
   const currentPageData = filteredResults.slice(startIndex, endIndex);
 
+
+
+
   const handleDownloadReport = () => {
     // For downloading filtered results only
     const csvContent = CSVExporter.exportSearchTerms(filteredResults);
@@ -261,17 +264,16 @@ const getPatternCounts = () => {
   };
   
   const handleDownloadFullReport = () => {
-    // For downloading complete summary with all results
-    const csvContent = CSVExporter.exportSearchTermsSummary(
-      fileName,
-      searchTerms,
-      filteredResults
-    );
+    // For downloading complete results with all terms
+    const csvContent = CSVExporter.exportSearchTerms(searchTerms);
     CSVExporter.downloadCSV(
       csvContent,
       `${fileName.split('.')[0]}_search_terms_full_report.csv`
     );
   };
+
+
+
 
 
 
