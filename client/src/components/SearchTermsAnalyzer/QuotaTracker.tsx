@@ -10,6 +10,7 @@ interface QuotaTrackerProps {
 
 const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
   const { used, limit, lastUpdated, isLoading, setQuota, setLoading } = useQuotaStore();
+  
 
   const fetchQuotaStatus = async () => {
     try {

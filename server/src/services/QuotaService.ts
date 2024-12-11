@@ -16,20 +16,17 @@ export class QuotaService {
 
 
     private constructor() {
-        // Get quota limit from environment or use default
-        this.QUOTA_LIMIT = Number(process.env.GOOGLE_ADS_DAILY_QUOTA) || 10000;
-        this.STORAGE_PATH = path.join(environment.storage.cacheDir, 'google_ads_quota.json');
-        
-        // Initialize with stored values or defaults
-        const stored = this.loadFromStorage();
-        this.status = stored || {
-          used: 0,
-          lastUpdated: new Date(),
-          lastReset: new Date()
-        };
-        this.checkAndResetDaily();
-      }
-
+      this.QUOTA_LIMIT = Number(process.env.GOOGLE_ADS_DAILY_QUOTA) || 10000;
+      this.STORAGE_PATH = path.join(environment.storage.cacheDir, 'google_ads_quota.json');
+      
+      const stored = this.loadFromStorage();
+      this.status = stored || {
+        used: 0,
+        lastUpdated: new Date(),
+        lastReset: new Date()
+      };
+      this.checkAndResetDaily();
+  }
 
 
   public static getInstance(): QuotaService {
@@ -78,30 +75,30 @@ export class QuotaService {
     }
   }
 
+  
   public incrementUsage(count: number): void {
     this.checkAndResetDaily();
     this.status.used += count;
     this.status.lastUpdated = new Date();
     this.saveToStorage();
-  }
+}
 
-  public canMakeRequest(requestCount: number): boolean {
-    this.checkAndResetDaily();
-    return (this.status.used + requestCount) <= this.QUOTA_LIMIT;
-  }
+
+
+    public canMakeRequest(requestCount: number): boolean {
+        this.checkAndResetDaily();
+        return (this.status.used + requestCount) <= this.QUOTA_LIMIT;
+    }
 
   public getStatus(): QuotaStatus {
     this.checkAndResetDaily();
     return { ...this.status };
   }
 
+
   public getRemainingQuota(): number {
     this.checkAndResetDaily();
     return Math.max(0, this.QUOTA_LIMIT - this.status.used);
-  }
-
-
-
-
+}
   
 }

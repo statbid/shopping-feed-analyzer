@@ -144,13 +144,11 @@ export class CSVExporter {
  * - Product ID, Product Name, Search Term, Pattern Type, Monthly Search Volume, ...
  */
 
-  static exportSearchTerms(
-    terms: SearchTerm[],
-    options: CSVOptions = {}
-  ): string {
+  
+  static exportSearchTerms(terms: SearchTerm[], options: CSVOptions = {}): string {
     const { includeHeaders = true } = { ...this.DEFAULT_OPTIONS, ...options };
     const rows: string[] = [];
-
+  
     if (includeHeaders) {
       rows.push(this.formatRow([
         'Product ID',
@@ -165,14 +163,14 @@ export class CSVExporter {
         'Matching Products'
       ]));
     }
-
+  
     terms.forEach(term => {
       rows.push(this.formatRow([
         term.id,
         term.productName,
         term.searchTerm,
         term.pattern,
-        term.estimatedVolume,
+        term.estimatedVolume ?? 'N/A',
         term.keywordMetrics?.competition || 'N/A',
         term.keywordMetrics?.competitionIndex 
           ? `${(term.keywordMetrics.competitionIndex * 100).toFixed(1)}%` 
@@ -186,9 +184,11 @@ export class CSVExporter {
         term.matchingProducts?.length || 0
       ]));
     });
-
+  
     return rows.join('\n');
   }
+
+
 
   /**
  * Exports a summary report for search term analysis as a CSV string:
@@ -231,18 +231,26 @@ export class CSVExporter {
     return `${summary}\n${detailedTerms}`;
   }
 
-  private static calculateAverageSearchVolume(terms: SearchTerm[]): string {
-    const total = terms.reduce((sum, term) => sum + term.estimatedVolume, 0);
-    return (total / terms.length).toFixed(0);
-  }
+ 
+private static calculateAverageSearchVolume(terms: SearchTerm[]): string {
+  const validVolumes = terms.map(t => t.estimatedVolume).filter((v): v is number => v != null);
+  if (validVolumes.length === 0) return 'N/A';
+  const total = validVolumes.reduce((sum, vol) => sum + vol, 0);
+  return (total / validVolumes.length).toFixed(0);
+}
 
-  private static calculateMedianSearchVolume(terms: SearchTerm[]): string {
-    const volumes = terms.map(term => term.estimatedVolume).sort((a, b) => a - b);
-    const mid = Math.floor(volumes.length / 2);
-    return volumes.length % 2 === 0
-      ? ((volumes[mid - 1] + volumes[mid]) / 2).toFixed(0)
-      : volumes[mid].toString();
-  }
+ 
+private static calculateMedianSearchVolume(terms: SearchTerm[]): string {
+  const validVolumes = terms.map(t => t.estimatedVolume).filter((v): v is number => v != null)
+    .sort((a, b) => a - b);
+  
+  if (validVolumes.length === 0) return 'N/A';
+  
+  const mid = Math.floor(validVolumes.length / 2);
+  return validVolumes.length % 2 === 0
+    ? ((validVolumes[mid - 1] + validVolumes[mid]) / 2).toFixed(0)
+    : validVolumes[mid].toString();
+}
 
   /**
  * Initiates a download of a CSV file:

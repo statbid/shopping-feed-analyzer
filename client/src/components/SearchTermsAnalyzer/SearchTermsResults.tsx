@@ -29,6 +29,7 @@ import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, Chev
 import { CSVExporter } from '../utils/CSVExporter';
 import ProductsModal from './SearchTermsDetailsModal';
 import KeywordMetricsModal from './KeywordMetricsModal';
+import { KeywordMetricsResult } from '../../../../server/src/services/GoogleAdsService';
 import { SearchTerm, SearchTermsResultsProps, KeywordMetrics } from '@shopping-feed/types';
 import FilterModal, { Filter, columnDisplayNames, filterTypeDisplayNames } from './FilterModal';
 import environment from '../../config/environment';
@@ -36,7 +37,11 @@ import environment from '../../config/environment';
 const PAGE_SIZE_OPTIONS = [10, 50, 100, 500];
 
 
-const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileName }) => {
+const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ 
+  results, 
+  fileName,
+  useSearchVolumes 
+}) => {
   // State Management
 // - `currentPage`: Tracks the current page of paginated results.
 // - `itemsPerPage`: Determines the number of items displayed per page.
@@ -59,16 +64,67 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
   const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
   const [searchTerms, setSearchTerms] = useState(results);
 
+
+
+
+const renderVolumeStatus = (term: SearchTerm) => {
+  if (isLoadingVolumes) {
+    return <Loader className="w-4 h-4 animate-spin" />;
+  }
+
+  if (!term.keywordMetrics) {
+    return <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full">No Data</span>;
+  }
+
+  return (
+    <div className="flex items-center justify-between">
+      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+        {term.keywordMetrics.avgMonthlySearches.toLocaleString()}
+      </span>
+      <button
+        onClick={() => setSelectedMetrics({ 
+          term: term.searchTerm, 
+          metrics: term.keywordMetrics! 
+        })}
+        className="ml-2 text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
+        title="View detailed metrics"
+      >
+        <Activity className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
+
+
+
+
   /**
  * Fetches search volume metrics from an API.
  * Updates the `searchTerms` state with the fetched metrics for each term.
  */
 
+
   useEffect(() => {
+    let mounted = true;
+    
+    const setTermsWithNoMetrics = () => {
+      const terms = results.map(term => ({
+        ...term,
+        estimatedVolume: null as number | null,
+        keywordMetrics: null as KeywordMetrics | null
+      }));
+      setSearchTerms(terms);
+    };
+  
     const fetchSearchVolumes = async () => {
-      if (results.length === 0) return;
+      if (!useSearchVolumes || results.length === 0) {
+        setTermsWithNoMetrics();
+        return;
+      }
       
       setIsLoadingVolumes(true);
+      
       try {
         const response = await fetch(`${environment.api.baseUrl}/api/search-volumes`, {
           method: 'POST',
@@ -76,33 +132,35 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            searchTerms: results.map(r => r.searchTerm)
+            searchTerms: results.map(r => r.searchTerm),
+            useSearchVolumes
           })
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch search volumes');
-        }
-
+  
+        if (!response.ok) throw new Error('Failed to fetch search volumes');
+  
         const data = await response.json();
         
-        // Update search terms with metrics
-        const updatedTerms = results.map(term => ({
-          ...term,
-          estimatedVolume: data.metrics[term.searchTerm.toLowerCase()]?.avgMonthlySearches || term.estimatedVolume,
-          keywordMetrics: data.metrics[term.searchTerm.toLowerCase()]
-        }));
-
-        setSearchTerms(updatedTerms);
+        if (mounted) {
+          const terms = results.map(term => ({
+            ...term,
+            estimatedVolume: data.metrics[term.searchTerm.toLowerCase()]?.avgMonthlySearches || null,
+            keywordMetrics: data.metrics[term.searchTerm.toLowerCase()] || null
+          }));
+          setSearchTerms(terms);
+        }
       } catch (error) {
         console.error('Error fetching search volumes:', error);
+        setTermsWithNoMetrics();
       } finally {
-        setIsLoadingVolumes(false);
+        if (mounted) setIsLoadingVolumes(false);
       }
     };
-
+  
     fetchSearchVolumes();
-  }, [results]);
+    
+    return () => { mounted = false; };
+  }, [results, useSearchVolumes]);
 
   /**
  * Filters the search terms based on the active filters.
@@ -337,27 +395,23 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
                   </button>
                 )}
               </div>
-              <div className="p-4 flex items-center justify-between">
-                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                  {isLoadingVolumes ? (
-                    <Loader className="w-4 h-4 animate-spin" />
-                  ) : (
-                    term.estimatedVolume.toLocaleString()
-                  )}
-                </span>
-                {term.keywordMetrics && (
-                  <button
-                    onClick={() => setSelectedMetrics({ 
-                      term: term.searchTerm, 
-                      metrics: term.keywordMetrics! 
-                    })}
-                    className="ml-2 text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
-                    title="View detailed metrics"
-                  >
-                    <Activity className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
+
+
+
+
+
+              <div className="p-4">
+  {renderVolumeStatus(term)}
+</div>
+
+
+
+
+
+
+
+
+
             </div>
           ))}
         </div>
@@ -408,12 +462,6 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({ results, fileNa
           </div>
         )}
       </div>
-
-
-
-
-
-
 
 
       {/* Modals */}
