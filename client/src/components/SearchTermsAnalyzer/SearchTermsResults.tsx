@@ -25,7 +25,7 @@
 
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown, Loader, Activity } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Filter as FilterIcon, X, Eye, ChevronDown, Loader, Activity, Flag } from 'lucide-react';
 import { CSVExporter } from '../utils/CSVExporter';
 import ProductsModal from './SearchTermsDetailsModal';
 import KeywordMetricsModal from './KeywordMetricsModal';
@@ -63,8 +63,32 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
   } | null>(null);
   const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
   const [searchTerms, setSearchTerms] = useState(results);
- 
-  
+  const [flaggedTerms, setFlaggedTerms] = useState<Set<string>>(new Set());
+
+   const handleFlagToggle = (searchTerm: string) => {
+    setFlaggedTerms(prev => {
+      const newFlags = new Set(prev);
+      if (newFlags.has(searchTerm)) {
+        newFlags.delete(searchTerm);
+      } else {
+        newFlags.add(searchTerm);
+      }
+      return newFlags;
+    });
+  };
+
+
+
+
+
+
+
+
+
+
+
+
+
   const handleAddSuggestion = (newTerm: SearchTerm) => {
     setSearchTerms(prev => [...prev, newTerm]);
   };
@@ -104,9 +128,15 @@ const renderVolumeStatus = (term: SearchTerm) => {
 
 
 const getPatternCounts = () => {
-  const attributeBased = searchTerms.filter(r => r.pattern.includes('Attribute-based')).length;
-  const descriptionBased = searchTerms.filter(r => r.pattern.includes('Description-based')).length;
-  const apiSuggestions = searchTerms.filter(r => r.pattern === 'API Suggestion').length;
+  const attributeBased = searchTerms.filter(r => 
+    r.pattern.includes('Attribute-based') && !flaggedTerms.has(r.searchTerm)
+  ).length;
+  const descriptionBased = searchTerms.filter(r => 
+    r.pattern.includes('Description-based') && !flaggedTerms.has(r.searchTerm)
+  ).length;
+  const apiSuggestions = searchTerms.filter(r => 
+    r.pattern === 'API Suggestion' && !flaggedTerms.has(r.searchTerm)
+  ).length;
 
   return (
     <div className="p-3 bg-gray-50 rounded-lg">
@@ -126,6 +156,10 @@ const getPatternCounts = () => {
             <span className="font-medium">{apiSuggestions}</span>
           </div>
         )}
+        <div className="flex justify-between items-center text-red-600 mt-2">
+          <span>Flagged Terms:</span>
+          <span className="font-medium">{flaggedTerms.size}</span>
+        </div>
       </div>
     </div>
   );
@@ -134,9 +168,36 @@ const getPatternCounts = () => {
 
 
 
-
-
-
+const renderRow = (term: SearchTerm) => (
+  <div
+    key={term.searchTerm}
+    className={`grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-base hover:bg-gray-100 transition-colors border-b border-gray-200 ${
+      flaggedTerms.has(term.searchTerm) ? 'bg-gray-100' : 'bg-[#FCFCFC]'
+    }`}
+  >
+    <div className="p-4 break-words whitespace-normal">{term.id}</div>
+    <div className="p-4 break-words whitespace-normal">{term.productName}</div>
+    <div className="p-4 break-words whitespace-normal flex items-center">
+      {term.searchTerm}
+      {renderFlagButton(term)}
+    </div>
+    <div className="p-4 break-words whitespace-normal flex items-center">
+      <span>{term.pattern}</span>
+      {term.matchingProducts?.length > 1 && (
+        <button
+          onClick={() => setSelectedTerm(term)}
+          className="ml-2 text-blue-600 hover:text-blue-800"
+          title={`View all ${term.matchingProducts.length} products`}
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+    <div className="p-4">
+      {renderVolumeStatus(term)}
+    </div>
+  </div>
+);
 
 
 
@@ -253,10 +314,11 @@ const getPatternCounts = () => {
 
 
 
-
   const handleDownloadReport = () => {
-    // For downloading filtered results only
-    const csvContent = CSVExporter.exportSearchTerms(filteredResults);
+    const unflaggedTerms = filteredResults.filter(term => 
+      !flaggedTerms.has(term.searchTerm)
+    );
+    const csvContent = CSVExporter.exportSearchTerms(unflaggedTerms);
     CSVExporter.downloadCSV(
       csvContent,
       `${fileName.split('.')[0]}_search_terms_filtered.csv`
@@ -264,8 +326,10 @@ const getPatternCounts = () => {
   };
   
   const handleDownloadFullReport = () => {
-    // For downloading complete results with all terms
-    const csvContent = CSVExporter.exportSearchTerms(searchTerms);
+    const unflaggedTerms = searchTerms.filter(term => 
+      !flaggedTerms.has(term.searchTerm)
+    );
+    const csvContent = CSVExporter.exportSearchTerms(unflaggedTerms);
     CSVExporter.downloadCSV(
       csvContent,
       `${fileName.split('.')[0]}_search_terms_full_report.csv`
@@ -275,6 +339,26 @@ const getPatternCounts = () => {
 
 
 
+ // Render a flag button for each term
+ const renderFlagButton = (term: SearchTerm) => {
+  const isFlagged = flaggedTerms.has(term.searchTerm);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleFlagToggle(term.searchTerm);
+      }}
+      className={`p-2 rounded-lg transition-colors ml-2 ${
+        isFlagged
+          ? 'bg-red-100 text-red-600'
+          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+      }`}
+      title={isFlagged ? 'Remove flag' : 'Flag term'}
+    >
+      <Flag className="w-4 h-4" />
+    </button>
+  );
+};
 
 
 
@@ -424,15 +508,24 @@ const getPatternCounts = () => {
           <div className="p-4">Est. Volume</div>
         </div>
 
+
+
+
         <div className="overflow-y-auto flex-grow">
-          {currentPageData.map((term) => (
-            <div
-              key={term.searchTerm}
-              className="grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-base bg-[#FCFCFC] hover:bg-gray-100 transition-colors border-b border-gray-200"
-            >
-              <div className="p-4 break-words whitespace-normal">{term.id}</div>
-              <div className="p-4 break-words whitespace-normal">{term.productName}</div>
-              <div className="p-4 break-words whitespace-normal">{term.searchTerm}</div>
+  {currentPageData.map((term) => (
+    <div
+      key={term.searchTerm}
+      className={`grid grid-cols-[15%,25%,25%,20%,15%] text-[#232323] text-base hover:bg-gray-100 transition-colors border-b border-gray-200 ${
+        flaggedTerms.has(term.searchTerm) ? 'bg-gray-100' : 'bg-[#FCFCFC]'
+      }`}
+    >
+      <div className="p-4 break-words whitespace-normal">{term.id}</div>
+      <div className="p-4 break-words whitespace-normal">{term.productName}</div>
+      <div className="p-4 break-words whitespace-normal flex items-center">
+        {term.searchTerm}
+        {renderFlagButton(term)}
+      </div>
+      
               <div className="p-4 break-words whitespace-normal flex items-center">
                 <span>{term.pattern}</span>
                 {term.matchingProducts?.length > 1 && (
