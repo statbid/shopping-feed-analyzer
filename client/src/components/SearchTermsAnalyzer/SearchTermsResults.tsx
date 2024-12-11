@@ -63,7 +63,11 @@ const SearchTermsResults: React.FC<SearchTermsResultsProps> = ({
   } | null>(null);
   const [isLoadingVolumes, setIsLoadingVolumes] = useState(false);
   const [searchTerms, setSearchTerms] = useState(results);
-
+ 
+  
+  const handleAddSuggestion = (newTerm: SearchTerm) => {
+    setSearchTerms(prev => [...prev, newTerm]);
+  };
 
 
 
@@ -94,6 +98,51 @@ const renderVolumeStatus = (term: SearchTerm) => {
     </div>
   );
 };
+
+
+
+
+
+const getPatternCounts = () => {
+  const attributeBased = searchTerms.filter(r => r.pattern.includes('Attribute-based')).length;
+  const descriptionBased = searchTerms.filter(r => r.pattern.includes('Description-based')).length;
+  const apiSuggestions = searchTerms.filter(r => r.pattern === 'API Suggestion').length;
+
+  return (
+    <div className="p-3 bg-gray-50 rounded-lg">
+      <p className="font-bold text-lg">Pattern Breakdown:</p>
+      <div className="space-y-1 mt-2">
+        <div className="flex justify-between items-center">
+          <span>Attribute-based:</span>
+          <span className="font-medium">{attributeBased}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span>Description-based:</span>
+          <span className="font-medium">{descriptionBased}</span>
+        </div>
+        {apiSuggestions > 0 && (
+          <div className="flex justify-between items-center">
+            <span>API Suggestions:</span>
+            <span className="font-medium">{apiSuggestions}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -270,9 +319,8 @@ const renderVolumeStatus = (term: SearchTerm) => {
             )}
 
             <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="font-bold text-lg">Pattern Breakdown:</p>
-              <p>Attribute-based: {searchTerms.filter(r => r.pattern.includes('Attribute-based')).length}</p>
-              <p>Description-based: {searchTerms.filter(r => r.pattern.includes('Description-based')).length}</p>
+             
+              {getPatternCounts()}
             </div>
 
             <div className="p-3 bg-blue-50 rounded-lg">
@@ -487,13 +535,24 @@ const renderVolumeStatus = (term: SearchTerm) => {
       )}
 
       {selectedMetrics && (
-        <KeywordMetricsModal
-          isOpen={!!selectedMetrics}
-          onClose={() => setSelectedMetrics(null)}
-          searchTerm={selectedMetrics.term}
-          metrics={selectedMetrics.metrics}
-        />
+
+
+<KeywordMetricsModal
+isOpen={!!selectedMetrics}
+onClose={() => setSelectedMetrics(null)}
+searchTerm={selectedMetrics.term}
+metrics={selectedMetrics.metrics}
+originalTerm={searchTerms.find(term => term.searchTerm === selectedMetrics.term)!}
+onAddSuggestion={handleAddSuggestion}
+existingTerms={searchTerms} // Add this line
+/>
+
+
+
       )}
+
+
+      
     </div>
   );
 };

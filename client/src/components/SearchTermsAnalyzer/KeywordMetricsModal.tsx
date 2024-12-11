@@ -1,33 +1,6 @@
-/**
- * KeywordMetricsModal Component
- *
- * This component displays detailed keyword metrics for a given search term. 
- * The metrics are presented in a modal with a clean grid layout, providing insights 
- * such as average monthly searches, competition level, and top-of-page bid estimates.
- *
- * Features:
- * - **Dynamic Formatting:**
- *   - Formats currency values for bids.
- *   - Colors competition levels based on their severity.
- *   - Formats competition index as a percentage.
- * - **Responsive Design:** Adapts to various screen sizes with a modal overlay.
- * - **Clear Layout:** Uses a grid layout for organizing metrics into sections.
- *
- * Props:
- * - `isOpen` (boolean): Determines whether the modal is visible.
- * - `onClose` (function): Callback triggered when the modal is closed.
- * - `searchTerm` (string): The search term for which metrics are being displayed.
- * - `metrics` (object): An object containing the following properties:
- *   - `avgMonthlySearches` (number): Average monthly search volume.
- *   - `competition` (string): Competition level (`HIGH`, `MEDIUM`, `LOW`).
- *   - `competitionIndex` (number): Numerical index for competition (0–1).
- *   - `lowTopPageBid` (number): Lowest bid for the top-of-page position.
- *   - `highTopPageBid` (number): Highest bid for the top-of-page position.
- */
-
-import React, { useState } from 'react';
-import { X, TrendingUp, DollarSign, Activity, Users, Search, Loader } from 'lucide-react';
-import { KeywordMetrics } from '@shopping-feed/types';
+import React, { useState, useEffect } from 'react';
+import { X, TrendingUp, DollarSign, Activity, Users, Search, Loader, Plus } from 'lucide-react';
+import { KeywordMetrics, SearchTerm } from '@shopping-feed/types';
 import environment from '../../config/environment';
 
 interface KeywordSuggestion {
@@ -35,22 +8,42 @@ interface KeywordSuggestion {
   metrics: KeywordMetrics;
 }
 
+const suggestionsCache = new Map<string, KeywordSuggestion[]>();
+
 interface KeywordMetricsModalProps {
   isOpen: boolean;
   onClose: () => void;
   searchTerm: string;
   metrics: KeywordMetrics;
+  originalTerm: SearchTerm;
+  onAddSuggestion: (suggestion: SearchTerm) => void;
+  existingTerms: SearchTerm[];
 }
 
 const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
   isOpen,
   onClose,
   searchTerm,
-  metrics
+  metrics,
+  originalTerm,
+  onAddSuggestion,
+  existingTerms
 }) => {
   const [activeTab, setActiveTab] = useState<'metrics' | 'suggestions'>('metrics');
-  const [suggestions, setSuggestions] = useState<KeywordSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<KeywordSuggestion[]>(
+    suggestionsCache.get(searchTerm) || []
+  );
+
+  // Track added suggestions globally instead of just in component state
+  const [addedSuggestions, setAddedSuggestions] = useState<Set<string>>(
+    new Set(existingTerms.map(term => term.searchTerm))
+  );
+
+  // Update addedSuggestions when existingTerms changes
+  useEffect(() => {
+    setAddedSuggestions(new Set(existingTerms.map(term => term.searchTerm)));
+  }, [existingTerms]);
 
   if (!isOpen) return null;
 
@@ -77,7 +70,19 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
     return `${(index * 100).toFixed(1)}%`;
   };
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   const handleGetSuggestions = async () => {
+    if (suggestionsCache.has(searchTerm)) {
+      setSuggestions(suggestionsCache.get(searchTerm)!);
+      setActiveTab('suggestions');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch(`${environment.api.baseUrl}/api/keyword-suggestions`, {
@@ -85,17 +90,33 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keyword: searchTerm })
       });
-      
+
       if (!response.ok) throw new Error('Failed to fetch suggestions');
-      
+
       const data = await response.json();
       setSuggestions(data.suggestions);
+      suggestionsCache.set(searchTerm, data.suggestions);
       setActiveTab('suggestions');
     } catch (error) {
       console.error('Error fetching suggestions:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAddSuggestion = (suggestion: KeywordSuggestion) => {
+    const newSearchTerm: SearchTerm = {
+      id: originalTerm.id,
+      productName: originalTerm.productName,
+      searchTerm: suggestion.keyword,
+      pattern: 'API Suggestion',
+      estimatedVolume: suggestion.metrics.avgMonthlySearches,
+      keywordMetrics: suggestion.metrics,
+      matchingProducts: originalTerm.matchingProducts
+    };
+
+    onAddSuggestion(newSearchTerm);
+    setAddedSuggestions(prev => new Set(prev).add(suggestion.keyword));
   };
 
   const renderMetricsGrid = (metricsData: KeywordMetrics, showTitle = false) => (
@@ -153,7 +174,8 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+         onClick={handleBackdropClick}>
       <div className="bg-white rounded-lg w-[800px] max-w-[90vw] shadow-xl flex h-[600px]">
         <div className="w-48 bg-gray-100 p-4 flex flex-col border-r">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Keyword Analysis</h3>
@@ -194,7 +216,7 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
         <div className="flex-1 flex flex-col">
           <div className="flex justify-between items-center p-4 border-b">
             <h3 className="text-xl font-bold text-gray-900">
-              {activeTab === 'metrics' ? 'Keyword Metrics' : 'Related Keywords'}
+              {activeTab === 'metrics' ? 'Keyword Metrics' : `Related Keywords for "${searchTerm}"`}
             </h3>
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
               <X className="w-6 h-6" />
@@ -220,21 +242,31 @@ const KeywordMetricsModal: React.FC<KeywordMetricsModalProps> = ({
                 ) : (
                   suggestions.map((suggestion, index) => (
                     <div key={index} className="border-b pb-6 last:border-0">
-                      <h4 className="text-lg font-semibold text-blue-600 mb-4">
-                        "{suggestion.keyword}"
-                      </h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold text-blue-600">
+                          "{suggestion.keyword}"
+                        </h4>
+                        {suggestion.keyword !== searchTerm && (
+                          <button
+                            onClick={() => handleAddSuggestion(suggestion)}
+                            disabled={addedSuggestions.has(suggestion.keyword)}
+                            className={`flex items-center px-3 py-1 rounded-lg text-sm ${
+                              addedSuggestions.has(suggestion.keyword)
+                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            }`}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            {addedSuggestions.has(suggestion.keyword) ? 'Added' : 'Add to Results'}
+                          </button>
+                        )}
+                      </div>
                       {renderMetricsGrid(suggestion.metrics)}
                     </div>
                   ))
                 )}
               </div>
             )}
-          </div>
-
-          <div className="border-t p-4 bg-gray-50">
-            <p className="text-sm text-gray-500">
-              Data provided by Google Ads API. Competition index ranges from 0 to 1.
-            </p>
           </div>
         </div>
       </div>
