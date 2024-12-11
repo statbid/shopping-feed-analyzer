@@ -21,7 +21,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 
 function cleanGTIN(gtin: string): string {
   // First check if it's in scientific notation

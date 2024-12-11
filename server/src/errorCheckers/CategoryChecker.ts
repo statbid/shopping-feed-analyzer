@@ -21,7 +21,7 @@
  *
  */
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 
 /*****Google Product Category isn't specific enough**********Google Product Category isn't set************** */
 

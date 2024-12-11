@@ -19,7 +19,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 import {
   sizeWords, ignoreWords, specialCharsRegex, badAbbreviationsRegex, repeatedWhitespaceRegex,
   repeatedDashRegex, repeatedCommaRegex, punctuationStartEndRegex, htmlTagRegex, htmlEntityRegex,

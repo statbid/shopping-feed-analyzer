@@ -1,2 +1,2 @@
 export { FeedAnalyzer } from './FeedAnalyzer';
-export * from './types';
+export * from '@shopping-feed/types';

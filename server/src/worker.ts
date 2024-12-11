@@ -1,6 +1,6 @@
 // worker.ts
 import { parentPort, workerData } from 'worker_threads';
-import { FeedItem, ErrorResult } from './types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 import * as errorCheckers from './errorCheckers';
 import { checkSpelling } from './errorCheckers/SpellChecker';
 import environment from './config/environment';

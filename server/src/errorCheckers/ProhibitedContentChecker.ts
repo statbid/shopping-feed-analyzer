@@ -20,7 +20,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 
 // Create a Set of monitored words for O(1) lookup time
 const monitoredWords = new Set([

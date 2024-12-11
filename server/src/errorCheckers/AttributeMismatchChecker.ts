@@ -20,7 +20,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 
 const femaleWords = ['female', 'women', 'woman', 'girl', 'females','girls'];
 const maleWords = ['male', 'men', 'man', 'boy', 'boys'];

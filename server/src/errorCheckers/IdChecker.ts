@@ -24,7 +24,7 @@
  */
 
 
-import { FeedItem, ErrorResult } from '../types';
+import { FeedItem, ErrorResult } from '@shopping-feed/types';
 import { MAX_ID_LENGTH } from '../utils/constants';
 
 
