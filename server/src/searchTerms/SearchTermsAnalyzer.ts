@@ -247,6 +247,7 @@ export class SearchTermsAnalyzer {
             id: item.id,
             productName: item.title || '',
           })),
+          keywordMetrics: undefined
         });
   
         combinationCount++;

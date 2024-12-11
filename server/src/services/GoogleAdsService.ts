@@ -2,10 +2,9 @@ import { GoogleAdsApi, enums } from 'google-ads-api';
 import { 
   GoogleAdsConfig,
   GoogleAdsClientConfig, 
-  CustomerConfig,
-  GoogleAdsError,
-  SearchVolumeResult
+  CustomerConfig
 } from '../types/google-ads';
+import { google } from 'google-ads-node/build/protos/protos';
 import { QuotaService } from './QuotaService';
 import { KeywordMetrics } from '@shopping-feed/types';
 
@@ -48,6 +47,82 @@ export class GoogleAdsService {
 
   private async delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  public async getKeywordSuggestions(keyword: string): Promise<Array<{ keyword: string; metrics: KeywordMetrics }>> {
+    const customer = this.client.Customer({
+      customer_id: this.customerId,
+      refresh_token: this.refreshToken
+    });
+
+    try {
+      console.log("API Request Parameters:", {
+        customer_id: this.customerId,
+        language: 'languageConstants/1000',
+        geo_target_constants: ['geoTargetConstants/2840'],
+        keyword_seed: { keywords: [keyword] },
+        page_size: 5,
+        keyword_plan_network: enums.KeywordPlanNetwork.GOOGLE_SEARCH,
+        include_adult_keywords: false
+      });
+
+      const response: google.ads.googleads.v17.services.GenerateKeywordIdeaResponse = 
+        await customer.keywordPlanIdeas.generateKeywordIdeas({
+          customer_id: this.customerId,
+          language: 'languageConstants/1000',
+          geo_target_constants: ['geoTargetConstants/2840'],
+          keyword_seed: { keywords: [keyword] },
+          page_size: 5,
+          keyword_plan_network: enums.KeywordPlanNetwork.GOOGLE_SEARCH,
+          include_adult_keywords: false,
+          page_token: '',
+          keyword_annotation: [],
+          toJSON: function (): { [k: string]: any; } {
+            throw new Error('Function not implemented.');
+          }
+        });
+
+      console.log("Full API Response:", response);
+
+      if (!response || !Array.isArray(response) || response.length === 0) {
+        console.error('No results returned by the API');
+        return [];
+      }
+
+      return response.map(idea => ({
+        keyword: idea.text || '',
+        metrics: {
+          avgMonthlySearches: parseInt(idea.keyword_idea_metrics?.avg_monthly_searches?.toString() || '0', 10),
+          competition: this.mapCompetitionLevel(idea.keyword_idea_metrics?.competition),
+          competitionIndex: parseFloat(idea.keyword_idea_metrics?.competition_index?.toString() || '0') / 100,
+          lowTopPageBid: idea.keyword_idea_metrics?.low_top_of_page_bid_micros
+            ? Number((idea.keyword_idea_metrics.low_top_of_page_bid_micros / 1_000_000).toFixed(2))
+            : undefined,
+          highTopPageBid: idea.keyword_idea_metrics?.high_top_of_page_bid_micros
+            ? Number((idea.keyword_idea_metrics.high_top_of_page_bid_micros / 1_000_000).toFixed(2))
+            : undefined,
+        },
+      }));
+    } catch (error) {
+      console.error('Error getting keyword suggestions:', error);
+      throw error;
+    }
+  }
+
+  private mapCompetitionLevel(competition: any): 'HIGH' | 'MEDIUM' | 'LOW' {
+    if (!competition) return 'LOW';
+    
+    const competitionStr = String(competition).toUpperCase();
+    switch (competitionStr) {
+      case 'HIGH':
+      case 'COMPETITION_HIGH':
+        return 'HIGH';
+      case 'MEDIUM':
+      case 'COMPETITION_MEDIUM':
+        return 'MEDIUM';
+      default:
+        return 'LOW';
+    }
   }
 
   public async getSearchVolumes(keywords: string[]): Promise<Map<string, KeywordMetricsResult>> {
@@ -150,22 +225,6 @@ export class GoogleAdsService {
         });
       });
       return results;
-    }
-  }
-
-  private mapCompetitionLevel(competition: any): 'HIGH' | 'MEDIUM' | 'LOW' {
-    if (!competition) return 'LOW';
-    
-    const competitionStr = String(competition).toUpperCase();
-    switch (competitionStr) {
-      case 'HIGH':
-      case 'COMPETITION_HIGH':
-        return 'HIGH';
-      case 'MEDIUM':
-      case 'COMPETITION_MEDIUM':
-        return 'MEDIUM';
-      default:
-        return 'LOW';
     }
   }
 

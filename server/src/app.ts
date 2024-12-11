@@ -141,7 +141,7 @@ app.post('/api/search-volumes', async (req, res) => {
       }
     });
   }
-  
+
   try {
     const service = new GoogleAdsService({
       clientId: process.env.GOOGLE_ADS_CLIENT_ID!,
@@ -195,6 +195,38 @@ app.post('/api/search-volumes', async (req, res) => {
   }
 });
 
+
+
+
+
+
+app.post('/api/keyword-suggestions', async (req, res) => {
+  const { keyword } = req.body;
+  
+  if (!keyword) {
+    return res.status(400).json({ error: 'Keyword is required' });
+  }
+
+  try {
+    const service = new GoogleAdsService({
+      clientId: process.env.GOOGLE_ADS_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_ADS_CLIENT_SECRET!,
+      developerToken: process.env.GOOGLE_ADS_DEVELOPER_TOKEN!,
+      refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN!,
+      customerAccountId: process.env.GOOGLE_ADS_CUSTOMER_ACCOUNT_ID!
+    });
+
+    // Get related keywords using the GoogleAdsService
+    const suggestions = await service.getKeywordSuggestions(keyword);
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('Error getting keyword suggestions:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch keyword suggestions',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
 
 
 
