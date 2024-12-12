@@ -2,6 +2,7 @@
 client/node_modules
 server/node_modules
 node_modules
+
 # Ignore uploads folder
 server/uploads/*
 
@@ -10,7 +11,9 @@ server/uploads/*
 .env.local
 .env.*.local
 
-
 # Build directories
 client/build/*
 server/dist/*
+types/dist/*
+
+
