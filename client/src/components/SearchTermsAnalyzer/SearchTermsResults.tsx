@@ -562,48 +562,44 @@ const renderRow = (term: SearchTerm) => (
         {/* Pagination */}
 
 
-        {totalPages > 1 && (
-          <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-            </button>
-
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-[#17235E]">
-                <span>Showing {startIndex + 1}-{endIndex} of {filteredResults.length} terms</span>
-                <span className="mx-2">•</span>
-                <span>Page {currentPage} of {totalPages}</span>
-              </div>
-
-              <div className="relative inline-block">
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="appearance-none bg-gray-50 border border-gray-300 rounded px-3 py-1 pr-8 focus:outline-none focus:border-blue-500 cursor-pointer text-gray-600"
-                >
-                  {PAGE_SIZE_OPTIONS.map(size => (
-                    <option key={size} value={size}>
-                      {size} per page
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500" />
-              </div>
-            </div>
-
-            <button
-              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
-            >
-              Next <ChevronRight className="w-4 h-4 ml-1" />
-            </button>
-          </div>
-        )}
+    <div className="border-t border-gray-200 p-4 flex justify-between items-center bg-gray-200">
+    <button
+      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+      disabled={currentPage === 1}
+      className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
+    >
+      <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+    </button>
+  
+    <div className="flex items-center space-x-4">
+      <div className="text-sm text-[#17235E]">
+        <span>Showing {startIndex + 1}-{endIndex} of {filteredResults.length} terms</span>
+      </div>
+  
+      <div className="relative inline-block">
+        <select
+          value={itemsPerPage}
+          onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+          className="appearance-none bg-gray-50 border border-gray-300 rounded px-3 py-1 pr-8 focus:outline-none focus:border-blue-500 cursor-pointer text-gray-600"
+        >
+          {PAGE_SIZE_OPTIONS.map(size => (
+            <option key={size} value={size}>
+              {size} per page
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="w-4 h-4 absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500" />
+      </div>
+    </div>
+    <button
+    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+    disabled={currentPage === totalPages}
+    className="px-3 py-1 bg-blue-600 text-white rounded-lg disabled:bg-gray-300 flex items-center"
+  >
+    Next <ChevronRight className="w-4 h-4 ml-1" />
+  </button>
+</div>
+   
       </div>
 
 
@@ -639,7 +635,7 @@ searchTerm={selectedMetrics.term}
 metrics={selectedMetrics.metrics}
 originalTerm={searchTerms.find(term => term.searchTerm === selectedMetrics.term)!}
 onAddSuggestion={handleAddSuggestion}
-existingTerms={searchTerms} // Add this line
+existingTerms={searchTerms} 
 />
 
 
