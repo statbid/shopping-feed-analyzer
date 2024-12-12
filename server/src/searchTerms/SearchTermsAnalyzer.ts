@@ -52,10 +52,15 @@ export class SearchTermsAnalyzer {
         console.log(
           `Description extraction progress: ${current}/${total} batches (${progress.toFixed(1)}%)`
         );
-        this.progressCallback?.('description', progress);
+        this.progressCallback?.('description', current, total);
       }
     );
   }
+
+
+
+
+
 
   private getFieldValue(item: FeedItem, fieldType: 'category' | 'productType'): string | undefined {
     const possibleFields = SearchTermsAnalyzer.FIELD_MAPPINGS[fieldType];
@@ -253,7 +258,7 @@ export class SearchTermsAnalyzer {
         combinationCount++;
         const progress = Math.round((combinationCount / totalCombinations) * 100);
         if (this.progressCallback) {
-          this.progressCallback('attribute', progress);
+          this.progressCallback('attribute', combinationCount, totalCombinations);
         }
       }
   

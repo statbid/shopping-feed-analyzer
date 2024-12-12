@@ -52,6 +52,10 @@ interface ErrorResult {
   value: string;
 }
 
+interface ProgressState {
+  stage: 'attribute' | 'description' | 'synonyms';
+  progress: number;
+}
 
 
 type ProgressStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
@@ -80,6 +84,12 @@ export default function FileUpload() {
   const [descriptionProgress, setDescriptionProgress] = useState(0);
   const [analysisStage, setAnalysisStage] = useState<'attribute' | 'description'>('attribute');
   const [analysisProgress, setAnalysisProgress] = useState(0);
+
+  const [progressState, setProgressState] = useState<ProgressState>({
+    stage: 'attribute',
+    progress: 0
+  });
+
 
 
   // Reset analysis states when switching modes
@@ -252,7 +262,6 @@ const handleAnalyze = async () => {
  */
 
 
-
 const handleSearchTermsClick = async () => {
   if (!file) return;
 
@@ -260,8 +269,12 @@ const handleSearchTermsClick = async () => {
   setIsProgressModalOpen(true);
   resetAnalysisStates();
   setAnalysisMode('search');
-  setAttributeProgress(0);
-  setDescriptionProgress(0);
+  setProgressStatus('analyzing');
+  setProgressState({
+    stage: 'attribute',
+    progress: 0
+  });
+
 
   let accumulatedResults: SearchTerm[] = [];
 
@@ -295,22 +308,38 @@ const handleSearchTermsClick = async () => {
           switch (data.status) {
             case 'analyzing':
               if (data.stage === 'attribute') {
-                setAttributeProgress(data.progress || 0);
-                setAnalysisStage('attribute');
+                setProgressState({
+                  stage: 'attribute',
+                  progress: 0
+                });
               } else if (data.stage === 'description') {
-                setDescriptionProgress(data.progress || 0);
-                setAnalysisStage('description');
+                // Calculate progress from the batch information
+                const progress = data.progress || ((data.current || 0) / (data.total || 1)) * 100;
+                setProgressState({
+                  stage: 'description',
+                  progress: progress
+                });
               }
-              setUploadStatus({
-                type: 'success',
-                message: data.message || `Processing ${data.stage} analysis...`
+              break;
+  
+            case 'chunking':
+              setProgressState({
+                stage: 'synonyms',
+                progress: 0
               });
               break;
-
+  
             case 'chunk':
               if (data.chunk && Array.isArray(data.chunk)) {
                 accumulatedResults = [...accumulatedResults, ...data.chunk];
                 setSearchTermsResults([...accumulatedResults]);
+                // Update synonym progress if available
+                if (data.progress) {
+                  setProgressState({
+                    stage: 'synonyms',
+                    progress: data.progress
+                  });
+                }
               }
               break;
 
@@ -339,11 +368,6 @@ const handleSearchTermsClick = async () => {
     setIsProgressModalOpen(false);
   }
 };
-
-
-
-
-
 
 /**
  * Updates the selected checks for feed quality analysis.
@@ -419,12 +443,15 @@ const handleSearchTermsClick = async () => {
         onSearchVolumeChange={setUseSearchVolumes}
       />
 
-      <ProgressModal
-        isOpen={isProgressModalOpen}
-        processedProducts={processedProducts}
-        status={progressStatus}
-        analysisType={analysisMode === 'search' ? 'search' : 'feed'}
-      />
+    <ProgressModal
+  isOpen={isProgressModalOpen}
+  processedProducts={processedProducts}
+  status={progressStatus}
+  analysisType={analysisMode === 'search' ? 'search' : 'feed'}
+  currentStage={progressState.stage}
+  progress={progressState.progress}
+/>
+
     </div>
   );
 }

@@ -27,16 +27,16 @@
  * - Includes animations (e.g., spinning borders) for a better user experience.
  * - Modal is centered on the screen with a semi-transparent backdrop.
  */
-
 import React from 'react';
-import { FileArchive, FileText, Loader, Upload, CheckCircle } from 'lucide-react';
+import { FileText, Loader, FileArchive, Upload, CheckCircle } from 'lucide-react';
 
 interface ProgressModalProps {
-  isOpen: boolean; // Determines whether the modal is visible
-  processedProducts: number; // Number of products processed
-  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing'; // Current processing status
-  analysisType?: 'feed' | 'search'; // Type of analysis being performed (optional)
-  statusMessage?: string; // Optional additional status message
+  isOpen: boolean;
+  processedProducts: number;
+  status: 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
+  analysisType: 'feed' | 'search';
+  currentStage?: 'attribute' | 'description' | 'synonyms';
+  progress?: number;
 }
 
 const ProgressModal: React.FC<ProgressModalProps> = ({
@@ -44,60 +44,54 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
   processedProducts,
   status,
   analysisType,
-  statusMessage
+  currentStage,
+  progress
 }) => {
-  // If the modal is not open, do not render it
   if (!isOpen) return null;
 
-  /**
-   * Generates the content to display based on the current status.
-   */
+  const getStageText = () => {
+    if (analysisType === 'search') {
+      switch (currentStage) {
+        case 'attribute':
+          return 'Generating Search Terms...';
+        case 'description':
+          return `Analyzing product descriptions (${Math.round(progress || 0)}%)`;
+        case 'synonyms':
+          return 'Processing term variations...';
+        default:
+          return 'Starting search terms analysis...';
+      }
+    }
+    return 'Processing...';
+  };
+
   const getContent = () => {
     switch (status) {
-      case 'uploading':
-        return (
-          <div className="flex flex-col items-center">
-            <Upload className="w-16 h-16 text-blue-500 mb-2" />
-            <p className="text-lg mb-4">Uploading File...</p>
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        );
-
-      case 'extracting':
-        return (
-          <div className="flex flex-col items-center">
-            <FileArchive className="w-16 h-16 text-blue-500 mb-2" />
-            <p className="text-lg mb-4">Extracting ZIP File...</p>
-            <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          </div>
-        );
-
-      case 'extracted':
-        return (
-          <div className="flex flex-col items-center">
-            <FileText className="w-16 h-16 text-green-500 mb-2" />
-            <p className="text-lg mb-4">File Extracted Successfully!</p>
-          </div>
-        );
-
       case 'processing':
       case 'analyzing':
         return (
           <div className="flex flex-col items-center">
-            <CheckCircle className="w-16 h-16 text-blue-500 mb-2" />
-            <p className="text-lg mb-4">
-              {analysisType === 'search' ? 'Generating Search Terms' : 'Checking Feed Quality'}
-            </p>
-            <div className="mb-4">
-              <p className="text-3xl font-bold text-blue-600">
-                {processedProducts.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">Products processed</p>
-            </div>
+            <FileText className="w-16 h-16 text-blue-500 mb-2" />
+            <h2 className="text-2xl font-bold mb-6">
+              {analysisType === 'search' ? 'Search Terms Analysis' : 'Feed Quality Analysis'}
+            </h2>
+  
+            {analysisType === 'search' && (
+              <p className="text-lg mb-4">{getStageText()}</p>
+            )}
+  
+            {analysisType === 'feed' && (
+              <div className="mb-4">
+                <p className="text-3xl font-bold text-blue-600">
+                  {processedProducts.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-600">Products processed</p>
+              </div>
+            )}
+  
             <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
           </div>
         );
-
       default:
         return (
           <div className="flex flex-col items-center">
@@ -108,33 +102,10 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
     }
   };
 
-  /**
-   * Determines the title of the modal based on the current status.
-   */
-  const getTitle = () => {
-    switch (status) {
-      case 'uploading':
-        return 'Processing Feed File';
-      case 'extracting':
-        return 'Extracting ZIP File';
-      case 'extracted':
-        return 'File Ready';
-      case 'analyzing':
-      case 'processing':
-        return analysisType === 'search' ? 'Search Terms Analysis' : 'Feed Quality Analysis';
-      default:
-        return 'Processing Feed File';
-    }
-  };
-
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-96 text-center">
-        <h2 className="text-2xl font-bold mb-6">{getTitle()}</h2>
+      <div className="bg-white p-8 rounded-lg shadow-lg max-w-2xl w-full mx-4">
         {getContent()}
-        {statusMessage && (
-          <p className="text-sm text-gray-600 mt-4">{statusMessage}</p>
-        )}
       </div>
     </div>
   );

@@ -332,14 +332,17 @@ app.post('/api/search-terms', async (req, res) => {
     });
 
     // Second phase: Analyze search terms
-    const analyzer = new SearchTermsAnalyzer((stage, progress) => {
+ 
+    const analyzer = new SearchTermsAnalyzer((stage: 'attribute' | 'description', current: number, total: number) => {
+      const progress = (current / total) * 100;
       sendUpdate({
         status: 'analyzing',
         stage: stage,
         progress: progress,
+        current: current,
+        total: total
       });
     });
-
     const searchTerms = await analyzer.analyzeSearchTerms(items);
 
     // Send final results

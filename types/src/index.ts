@@ -95,9 +95,11 @@ export interface Product {
     totalTerms?: number;
     error?: string;
     details?: string;
+    current?: number;  
+    total?: number;   
   }
-  
-  export type ProgressCallback = (stage: AnalysisStage, progress: number) => void;
+  export type ProgressCallback = (stage: 'attribute' | 'description', current: number, total: number) => void;
+
   export type DescriptionProgressCallback = (status: string, count: number, total: number) => void;
   
   // API Types
