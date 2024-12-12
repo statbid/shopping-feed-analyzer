@@ -26,7 +26,6 @@
  */
 
 
-
 import React, { useState, useEffect } from 'react';
 import AnalyzerHeader from './AnalyzerHeader';
 import FileUploadModal from './FileUploadModal';
@@ -56,6 +55,9 @@ interface ErrorResult {
 
 
 type ProgressStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'processing';
+type AnalysisMode = 'none' | 'quality' | 'search';
+
+
 
 export default function FileUpload() {
   const [file, setFile] = useState<File | null>(null);
@@ -72,13 +74,23 @@ export default function FileUpload() {
   const [progressStatus, setProgressStatus] = useState<ProgressStatus>('uploading');
   const [searchTermsResults, setSearchTermsResults] = useState<SearchTerm[] | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [analysisType, setAnalysisType] = useState<'feed' | 'search'>('feed');
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>('none');
   const [useSearchVolumes, setUseSearchVolumes] = useState(true);
   const [attributeProgress, setAttributeProgress] = useState(0);
   const [descriptionProgress, setDescriptionProgress] = useState(0);
-
   const [analysisStage, setAnalysisStage] = useState<'attribute' | 'description'>('attribute');
-const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+
+
+  // Reset analysis states when switching modes
+  const resetAnalysisStates = () => {
+    setAnalysisResults(null);
+    setSearchTermsResults(null);
+    setProcessedProducts(0);
+    setAttributeProgress(0);
+    setDescriptionProgress(0);
+    setAnalysisProgress(0);
+  };
 
 
 /**
@@ -89,46 +101,47 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
  * @param selectedFile - The file selected by the user.
  */
 
-  const handleFileSelect = async (selectedFile: File) => {
-    setIsLoading(true);
-    setIsProgressModalOpen(true);
-    setProgressStatus('uploading');
+const handleFileSelect = async (selectedFile: File) => {
+  setIsLoading(true);
+  setIsProgressModalOpen(true);
+  setProgressStatus('uploading');
+  resetAnalysisStates();
+  setAnalysisMode('none');
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
+  const formData = new FormData();
+  formData.append('file', selectedFile);
 
-    try {
-      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.upload}`, {
-        method: 'POST',
-        body: formData,
-      });
+  try {
+    const response = await fetch(`${environment.api.baseUrl}/api/upload`, {
+      method: 'POST',
+      body: formData,
+    });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      setFile(selectedFile);
-      setUploadStatus({
-        type: 'success',
-        message: `File processed successfully!`,
-      });
-      setIsModalOpen(false);
-    } catch (error: unknown) {
-      let errorMessage = 'An unknown error occurred';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      setUploadStatus({
-        type: 'error',
-        message: `Error processing file: ${errorMessage}`,
-      });
-    } finally {
-      setIsLoading(false);
-      setIsProgressModalOpen(false);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+
+    const data = await response.json();
+    setFile(selectedFile);
+    setUploadStatus({
+      type: 'success',
+      message: `File processed successfully!`,
+    });
+    setIsModalOpen(false);
+  } catch (error: unknown) {
+    let errorMessage = 'An unknown error occurred';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    setUploadStatus({
+      type: 'error',
+      message: `Error processing file: ${errorMessage}`,
+    });
+  } finally {
+    setIsLoading(false);
+    setIsProgressModalOpen(false);
+  }
+};
 
 
 /**
@@ -137,96 +150,97 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
  * - Updates the progress status during the analysis process.
  * - Displays the analysis results or error feedback.
  */
-  const handleAnalyze = async () => {
-    if (!file) return;
 
-    setIsLoading(true);
-    setIsProgressModalOpen(true);
-    setProcessedProducts(0);
-    setProgressStatus('analyzing');
-    setIsCheckSelectorModalOpen(false);
 
-    try {
-      const response = await fetch(`${environment.api.baseUrl}${environment.api.endpoints.analyze}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          enabledChecks: getEnabledChecks(selectedChecks),
-        }),
-      });
+const handleAnalyze = async () => {
+  if (!file) return;
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  setIsLoading(true);
+  setIsProgressModalOpen(true);
+  setProcessedProducts(0);
+  setProgressStatus('analyzing');
+  setIsCheckSelectorModalOpen(false);
+  resetAnalysisStates();
+  setAnalysisMode('quality');
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+  try {
+    const response = await fetch(`${environment.api.baseUrl}/api/analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: file.name,
+        enabledChecks: getEnabledChecks(selectedChecks),
+      }),
+    });
 
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-              if (data.error) {
-                console.error('Server error:', data.error, data.details);
-                setUploadStatus({
-                  type: 'error',
-                  message: `Error analyzing file: ${data.details || data.error}`,
-                });
-                return;
-              }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
 
-              if (data.processed) {
-                setProcessedProducts(data.processed);
-              }
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
 
-              if (data.completed) {
-                setAnalysisResults(data.results);
-                setUploadStatus({
-                  type: 'success',
-                  message: 'File analyzed successfully!',
-                });
-              }
-            } catch (jsonError) {
-              console.error('Error parsing JSON:', jsonError);
+            if (data.error) {
+              console.error('Server error:', data.error, data.details);
               setUploadStatus({
                 type: 'error',
-                message: 'Error parsing server response',
+                message: `Error analyzing file: ${data.details || data.error}`,
+              });
+              return;
+            }
+
+            if (data.processed) {
+              setProcessedProducts(data.processed);
+            }
+
+            if (data.completed) {
+              setAnalysisResults(data.results);
+              setUploadStatus({
+                type: 'success',
+                message: 'File analyzed successfully!',
               });
             }
+          } catch (jsonError) {
+            console.error('Error parsing JSON:', jsonError);
+            setUploadStatus({
+              type: 'error',
+              message: 'Error parsing server response',
+            });
           }
         }
       }
-    } catch (error: unknown) {
-      console.error('Error:', error);
-      let errorMessage = 'An unknown error occurred';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      setUploadStatus({
-        type: 'error',
-        message: `Error analyzing file: ${errorMessage}`,
-      });
-    } finally {
-      setIsLoading(false);
-      setIsProgressModalOpen(false);
     }
-  };
-
-
-
+  } catch (error: unknown) {
+    console.error('Error:', error);
+    let errorMessage = 'An unknown error occurred';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    setUploadStatus({
+      type: 'error',
+      message: `Error analyzing file: ${errorMessage}`,
+    });
+  } finally {
+    setIsLoading(false);
+    setIsProgressModalOpen(false);
+  }
+};
 
 
 
@@ -237,95 +251,94 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
  * 
  */
 
-  const handleSearchTermsClick = async () => {
-    if (!file) return;
-  
-    setAnalysisResults(null);
-    setSearchTermsResults(null);
-    setIsLoading(true);
-    setIsProgressModalOpen(true);
-    setAnalysisType('search');
-    setAttributeProgress(0);
-    setDescriptionProgress(0);
-  
-    let accumulatedResults: SearchTerm[] = [];
-  
-    try {
-      const response = await fetch(`${environment.api.baseUrl}/api/search-terms`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ fileName: file.name }),
-      });
-  
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-  
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-  
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-  
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-  
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data: ProgressUpdate = JSON.parse(line.slice(6));
-            
-            switch (data.status) {
-              case 'analyzing':
-                if (data.stage === 'attribute') {
-                  setAttributeProgress(data.progress || 0);
-                  setAnalysisStage('attribute');
-                } else if (data.stage === 'description') {
-                  setDescriptionProgress(data.progress || 0);
-                  setAnalysisStage('description');
-                }
-                setUploadStatus({
-                  type: 'success',
-                  message: data.message || `Processing ${data.stage} analysis...`
-                });
-                break;
-  
-              case 'chunk':
-                if (data.chunk && Array.isArray(data.chunk)) {
-                  accumulatedResults = [...accumulatedResults, ...data.chunk];
-                  setSearchTermsResults([...accumulatedResults]);
-                }
-                break;
-  
-              case 'complete':
-                setSearchTermsResults(accumulatedResults);
-                setUploadStatus({
-                  type: 'success',
-                  message: `Analysis complete: ${accumulatedResults.length} search terms found`
-                });
-                break;
-  
-              case 'error':
-                throw new Error(data.error || 'Unknown error during analysis');
-            }
+
+
+const handleSearchTermsClick = async () => {
+  if (!file) return;
+
+  setIsLoading(true);
+  setIsProgressModalOpen(true);
+  resetAnalysisStates();
+  setAnalysisMode('search');
+  setAttributeProgress(0);
+  setDescriptionProgress(0);
+
+  let accumulatedResults: SearchTerm[] = [];
+
+  try {
+    const response = await fetch(`${environment.api.baseUrl}/api/search-terms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fileName: file.name }),
+    });
+
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data: ProgressUpdate = JSON.parse(line.slice(6));
+          
+          switch (data.status) {
+            case 'analyzing':
+              if (data.stage === 'attribute') {
+                setAttributeProgress(data.progress || 0);
+                setAnalysisStage('attribute');
+              } else if (data.stage === 'description') {
+                setDescriptionProgress(data.progress || 0);
+                setAnalysisStage('description');
+              }
+              setUploadStatus({
+                type: 'success',
+                message: data.message || `Processing ${data.stage} analysis...`
+              });
+              break;
+
+            case 'chunk':
+              if (data.chunk && Array.isArray(data.chunk)) {
+                accumulatedResults = [...accumulatedResults, ...data.chunk];
+                setSearchTermsResults([...accumulatedResults]);
+              }
+              break;
+
+            case 'complete':
+              setSearchTermsResults(accumulatedResults);
+              setUploadStatus({
+                type: 'success',
+                message: `Analysis complete: ${accumulatedResults.length} search terms found`
+              });
+              break;
+
+            case 'error':
+              throw new Error(data.error || 'Unknown error during analysis');
           }
         }
       }
-    } catch (error) {
-      console.error('Error analyzing search terms:', error);
-      setUploadStatus({
-        type: 'error',
-        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      });
-    } finally {
-      setIsLoading(false);
-      setIsProgressModalOpen(false);
     }
-  };
-
-
+  } catch (error) {
+    console.error('Error analyzing search terms:', error);
+    setUploadStatus({
+      type: 'error',
+      message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    });
+  } finally {
+    setIsLoading(false);
+    setIsProgressModalOpen(false);
+  }
+};
 
 
 
@@ -350,10 +363,12 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
     };
   }, [file]);
 
+
+
+
+
   return (
     <div className="w-full h-full flex flex-col">
-
-      {/* AnalyzerHeader - Manages the file upload, analysis initiation, and navigation to settings. */}
       <AnalyzerHeader
         file={file}
         onUploadClick={() => setIsModalOpen(true)}
@@ -364,7 +379,6 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
         isLoading={isLoading}
       />
 
-{/* Toast - Displays success or error notifications for user actions. */}
       {uploadStatus.type && (
         <Toast
           type={uploadStatus.type}
@@ -374,15 +388,13 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
       )}
 
       <div className="flex-grow overflow-hidden">
-
-        {/* Main Content - Displays either search terms results or feed analysis results based on user action. */}
-        {searchTermsResults && searchTermsResults.length > 0 ? (
+        {analysisMode === 'search' && searchTermsResults ? (
           <SearchTermsResults
             results={searchTermsResults}
             fileName={file?.name || ''}
             useSearchVolumes={useSearchVolumes}
           />
-        ) : analysisResults ? (
+        ) : analysisMode === 'quality' && analysisResults ? (
           <AnalysisResults
             results={analysisResults}
             fileName={file?.name || ''}
@@ -391,14 +403,13 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
         ) : null}
       </div>
 
+      {/* Modals */}
       <FileUploadModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onFileSelect={handleFileSelect}
       />
 
- 
-{/* Settings Modal - Allows users to customize analysis checks and toggle search volume usage. */}
       <Settings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
@@ -408,15 +419,12 @@ const [analysisProgress, setAnalysisProgress] = useState(0);
         onSearchVolumeChange={setUseSearchVolumes}
       />
 
-{/* Progress Modal - Displays real-time progress for feed or search terms analysis. */}
-
-<ProgressModal
+      <ProgressModal
         isOpen={isProgressModalOpen}
         processedProducts={processedProducts}
         status={progressStatus}
-        analysisType={analysisType}
+        analysisType={analysisMode === 'search' ? 'search' : 'feed'}
       />
-      
     </div>
   );
 }
