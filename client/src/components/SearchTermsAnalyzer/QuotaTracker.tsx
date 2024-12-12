@@ -9,8 +9,7 @@ interface QuotaTrackerProps {
 }
 
 const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
-  const { used, limit, lastUpdated, isLoading, setQuota, setLoading } = useQuotaStore();
-  
+  const { used, limit, lastUpdated, remainingTime, isLoading, setQuota, setLoading } = useQuotaStore();
 
   const fetchQuotaStatus = async () => {
     try {
@@ -18,7 +17,12 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
       const response = await fetch(`${environment.api.baseUrl}/api/quota-status`);
       if (response.ok) {
         const data = await response.json();
-        setQuota(data.used, Number(data.limit), new Date(data.lastUpdated));
+        setQuota(
+          data.used, 
+          Number(data.limit), 
+          new Date(data.lastUpdated),
+          data.remainingTime
+        );
       }
     } catch (error) {
       console.error('Failed to fetch quota status:', error);
@@ -27,7 +31,7 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
 
   useEffect(() => {
     fetchQuotaStatus();
-    const interval = isEnabled ? setInterval(fetchQuotaStatus, 60000) : null;
+    const interval = isEnabled ? setInterval(fetchQuotaStatus, 10000) : null;
     return () => {
       if (interval) clearInterval(interval);
     };
@@ -46,7 +50,7 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
             checked={isEnabled}
             onChange={(e) => {
               if (isQuotaCritical && e.target.checked) {
-                alert('API quota is nearly exhausted. Please wait until tomorrow.');
+                alert('API quota is nearly exhausted. Please wait for requests to expire.');
                 return;
               }
               onToggle(e.target.checked);
@@ -63,7 +67,7 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
 
       <div className="bg-white rounded-lg p-4 border shadow-sm">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">Daily API Quota Usage</span>
+          <span className="text-sm font-medium text-gray-700">API Quota Usage</span>
           {isLoading ? (
             <Loader className="w-5 h-5 text-blue-500 animate-spin" />
           ) : isQuotaWarning ? (
@@ -95,8 +99,14 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
           </span>
         </div>
 
+        {remainingTime && (
+          <div className="mt-2 text-xs text-gray-600">
+            First request expires in: {remainingTime}
+          </div>
+        )}
+
         {lastUpdated && (
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-gray-500">
             Last updated: {lastUpdated.toLocaleString()}
           </div>
         )}
@@ -105,14 +115,14 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
           <div className={`mt-3 text-sm ${isQuotaCritical ? 'text-red-600' : 'text-amber-600'} flex items-center gap-2`}>
             <AlertCircle className="w-4 h-4" />
             {isQuotaCritical 
-              ? 'API quota nearly exhausted. Please wait until tomorrow.'
+              ? 'API quota nearly exhausted. Please wait for requests to expire.'
               : 'API quota running low. Large analyses may be restricted.'}
           </div>
         )}
       </div>
 
       <div className="text-xs text-gray-500">
-        <p>Note: The quota resets daily. Monitor usage to ensure uninterrupted service.</p>
+      <p>Note: Each request expires 24 hours after it was made.</p>
       </div>
     </div>
   );
