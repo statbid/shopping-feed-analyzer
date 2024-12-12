@@ -1,13 +1,41 @@
+/**
+ * File Copy Script
+ *
+ * This script ensures that necessary files and directories are copied from the `src` directory to the `dist` directory for use in production.
+ * It is designed to handle both files and directories, creating the destination structure if it does not exist.
+ *
+ * Key Functionalities:
+ * - **Directory Recursion:** Recursively copies all files and subdirectories from a source directory to a destination directory.
+ * - **Error Handling:** Checks for the existence of source directories and creates destination directories as needed.
+ * - **Production Preparation:** Specifically targets directories like `src/dictionaries` and `src/.cache` that need to be available in the production build.
+ *
+ * Features:
+ * - Copies files using `fs.copyFileSync`.
+ * - Handles directory creation with `fs.mkdirSync` and ensures the entire directory structure is maintained.
+ * - Logs the progress of the copying process for transparency and debugging.
+ *
+ * Configuration:
+ * - The `directories` array contains the source and destination mappings relative to the project root.
+ *
+ * Usage:
+ * - Run this script as part of your build process to ensure that production files are properly prepared.
+ */
+
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Recursively copies files and directories from a source to a destination.
+ * @param {string} src - Source directory path.
+ * @param {string} dest - Destination directory path.
+ */
 function copyDir(src, dest) {
     // Create destination directory if it doesn't exist
     if (!fs.existsSync(dest)) {
         fs.mkdirSync(dest, { recursive: true });
     }
 
-    // Read all files in source directory
+    // Read all files and directories in the source directory
     const entries = fs.readdirSync(src, { withFileTypes: true });
 
     for (const entry of entries) {
@@ -15,17 +43,17 @@ function copyDir(src, dest) {
         const destPath = path.join(dest, entry.name);
 
         if (entry.isDirectory()) {
-            // Recursively copy directories
+            // Recursively copy subdirectories
             copyDir(srcPath, destPath);
         } else {
-            // Copy files
+            // Copy individual files
             fs.copyFileSync(srcPath, destPath);
             console.log(`Copied: ${srcPath} -> ${destPath}`);
         }
     }
 }
 
-// Paths relative to project root
+// Define directories to copy
 const directories = [
     {
         src: 'src/dictionaries',
@@ -37,8 +65,9 @@ const directories = [
     }
 ];
 
-console.log('Starting file copy...');
+console.log('Starting file copy process...');
 
+// Iterate over directories and copy them
 directories.forEach(({ src, dest }) => {
     const srcPath = path.resolve(__dirname, '..', src);
     const destPath = path.resolve(__dirname, '..', dest);
@@ -51,4 +80,4 @@ directories.forEach(({ src, dest }) => {
     }
 });
 
-console.log('\nFile copy completed!');
+console.log('\nFile copy process completed!');

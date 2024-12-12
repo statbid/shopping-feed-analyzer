@@ -1,3 +1,35 @@
+/**
+ * SearchTermsProgress Component
+ *
+ * This component provides a visual indication that a process is in progress for search term analysis,
+ * particularly during attribute combinations and product description analysis.
+ *
+ * Props:
+ * - `isOpen` (boolean): Determines whether the modal is visible.
+ * - `stage` ('attribute' | 'description'): Indicates the current stage of the process.
+ * - `progress` (number): Overall progress percentage (not currently displayed).
+ * - `message` (string, optional): Custom message to display during the process.
+ * - `attributeProgress` (number): Progress of attribute combinations analysis (not currently displayed).
+ * - `descriptionProgress` (number): Progress of description analysis (not currently displayed).
+ *
+ * Key Features:
+ * - **Modal Display**: Shows a centered modal when `isOpen` is true.
+ * - **Process Indicators**: Displays animated spinners and status messages for:
+ *   - Attribute combinations analysis.
+ *   - Description analysis.
+ * - **Dynamic Messaging**: Adjusts the status message based on the current stage.
+ * - **Customizable Message**: Allows overriding the default message with a custom one via the `message` prop.
+ *
+ * Dependencies:
+ * - `lucide-react`: Provides icons for visual feedback.
+ *
+ * Notes:
+ * - This component does not display the progress percentages (`progress`, `attributeProgress`, `descriptionProgress`)
+ *   but could be extended to do so in future iterations.
+ * - Animations are managed using CSS classes such as `animate-spin`.
+ */
+
+
 import React from 'react';
 import { FileText, Loader } from 'lucide-react';
 

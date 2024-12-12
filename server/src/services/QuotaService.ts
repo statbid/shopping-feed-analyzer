@@ -1,3 +1,42 @@
+/**
+ * QuotaService Class
+ *
+ * Manages API quota usage and enforces request limits for the Google Ads API. 
+ * Ensures that requests stay within the daily quota limit, tracks usage, and provides utilities 
+ * for checking the remaining quota and managing expired requests.
+ *
+ * Key Features:
+ * - **Quota Management:**
+ *   - Tracks daily usage of the Google Ads API quota.
+ *   - Enforces request limits based on a defined quota.
+ * - **Request Tracking:**
+ *   - Records individual requests with timestamps and counts.
+ *   - Automatically removes expired requests after their lifetime (default: 24 hours).
+ * - **Persistence:**
+ *   - Saves quota usage to disk to maintain state across application restarts.
+ * - **Quota Status:**
+ *   - Provides details about used quota, remaining quota, and time until the oldest request expires.
+ * - **Singleton Pattern:**
+ *   - Ensures a single instance of the service is used throughout the application.
+ *
+ * Configuration:
+ * - Quota limit is configurable via the `GOOGLE_ADS_DAILY_QUOTA` environment variable.
+ * - Storage path for quota data is configured in the `environment` module.
+ *
+ * Usage:
+ * ```typescript
+ * const quotaService = QuotaService.getInstance();
+ * const canRequest = quotaService.canMakeRequest(5);
+ * if (canRequest) {
+ *   quotaService.incrementUsage(5);
+ *   // Proceed with API calls
+ * }
+ * const status = quotaService.getStatus();
+ * console.log('Quota status:', status);
+ * ```
+ */
+
+
 import fs from 'fs';
 import path from 'path';
 import environment from '../config/environment';

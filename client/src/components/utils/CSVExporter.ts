@@ -1,16 +1,48 @@
 /**
  * CSVExporter
  *
- * Utility class for exporting various types of data into CSV format. 
- * Provides methods to generate and download CSV content for error results, 
- * search terms, and their summaries. Includes built-in options for customization 
- * like headers, delimiters, and encoding.
+ * A utility class for exporting various types of data into CSV format. 
+ * Designed for flexibility, it supports error results, search term analysis, 
+ * and summary reports, along with advanced formatting options.
  *
  * Key Functionalities:
- * - Export errors with detailed information.
- * - Export summary reports for errors and search terms.
- * - Download CSV files with proper encoding and format.
+ * - **Error Checks Exporting:**
+ *   - Export detailed errors with product-specific information.
+ *   - Generate summary reports combining feed statistics and detailed errors.
+ * - **Search Terms Exporting:**
+ *   - Export search terms with detailed metrics, including monthly search volume, competition, and bid ranges.
+ *   - Provide distribution of search term patterns (e.g., attribute-based, description-based, API suggestions).
+ * - **Download Capabilities:**
+ *   - Create and download CSV files with proper encoding (UTF-8 BOM for compatibility).
+ *   - Automatically generate filenames based on input data.
+ *
+ * Key Features:
+ * - **Customizable Options:** Includes headers, delimiters, and UTF-8 encoding for broad compatibility.
+ * - **Pattern Distribution:** Summarizes search term categories in the header of CSV files.
+ * - **Safe Field Handling:** Escapes special characters in fields to maintain CSV validity.
+ * - **Dynamic Formatting:** Supports flexible row and field-level processing for CSV generation.
+ *
+ * Methods:
+ * - **Error Handling:**
+ *   - `exportErrors(errors: ErrorResult[]): string`: Converts error results into a CSV string.
+ *   - `exportSummaryReport(fileName: string, totalProducts: number, errorCounts: { [key: string]: number }, errors: ErrorResult[]): string`: 
+ *     Generates a CSV summary report with statistics and detailed errors.
+ * - **Search Terms Handling:**
+ *   - `exportSearchTerms(terms: SearchTerm[], includeHeader = true): string`: Converts search terms with metrics into a CSV string, including a summary header.
+ *   - `getPatternDistribution(terms: SearchTerm[]): { attributeBased: number; descriptionBased: number; apiSuggestions: number; }`:
+ *     Analyzes search term patterns for summary reporting.
+ * - **File Download:**
+ *   - `downloadCSV(content: string, filename: string): void`: Triggers the download of a CSV file with the provided content and filename.
+ *
+ * Notes:
+ * - **File Encoding:** Adds a UTF-8 BOM for seamless Excel compatibility.
+ * - **Field Validation:** Ensures proper escaping of fields containing special characters, commas, or line breaks.
+ * - **Dynamic Report Generation:** Adapts summaries and detailed information based on provided data.
+ *
+ * Dependencies:
+ * - Relies on types `SearchTerm` and `ErrorResult` for structuring input data.
  */
+
 
 import { SearchTerm, ErrorResult } from '@shopping-feed/types';
 

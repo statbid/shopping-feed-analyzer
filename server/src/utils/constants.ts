@@ -1,4 +1,47 @@
 
+/**
+ * Constants and Utilities for Product Feed Analysis
+ *
+ * This module defines a collection of constants, regex patterns, and utility functions 
+ * for handling and validating product feed data. These are primarily used for text cleaning, 
+ * size normalization, and spell-checking in the context of product feed analysis.
+ *
+ * **Constants:**
+ * - **Size Words**:
+ *   - `sizeWords`: Set of standard size tokens (e.g., `xs`, `small`).
+ *   - `sizeSynonyms`: Mapping of size tokens to their synonyms for normalization.
+ *
+ * - **Regex Patterns**:
+ *   - `inchMatch`: Matches size formats involving inches (e.g., `5"`, `5 in`).
+ *   - `repeatedDashRegex`: Matches multiple consecutive dashes.
+ *   - `punctuationStartEndRegex`: Matches punctuation at the start or end of a string.
+ *   - `missingSpaceRegex`: Matches words missing spaces after commas.
+ *   - `htmlTagRegex`: Matches HTML tags (e.g., `<div>`).
+ *   - `htmlEntityRegex`: Matches HTML entities (e.g., `&nbsp;`).
+ *   - `specialCharsRegex`: Matches non-alphanumeric characters (excluding hyphens).
+ *   - `validFractionRegex`: Matches numeric fractions (e.g., `1/2`).
+ *   - `trailingPeriodRegex`: Matches trailing periods at the end of a string.
+ *
+ * - **Promotional Words**:
+ *   - List of promotional keywords to filter out from descriptions (e.g., `save`, `free shipping`).
+ *
+ * - **Limits**:
+ *   - `MAX_DESCRIPTION_LENGTH`: Maximum allowed length for product descriptions.
+ *   - `MAX_ID_LENGTH`: Maximum allowed length for product IDs.
+ *
+ * - **Utility Functions**:
+ *   - `escapeRegExp`: Escapes special characters in a string for use in regex patterns.
+ *   - `shouldSpellCheck`: Determines if a word should be subject to spell checking based on 
+ *     specific criteria (e.g., numbers, fractions, valid units).
+ *   - `tokenBoundaryRegex`: Creates a regex to match a token within boundaries.
+ *   - `sizeWordBoundaryRegex`: Matches size-related tokens with word boundaries.
+ *
+ * **Purpose:**
+ * - Ensure product feed data is clean, consistent, and free from common formatting errors.
+ * - Support efficient and accurate size normalization, text validation, and spell-checking.
+ */
+
+
 export const sizeWords = new Set(['xs', 's', 'm', 'l', 'xl', 'small', 'medium', 'large']);
 export const sizeSynonyms: { [key: string]: string[] } = {
   'xs': ['xs', 'extra small'],

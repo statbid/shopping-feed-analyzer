@@ -1,3 +1,40 @@
+/**
+ * FileHandler Utility for File Uploads and Processing
+ *
+ * This module provides functionality to handle uploaded files, specifically for the use case of 
+ * validating, extracting, and managing file uploads in a structured and secure manner. It supports 
+ * CSV, TSV, and ZIP files and includes mechanisms for sanitization, cleanup, and directory management.
+ *
+ * **Key Features:**
+ * - **Allowed File Types**: Supports `.csv`, `.tsv`, and `.zip` file extensions.
+ * - **Uploads Directory Management**:
+ *   - Ensures the uploads directory exists.
+ *   - Cleans up uploaded files and maintains a registry of processed files.
+ * - **File Sanitization**: Ensures uploaded file names are safe for use in the file system by replacing 
+ *   or removing invalid characters.
+ * - **ZIP File Extraction**:
+ *   - Extracts and processes the first valid CSV/TSV file found in a ZIP archive.
+ *   - Automatically cleans up the original ZIP file after extraction.
+ * - **Error Handling**:
+ *   - Handles unsupported file types and invalid ZIP files gracefully.
+ *   - Logs and manages errors during file operations.
+ * - **File Registry**: Tracks original and processed file paths for retrieval during analysis.
+ *
+ * **Methods:**
+ * - `cleanupUploadsDirectory`: Cleans up the uploads directory by removing all files and clearing the registry.
+ * - `sanitizeFileName`: Returns a sanitized version of the provided file name, replacing invalid characters.
+ * - `getProcessedFilePath`: Retrieves the path of a previously processed file using its original file name.
+ * - `handleUploadedFile`: Processes an uploaded file based on its extension and extracts content if it's a ZIP file.
+ * - `handleZipFile`: Extracts the first valid CSV/TSV file from a ZIP archive.
+ * - `cleanupFile`: Removes a file from the file system and the internal registry.
+ *
+ * **Usage Scenarios:**
+ * - Handling and validating file uploads in a web application.
+ * - Extracting and processing product feed data from user-uploaded files.
+ * - Cleaning up outdated or unnecessary files in the uploads directory.
+ */
+
+
 import AdmZip from 'adm-zip';
 import fs from 'fs';
 import path from 'path';

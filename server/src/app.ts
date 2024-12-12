@@ -1,3 +1,50 @@
+/**
+ * **Server Initialization and API Routes**
+ *
+ * This script defines the main Express server for the application, including:
+ * - **Setup:** Middleware for handling JSON requests, CORS, and large payloads.
+ * - **File Uploads:** Handles uploaded files and ensures clean directory management.
+ * - **Feed Analysis:** Provides endpoints to analyze product feed files, extract search terms, and perform quality checks.
+ * - **Google Ads API Integration:** Handles requests for search volume data and keyword suggestions using the Google Ads API.
+ * - **Quota Management:** Exposes quota usage and ensures API request limits are respected.
+ *
+ * **Key Features:**
+ * - **File Handling and Analysis:**
+ *   - `POST /api/upload`: Processes and stores uploaded files (ZIP, CSV, or TSV).
+ *   - `POST /api/analyze`: Streams and analyzes product feed files for errors and inconsistencies.
+ *   - `POST /api/search-terms`: Extracts search terms from product feed files with progress tracking.
+ * - **Google Ads API Support:**
+ *   - `POST /api/search-volumes`: Fetches search volume metrics for a list of search terms.
+ *   - `POST /api/keyword-suggestions`: Retrieves related keyword suggestions for a given keyword.
+ * - **Quota Status:**
+ *   - `GET /api/quota-status`: Retrieves current quota usage and available limits.
+ * - **Streaming Responses:** Uses Server-Sent Events (SSE) to provide real-time updates for long-running tasks.
+ *
+ * **Usage Notes:**
+ * - The server automatically cleans up the uploads directory on startup to prevent stale files.
+ * - JSON payload size and URL encoding limits are configured to handle large datasets.
+ * - The Google Ads API integration requires valid credentials and adheres to usage limits managed by the `QuotaService`.
+ * - Progress updates are streamed to the client during file analysis and search term extraction, ensuring responsive feedback.
+ *
+ * **Environment Variables:**
+ * - `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_DEVELOPER_TOKEN`: Google Ads API credentials.
+ * - `GOOGLE_ADS_REFRESH_TOKEN`: Token for Google Ads API access.
+ * - `GOOGLE_ADS_CUSTOMER_ACCOUNT_ID`: Customer account identifier for API requests.
+ * - `GOOGLE_ADS_DAILY_QUOTA`: Daily quota limit for API requests (default: 15,000).
+ * - `SERVER_PORT`: Port on which the server listens (default: 3001).
+ * - `UPLOADS_DIR`: Directory for handling file uploads.
+ *
+ * **Dependencies:**
+ * - `express`: HTTP server framework.
+ * - `multer`: Middleware for handling multipart/form-data for file uploads.
+ * - `fs`, `path`: File system utilities for directory and file management.
+ * - `csv-parse`: Parser for processing CSV and TSV files.
+ * - `GoogleAdsService`, `QuotaService`: Custom services for Google Ads API integration and quota management.
+ * - `FeedAnalyzer`, `SearchTermsAnalyzer`: Core modules for feed quality checks and search term analysis.
+ */
+
+
+
 import express from 'express';
 import cors from 'cors';
 import multer from 'multer';

@@ -1,8 +1,39 @@
+/**
+ * DescriptionExtractor Class
+ *
+ * This module provides a robust solution for extracting relevant search terms from product descriptions in a feed.
+ * It includes methods for cleaning, analyzing, and enhancing search terms using synonyms, brands, and descriptive patterns.
+ *
+ * Key Features:
+ * - **Feed Item Analysis:** Processes batches of feed items to extract and group relevant phrases.
+ * - **Phrase Cleaning & Validation:** Cleans text to remove noise and validates extracted phrases.
+ * - **Synonym Enhancement:** Utilizes WordNet to enhance terms with synonyms for better keyword diversity.
+ * - **Brand Integration:** Automatically adds brand names to search terms where applicable.
+ * - **Pattern Matching:** Identifies phrases using NLP patterns and customizable rules.
+ * - **Progress Callback:** Provides progress updates during the extraction process for large datasets.
+ *
+ * Dependencies:
+ * - `compromise`: Used for text analysis and pattern matching.
+ * - `natural`: Used for synonym lookup through WordNet.
+ *
+ * Types:
+ * - `FeedItem`: Represents individual items in the product feed.
+ * - `SearchTerm`: Defines the structure of extracted search terms.
+ * - `DescriptionProgressCallback`: Function type for reporting progress during description analysis.
+ *
+ * Usage:
+ * ```typescript
+ * const extractor = new DescriptionExtractor(progressCallback);
+ * const searchTerms = await extractor.extractSearchTerms(feedItems);
+ * ```
+ */
+
 import nlp from 'compromise';
 import { WordNet } from 'natural';
 import { FeedItem, SearchTerm, DescriptionProgressCallback } from '@shopping-feed/types';
 
 const STOPWORDS = new Set([
+  /* Standard English stopwords for filtering */
   "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
   "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", 
   "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", 
@@ -20,11 +51,12 @@ const STOPWORDS = new Set([
 const MAX_WORDS_IN_PHRASE = 4;
 
 export class DescriptionExtractor {
-  private MIN_PRODUCTS = 5;
-  private BATCH_SIZE = 1000;
-  private wordnet: WordNet;
-  private phraseCache: Map<string, Set<string>>;
-  private progressCallback?: DescriptionProgressCallback;
+  private MIN_PRODUCTS = 5; // Minimum products to consider a term valid
+  private BATCH_SIZE = 1000; // Batch size for processing items
+  private wordnet: WordNet; // WordNet instance for synonym lookup
+  private phraseCache: Map<string, Set<string>>; // Cache for extracted phrases
+  private progressCallback?: DescriptionProgressCallback; // Callback for reporting progress
+  private synonymCache = new Map<string, string[]>(); // Cache for synonyms
 
   constructor(progressCallback?: DescriptionProgressCallback) {
     this.progressCallback = progressCallback;
@@ -40,8 +72,6 @@ export class DescriptionExtractor {
       .trim();
   }
 
-
-  private synonymCache = new Map<string, string[]>();
 
   private async getSynonyms(word: string): Promise<string[]> {
     // Check cache first

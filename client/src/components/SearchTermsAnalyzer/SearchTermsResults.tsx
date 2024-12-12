@@ -13,14 +13,28 @@
  *   - Products Modal: Displays all products matching a search term.
  *   - Keyword Metrics Modal: Displays detailed metrics for a selected search term.
  * - **Export Reports:** Download filtered results or full analysis reports as CSV files.
+ * - **Flagging Terms:** Allow users to flag specific search terms, preventing them from being included in reports.
+ * - **Pattern Breakdown Statistics:** Display counts for search terms categorized by patterns (e.g., attribute-based, description-based, API suggestions).
+ * - **Dynamic Volume Status:** Show the status of search volume fetching for each term with visual indicators.
  *
  * Props:
  * - `results`: Array of `SearchTerm` objects representing the search terms to display.
  * - `fileName`: Name of the file being analyzed, used for export naming.
+ * - `useSearchVolumes` (optional): Boolean flag to enable or disable fetching of search volume metrics.
  *
  * Types:
  * - `SearchTerm`: Includes fields such as `id`, `productName`, `searchTerm`, `pattern`, and `estimatedVolume`.
  * - `KeywordMetrics`: Includes metrics such as `avgMonthlySearches`, `competition`, etc.
+ *
+ * Dependencies:
+ * - Utilizes `lucide-react` icons for user interface components.
+ * - Relies on external components: `ProductsModal`, `KeywordMetricsModal`, and `FilterModal`.
+ * - Integrates with API endpoints for fetching search volume data and exporting CSV files.
+ *
+ * Notes:
+ * - The component is optimized for handling large datasets with features like pagination and filtering.
+ * - Flagged terms are excluded from the exported reports by default.
+ * - Fetching search volume metrics dynamically updates the search term data.
  */
 
 

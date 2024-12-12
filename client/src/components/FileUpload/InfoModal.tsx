@@ -1,3 +1,24 @@
+
+/**
+ * InfoModal Component
+ *
+ * This component renders a modal overlay with information about the Google Shopping Feed Analyzer.
+ * The modal explains the problem the project addresses and its importance.
+ *
+ * Props:
+ * - `isOpen` (boolean): Controls whether the modal is visible.
+ * - `onClose` (function): Callback function triggered when the modal is closed.
+ *
+ * Key Features:
+ * - Overlay is dismissed when clicking outside the modal or on the close button.
+ * - Styled with Tailwind CSS for a responsive and visually appealing layout.
+ *
+ * Dependencies:
+ * - React (required for functional components).
+ * - Tailwind CSS (used for styling the modal).
+ */
+
+
 import React from 'react';
 
 interface InfoModalProps {

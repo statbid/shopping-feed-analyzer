@@ -1,3 +1,43 @@
+/**
+ * QuotaTracker Component
+ *
+ * This component tracks and displays the usage of the API quota for the Shopping Feed Analyzer.
+ * It provides a toggle to enable or disable periodic quota updates and visual indicators for the current
+ * API usage status.
+ *
+ * Props:
+ * - `isEnabled` (boolean): Whether the quota tracker is enabled for periodic updates.
+ * - `onToggle` (function): Callback function triggered when the tracker is toggled on or off.
+ *
+ * State:
+ * - `used` (number): Number of API requests used.
+ * - `limit` (number): Maximum number of API requests allowed as defined in the `.env` file.
+ * - `lastUpdated` (Date): Timestamp of the last quota update.
+ * - `remainingTime` (string): Time remaining for the first request to expire.
+ * - `isLoading` (boolean): Whether the quota status is currently being fetched.
+ *
+ * Key Features:
+ * - **Dynamic Progress Bar**: Displays the API quota usage visually as a percentage of the total.
+ * - **Color-Coded Indicators**:
+ *   - Green: Quota usage is below 80%.
+ *   - Amber: Quota usage is between 80% and 95%.
+ *   - Red: Quota usage is above 95%.
+ * - **Real-Time Updates**: Periodically fetches quota status if enabled, with updates every 10 seconds.
+ * - **Warning System**: Alerts users when the API quota is low or critical to prevent overuse.
+ * - **Toggle Control**: Allows enabling or disabling quota tracking.
+ *
+ * Dependencies:
+ * - `useQuotaStore`: A custom state management hook for tracking quota-related data.
+ * - `lucide-react`: Icons for visual feedback.
+ * - `environment`: Configuration for API endpoints and environment variables.
+ *
+ * Notes:
+ * - The progress bar dynamically adjusts to reflect current API usage.
+ * - Prevents toggling the tracker on if the quota is critically low.
+ * - Each request expires 24 hours after it is made, and this expiration is displayed in the UI.
+ */
+
+
 import React, { useEffect } from 'react';
 import { AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useQuotaStore } from '../utils/quotaStore';
@@ -45,6 +85,7 @@ const QuotaTracker: React.FC<QuotaTrackerProps> = ({ isEnabled, onToggle }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <label className="relative inline-flex items-center cursor-pointer">
+       
           <input
             type="checkbox"
             checked={isEnabled}

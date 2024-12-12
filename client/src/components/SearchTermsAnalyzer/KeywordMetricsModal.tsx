@@ -1,3 +1,38 @@
+/**
+ * KeywordMetricsModal Component
+ *
+ * This component displays a modal that provides keyword metrics and suggestions
+ * retrieved from the Google Ads API for a given search term. Users can view detailed
+ * metrics and add suggested keywords to their results.
+ *
+ * Props:
+ * - `isOpen` (boolean): Controls whether the modal is visible.
+ * - `onClose` (function): Callback function triggered to close the modal.
+ * - `searchTerm` (string): The primary search term being analyzed.
+ * - `metrics` (KeywordMetrics): Metrics for the search term.
+ * - `originalTerm` (SearchTerm): The original search term data for reference.
+ * - `onAddSuggestion` (function): Callback to add a suggested search term to the results.
+ * - `existingTerms` (SearchTerm[]): List of already existing search terms to avoid duplication.
+ *
+ * Key Features:
+ * - Metrics Tab: Displays detailed keyword metrics such as search volume, competition, and bid ranges.
+ * - Suggestions Tab: Retrieves and displays related keyword suggestions.
+ * - State Management: Tracks added suggestions to prevent duplicate entries.
+ * - Cached Suggestions: Uses a `Map` for caching fetched suggestions to reduce API calls.
+ *
+ * Dependencies:
+ * - `react` for state and lifecycle management.
+ * - `lucide-react` for icons.
+ * - Tailwind CSS for styling.
+ * - Google Ads API for fetching keyword suggestions.
+ *
+ * Notes:
+ * - The component conditionally renders tabs for metrics and suggestions.
+ * - Suggestions are fetched via an API and cached for reuse.
+ * - Handles loading states and duplicate prevention for suggestions.
+ */
+
+
 import React, { useState, useEffect } from 'react';
 import { X, TrendingUp, DollarSign, Activity, Users, Search, Loader, Plus } from 'lucide-react';
 import { KeywordMetrics, SearchTerm } from '@shopping-feed/types';

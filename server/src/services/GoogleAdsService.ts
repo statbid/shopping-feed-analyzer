@@ -1,3 +1,37 @@
+/**
+ * GoogleAdsService Class
+ *
+ * A service class to interact with the Google Ads API for generating keyword suggestions and retrieving search volume metrics.
+ * It provides utility functions for batching requests, retrying failed requests, and handling API quotas.
+ *
+ * Key Features:
+ * - **Keyword Suggestions:**
+ *   - Fetch keyword suggestions based on a seed keyword.
+ *   - Returns keyword metrics such as average monthly searches, competition level, and bid estimates.
+ * - **Search Volumes:**
+ *   - Retrieve search volume metrics for a list of keywords.
+ *   - Handles batching and retry logic for API requests.
+ * - **Quota Management:**
+ *   - Integrates with the `QuotaService` to track and enforce API usage limits.
+ * - **Retry Logic:**
+ *   - Implements exponential backoff for retrying failed requests.
+ * - **Batching:**
+ *   - Supports batch processing of keywords to optimize API calls.
+ *
+ * Dependencies:
+ * - `google-ads-api` for interfacing with the Google Ads API.
+ * - `QuotaService` for managing API quota usage.
+ * - Custom types for configuration (`GoogleAdsConfig`, `KeywordMetrics`).
+ *
+ * Usage:
+ * ```typescript
+ * const googleAdsService = new GoogleAdsService(googleAdsConfig);
+ * const suggestions = await googleAdsService.getKeywordSuggestions('shoes');
+ * const searchVolumes = await googleAdsService.getSearchVolumes(['shoes', 'sneakers']);
+ * ```
+ */
+
+
 import { GoogleAdsApi, enums } from 'google-ads-api';
 import { 
   GoogleAdsConfig,

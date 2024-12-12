@@ -1,4 +1,53 @@
-// worker.ts
+
+/**
+ * **Worker Module for Error Checking**
+ *
+ * This module leverages the `worker_threads` API to process batches of feed items in parallel,
+ * executing enabled error-checking functions for each item. It is designed to optimize performance
+ * by offloading heavy computations to worker threads.
+ *
+ * **Purpose:**
+ * - Perform error checks on batches of feed items in parallel.
+ * - Supports dynamic enabling/disabling of specific error-checking functions.
+ * - Reports results back to the main thread for aggregation and further processing.
+ *
+ * **Key Features:**
+ * - **Dynamic Error Checker Mapping:**
+ *   - Error checkers are dynamically mapped to functions, including special cases like duplicate ID checks and spell checking.
+ * - **Batch Processing:**
+ *   - Processes each feed item in a batch with the specified error-checking functions.
+ * - **Error Handling:**
+ *   - Logs and continues processing even if individual checkers throw errors.
+ * - **Duplicate ID Tracking:**
+ *   - Maintains a `Map` to track duplicate IDs across the batch.
+ *
+ * **Worker Thread Communication:**
+ * - **Input:**
+ *   - `workerData` contains:
+ *     - `batch`: Array of `FeedItem` objects to process.
+ *     - `enabledChecks`: Array of error checker names to execute.
+ * - **Output:**
+ *   - Posts back an object containing:
+ *     - `errors`: Array of `ErrorResult` objects found during processing.
+ *     - `processedCount`: Number of items successfully processed.
+ *
+ * **Dependencies:**
+ * - `errorCheckers`: Collection of error-checking functions.
+ * - `checkSpelling`: Special-case spell-checking function.
+ * - `environment`: Configuration for application settings.
+ * - `@shopping-feed/types`: Type definitions for `FeedItem` and `ErrorResult`.
+ *
+ * **Error Checkers:**
+ * - Checkers are dynamically resolved using their names, enabling modular addition/removal of checkers.
+ * - Supports direct functions, arrays of functions, and custom cases like `checkDuplicateIds`.
+ *
+ * **Usage:**
+ * This module is invoked internally by the server's main thread, typically through `worker_threads` API.
+ *
+ */
+
+
+
 import { parentPort, workerData } from 'worker_threads';
 import { FeedItem, ErrorResult } from '@shopping-feed/types';
 import * as errorCheckers from './errorCheckers';

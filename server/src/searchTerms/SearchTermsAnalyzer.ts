@@ -1,3 +1,37 @@
+/**
+ * SearchTermsAnalyzer Class
+ *
+ * This class analyzes product feed items to generate search terms based on both attribute combinations 
+ * and product descriptions. It combines NLP techniques, pattern matching, and customizable configurations 
+ * to extract meaningful and relevant search terms
+ *
+ * Key Features:
+ * - **Attribute-based Search Terms:**
+ *   - Combines key attributes (e.g., Brand, Color, Product Type) in various patterns to generate search terms.
+ *   - Prioritizes certain attributes (e.g., Category) for relevance.
+ *   - Filters combinations based on the number of matching products to ensure significance.
+ * - **Description-based Search Terms:**
+ *   - Extracts terms directly from product descriptions using an integrated `DescriptionExtractor` instance.
+ *   - Enhances terms with synonyms and brand names for better keyword diversity.
+ * - **Progress Updates:**
+ *   - Supports callbacks to provide progress updates during both attribute and description term analysis.
+ * - **Customizable Parameters:**
+ *   - Minimum and maximum attribute combination sizes.
+ *   - Minimum number of products required to consider a term valid.
+ *   - Flexible mappings for attributes and fields in the product feed.
+ *
+ * Dependencies:
+ * - `DescriptionExtractor`: Handles description-based term extraction.
+ * - `FeedItem` and `SearchTerm` types from `@shopping-feed/types` for feed data and analysis results.
+ *
+ * Usage:
+ * ```typescript
+ * const analyzer = new SearchTermsAnalyzer(progressCallback);
+ * const searchTerms = await analyzer.analyzeSearchTerms(feedItems);
+ * ```
+ */
+
+
 import { FeedItem, SearchTerm, ProgressCallback, DescriptionProgressCallback } from '@shopping-feed/types';
 import { DescriptionExtractor } from './DescriptionTerms';
 
