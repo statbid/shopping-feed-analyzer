@@ -40,77 +40,130 @@ export class DescriptionExtractor {
       .trim();
   }
 
+
+  private synonymCache = new Map<string, string[]>();
+
   private async getSynonyms(word: string): Promise<string[]> {
+    // Check cache first
+    if (this.synonymCache.has(word)) {
+      return this.synonymCache.get(word)!;
+    }
+
     return new Promise((resolve) => {
       this.wordnet.lookup(word, (results: any[]) => {
         if (results.length > 0) {
-          const synonyms = results.flatMap((result) => result.synonyms || []);
-          resolve(Array.from(new Set(synonyms.filter(synonym => synonym.split(' ').length === 1))));
+          const synonyms = results.flatMap((result) => result.synonyms || [])
+            .filter(synonym => synonym.split(' ').length === 1);
+          const uniqueSynonyms = Array.from(new Set(synonyms));
+          this.synonymCache.set(word, uniqueSynonyms); // Cache the result
+          resolve(uniqueSynonyms);
         } else {
+          this.synonymCache.set(word, []); // Cache empty result
           resolve([]);
         }
       });
     });
   }
+  
+
+
 
   private async addBrandAndSynonymsToTerms(terms: SearchTerm[], items: FeedItem[]): Promise<SearchTerm[]> {
-    const enhancedTerms: SearchTerm[] = [];
+    const enhancedTerms = new Map<string, SearchTerm>();
+    
+    // Add original terms first
+    terms.forEach(term => {
+      enhancedTerms.set(term.searchTerm, term);
+    });
 
+    // Process brand variants
     for (const term of terms) {
-      const originalTerm = { ...term }; // Preserve the original term
-      enhancedTerms.push(originalTerm);
-
       const matchingItem = items.find(item => item.id === term.id);
       const brand = matchingItem?.brand?.toLowerCase().trim();
 
       if (brand && !term.searchTerm.includes(brand)) {
-        const brandPrepended = {
-          ...term,
-          searchTerm: `${brand} ${term.searchTerm}`,
-        };
-        const brandAppended = {
-          ...term,
-          searchTerm: `${term.searchTerm} ${brand}`,
-        };
+        const brandPrepended = `${brand} ${term.searchTerm}`;
+        const brandAppended = `${term.searchTerm} ${brand}`;
 
-        // Avoid duplicating terms
-        if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === brandPrepended.searchTerm)) {
-          enhancedTerms.push(brandPrepended);
+        if (!enhancedTerms.has(brandPrepended)) {
+          enhancedTerms.set(brandPrepended, {
+            ...term,
+            searchTerm: brandPrepended
+          });
         }
 
-        if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === brandAppended.searchTerm)) {
-          enhancedTerms.push(brandAppended);
-        }
-      }
-
-      const words = term.searchTerm.split(' ');
-      let synonymAdded = false;
-
-      for (let i = 0; i < words.length; i++) {
-        const word = words[i];
-        if (!STOPWORDS.has(word) && word.length > 3) {
-          const synonyms = await this.getSynonyms(word);
-          if (synonyms.length > 0) {
-            const modifiedWords = [...words];
-            modifiedWords[i] = synonyms[0]; // Replace the word with its first synonym
-            const synonymTerm = modifiedWords.join(' ');
-
-            if (!enhancedTerms.some(existingTerm => existingTerm.searchTerm === synonymTerm)) {
-              enhancedTerms.push({
-                ...term,
-                searchTerm: synonymTerm,
-              });
-            }
-
-            synonymAdded = true;
-            break; // Only add one synonym variant per term
-          }
+        if (!enhancedTerms.has(brandAppended)) {
+          enhancedTerms.set(brandAppended, {
+            ...term,
+            searchTerm: brandAppended
+          });
         }
       }
     }
 
-    return enhancedTerms;
+    // Process synonyms in parallel batches
+    const SYNONYM_BATCH_SIZE = 50;
+    const uniqueWords = new Set<string>();
+
+    // Collect unique meaningful words
+    terms.forEach(term => {
+      term.searchTerm.split(' ').forEach(word => {
+        if (!STOPWORDS.has(word) && word.length > 3) {
+          uniqueWords.add(word);
+        }
+      });
+    });
+
+    const uniqueWordsArray = Array.from(uniqueWords);
+    const synonymBatches = [];
+
+    // Process synonym lookups in batches
+    for (let i = 0; i < uniqueWordsArray.length; i += SYNONYM_BATCH_SIZE) {
+      const batch = uniqueWordsArray.slice(i, i + SYNONYM_BATCH_SIZE);
+      const batchPromises = batch.map(word => this.getSynonyms(word)
+        .then(synonyms => ({ word, synonyms: synonyms[0] }))  // Only take first synonym
+      );
+      synonymBatches.push(Promise.all(batchPromises));
+    }
+
+    // Wait for all batches to complete
+    const allSynonyms = (await Promise.all(synonymBatches)).flat();
+    const synonymMap = new Map(
+      allSynonyms
+        .filter(({ synonyms }) => synonyms)  // Only keep words that have synonyms
+        .map(({ word, synonyms }) => [word, synonyms])
+    );
+
+    // Create synonym variants
+    terms.forEach(term => {
+      const words = term.searchTerm.split(' ');
+      for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const synonym = synonymMap.get(word);
+        
+        if (synonym) {
+          const modifiedWords = [...words];
+          modifiedWords[i] = synonym;
+          const synonymTerm = modifiedWords.join(' ');
+
+          if (!enhancedTerms.has(synonymTerm)) {
+            enhancedTerms.set(synonymTerm, {
+              ...term,
+              searchTerm: synonymTerm
+            });
+            break; // Only create one synonym variant per term
+          }
+        }
+      }
+    });
+
+    return Array.from(enhancedTerms.values());
   }
+
+  
+
+
+
 
   public async extractSearchTerms(items: FeedItem[]): Promise<SearchTerm[]> {
     const allTerms = new Map<string, Set<string>>();
